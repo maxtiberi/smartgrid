@@ -5,6 +5,7 @@ on:
     branches:
       - claude/upload-html-dashboard-OxA9P
       - claude/power-plant-animation-qvIeL
+      - claude/power-plant-animation-P05FA
     paths:
       - 'github-pages-demo/**'
   workflow_dispatch:
