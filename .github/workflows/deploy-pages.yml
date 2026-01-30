@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - claude/upload-html-dashboard-OxA9P
+      - claude/power-plant-animation-qvIeL
     paths:
       - 'github-pages-demo/**'
   workflow_dispatch:
