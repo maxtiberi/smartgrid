@@ -740,7 +740,7 @@
                         fontSize={18} fontWeight={800} fontFamily="IBM Plex Mono"
                         style={{ transition: 'fill 0.5s' }}>G</text>
 
-                    <ElectricArc x1={510} y1={150} x2={550} y2={160} active={isPhaseActive('generator')} />
+                    <ElectricArc x1={562} y1={178} x2={655} y2={178} active={isPhaseActive('generator')} />
 
                     {isPhaseActive('generator') && (
                         <text x={530} y={243} textAnchor="middle" fill="var(--accent-electric)" fontSize={7}
@@ -753,8 +753,7 @@
                         label="Freq" unit="Hz" color="var(--accent-electric)" active={isPhaseActive('generator')} />
 
                     {/* ══════════════════════════════════════════ */}
-                    {/* ── WIRE to Transformer ── */}
-                    <FlowPipe path="M590,178 L660,178" active={isPhaseActive('transformer')} color="var(--accent-electric)" width={3} />
+                    {/* ── WIRE to Transformer (covered by ElectricArc above) ── */}
 
                     {/* ══════════════════════════════════════════ */}
                     {/* ── TRANSFORMER ── */}
