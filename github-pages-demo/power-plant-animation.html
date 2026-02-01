@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Power Plant Animation - SmartGrid (Enhanced Edition) -->
+<!-- Power Plant Animation - SmartGrid (Dashboard Style) -->
 <html lang="it">
 <head>
     <meta charset="UTF-8">
@@ -8,43 +8,44 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-            --bg: #0a1119;
-            --bg-secondary: #0f1923;
-            --bg-card: #141f2d;
-            --bg-card-hover: #1a2a3d;
-            --bg-card-active: #1e3248;
-            --text: #e0e8f0;
-            --text-dim: #6a7f93;
-            --text-bright: #ffffff;
-            --accent-fire: #ff6b35;
-            --accent-fire-light: #ff9a6c;
-            --accent-steam: #a8d8ea;
-            --accent-electric: #00e5ff;
-            --accent-electric-dim: #0097a7;
-            --accent-water: #1e88e5;
-            --accent-water-light: #64b5f6;
-            --accent-green: #00e676;
-            --accent-green-dim: #00a152;
-            --accent-yellow: #ffd600;
-            --accent-yellow-dim: #c7a500;
-            --accent-red: #ff1744;
-            --accent-purple: #b388ff;
-            --border: rgba(255,255,255,0.06);
-            --border-light: rgba(255,255,255,0.12);
-            --shadow: 0 8px 32px rgba(0,0,0,0.4);
+            --bg-dark: #e8e6e1;
+            --bg-card: #d0cec9;
+            --bg-elevated: #f5f3ef;
+            --bg-diagram: #dddbd6;
+            --text-primary: #1a1a1a;
+            --text-secondary: #4a4a4a;
+            --text-tertiary: #6a6a6a;
+            --accent-fire: #b05a2a;
+            --accent-fire-light: #d07040;
+            --accent-steam: #5a7a8a;
+            --accent-steam-light: #7a9aaa;
+            --accent-electric: #4a4a68;
+            --accent-electric-light: #5a5a78;
+            --accent-water: #3a5a8a;
+            --accent-water-light: #5a7aaa;
+            --accent-green: #4a6a5a;
+            --accent-green-light: #5a8a6a;
+            --accent-yellow: #7a6a2a;
+            --accent-yellow-light: #9a8a3a;
+            --accent-red: #8a4a4a;
+            --accent-purple: #5a4a6a;
+            --accent-bar: #4a4a68;
+            --border: rgba(0,0,0,0.08);
+            --border-active: rgba(0,0,0,0.2);
         }
 
         body {
             font-family: 'Archivo', sans-serif;
-            background: var(--bg);
-            color: var(--text);
+            background: var(--bg-dark);
+            color: var(--text-primary);
             min-height: 100vh;
             overflow-x: hidden;
+            font-weight: 400;
         }
 
         #root { min-height: 100vh; }
@@ -63,8 +64,8 @@
         }
 
         @keyframes steam-rise {
-            0% { transform: translateY(0) scale(1); opacity: 0.7; }
-            40% { opacity: 0.5; }
+            0% { transform: translateY(0) scale(1); opacity: 0.6; }
+            40% { opacity: 0.4; }
             100% { transform: translateY(-45px) scale(2); opacity: 0; }
         }
 
@@ -79,8 +80,8 @@
         }
 
         @keyframes electric-pulse {
-            0%, 100% { opacity: 0.3; filter: brightness(1); }
-            50% { opacity: 1; filter: brightness(1.8); }
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
         }
 
         @keyframes flow-dash {
@@ -91,7 +92,7 @@
             to { stroke-dashoffset: 24; }
         }
 
-        @keyframes fadeInUp {
+        @keyframes fadeInSlide {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
@@ -101,13 +102,8 @@
             to { opacity: 1; }
         }
 
-        @keyframes glow-pulse {
-            0%, 100% { box-shadow: 0 0 20px rgba(0,229,255,0.15); }
-            50% { box-shadow: 0 0 40px rgba(0,229,255,0.35); }
-        }
-
         @keyframes cooling-tower-steam {
-            0% { transform: translateY(0) scale(0.4); opacity: 0.6; }
+            0% { transform: translateY(0) scale(0.4); opacity: 0.5; }
             100% { transform: translateY(-60px) scale(3); opacity: 0; }
         }
 
@@ -117,37 +113,24 @@
             100% { opacity: 0; transform: scale(0.5); }
         }
 
-        @keyframes wave {
-            0% { d: path("M0,15 Q10,5 20,15 Q30,25 40,15 Q50,5 60,15 Q70,25 80,15"); }
-            50% { d: path("M0,15 Q10,25 20,15 Q30,5 40,15 Q50,25 60,15 Q70,5 80,15"); }
-            100% { d: path("M0,15 Q10,5 20,15 Q30,25 40,15 Q50,5 60,15 Q70,25 80,15"); }
-        }
-
         @keyframes rotor-coil-pulse {
-            0%, 100% { stroke: var(--accent-electric-dim); }
-            50% { stroke: var(--accent-electric); }
-        }
-
-        @keyframes meter-glow {
-            0%, 100% { filter: drop-shadow(0 0 2px currentColor); }
-            50% { filter: drop-shadow(0 0 6px currentColor); }
-        }
-
-        @keyframes particle-move {
-            0% { offset-distance: 0%; opacity: 0; }
-            5% { opacity: 1; }
-            95% { opacity: 1; }
-            100% { offset-distance: 100%; opacity: 0; }
+            0%, 100% { stroke: var(--accent-electric); opacity: 0.4; }
+            50% { stroke: var(--accent-electric-light); opacity: 1; }
         }
 
         @keyframes heatShimmer {
-            0%, 100% { opacity: 0.15; transform: translateX(0); }
-            50% { opacity: 0.3; transform: translateX(2px); }
+            0%, 100% { opacity: 0.1; transform: translateX(0); }
+            50% { opacity: 0.25; transform: translateX(2px); }
         }
 
         @keyframes progressPulse {
-            0%, 100% { opacity: 0.8; }
+            0%, 100% { opacity: 0.7; }
             50% { opacity: 1; }
+        }
+
+        @keyframes connectionPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
         }
 
         .turbine-blade-group {
@@ -165,15 +148,15 @@
 
         /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: var(--bg); }
-        ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef, useCallback, useMemo } = React;
+        const { useState, useEffect, useRef, useCallback } = React;
 
         // ─── Data ────────────────────────────────────────
         const PHASES = [
@@ -183,13 +166,11 @@
                 subtitle: 'Fonte di Energia Primaria',
                 description: 'Il combustibile (carbone, gas naturale, uranio) viene bruciato o sottoposto a fissione nucleare nella fornace della caldaia. L\'energia chimica o nucleare si trasforma in energia termica, producendo temperature fino a 1.500\u00b0C. In una centrale nucleare, la fissione dell\'uranio-235 avviene nel nocciolo del reattore.',
                 details: [
-                    { label: 'Temperatura', value: '1.500\u00b0C', icon: '\u{1f321}' },
-                    { label: 'Combustibile', value: 'Gas / Carbone / U-235', icon: '\u26fd' },
-                    { label: 'Conversione', value: 'Chimica \u2192 Termica', icon: '\u{1f504}' },
+                    { label: 'Temperatura', value: '1.500\u00b0C' },
+                    { label: 'Combustibile', value: 'Gas / Carbone / U-235' },
+                    { label: 'Conversione', value: 'Chimica \u2192 Termica' },
                 ],
-                icon: '\u{1f525}',
                 color: 'var(--accent-fire)',
-                bgGradient: 'linear-gradient(135deg, rgba(255,107,53,0.12), rgba(255,107,53,0.02))',
             },
             {
                 id: 'boiler',
@@ -197,13 +178,11 @@
                 subtitle: 'Generazione Vapore ad Alta Pressione',
                 description: 'Il calore generato riscalda l\'acqua nei tubi della caldaia attraverso scambiatori di calore. L\'acqua si trasforma in vapore surriscaldato ad alta pressione (fino a 250 bar e 600\u00b0C), pronto per azionare la turbina. Il processo sfrutta il ciclo termodinamico di Rankine.',
                 details: [
-                    { label: 'Pressione', value: '250 bar', icon: '\u{1f4ca}' },
-                    { label: 'Temperatura', value: '600\u00b0C', icon: '\u{1f321}' },
-                    { label: 'Stato', value: 'Vapore Surriscaldato', icon: '\u2668\ufe0f' },
+                    { label: 'Pressione', value: '250 bar' },
+                    { label: 'Temperatura', value: '600\u00b0C' },
+                    { label: 'Stato', value: 'Vapore Surriscaldato' },
                 ],
-                icon: '\u2668\ufe0f',
                 color: 'var(--accent-steam)',
-                bgGradient: 'linear-gradient(135deg, rgba(168,216,234,0.12), rgba(168,216,234,0.02))',
             },
             {
                 id: 'turbine',
@@ -211,13 +190,11 @@
                 subtitle: 'Conversione in Energia Meccanica',
                 description: 'Il vapore ad alta pressione colpisce le pale della turbina, facendola ruotare a 3.000 giri/min. La turbina \u00e8 composta da pi\u00f9 stadi (alta, media e bassa pressione) per estrarre il massimo dell\'energia termica. L\'espansione progressiva del vapore genera coppia meccanica.',
                 details: [
-                    { label: 'Velocit\u00e0', value: '3.000 RPM', icon: '\u26a1' },
-                    { label: 'Stadi', value: 'AP / MP / BP', icon: '\u2699\ufe0f' },
-                    { label: 'Conversione', value: 'Termica \u2192 Meccanica', icon: '\u{1f504}' },
+                    { label: 'Velocit\u00e0', value: '3.000 RPM' },
+                    { label: 'Stadi', value: 'AP / MP / BP' },
+                    { label: 'Conversione', value: 'Termica \u2192 Meccanica' },
                 ],
-                icon: '\u2699\ufe0f',
                 color: 'var(--accent-yellow)',
-                bgGradient: 'linear-gradient(135deg, rgba(255,214,0,0.12), rgba(255,214,0,0.02))',
             },
             {
                 id: 'generator',
@@ -225,13 +202,11 @@
                 subtitle: 'Generazione Corrente Elettrica',
                 description: 'La turbina \u00e8 collegata meccanicamente al generatore (alternatore sincrono). La rotazione del rotore nel campo magnetico genera corrente alternata trifase a 50 Hz secondo la legge di Faraday. La potenza generata pu\u00f2 raggiungere 1.200 MW per singola unit\u00e0.',
                 details: [
-                    { label: 'Frequenza', value: '50 Hz', icon: '\u{1f4c8}' },
-                    { label: 'Tensione', value: '15-25 kV', icon: '\u26a1' },
-                    { label: 'Conversione', value: 'Meccanica \u2192 Elettrica', icon: '\u{1f504}' },
+                    { label: 'Frequenza', value: '50 Hz' },
+                    { label: 'Tensione', value: '15-25 kV' },
+                    { label: 'Conversione', value: 'Meccanica \u2192 Elettrica' },
                 ],
-                icon: '\u26a1',
                 color: 'var(--accent-electric)',
-                bgGradient: 'linear-gradient(135deg, rgba(0,229,255,0.12), rgba(0,229,255,0.02))',
             },
             {
                 id: 'transformer',
@@ -239,13 +214,11 @@
                 subtitle: 'Elevazione di Tensione',
                 description: 'Il trasformatore elevatore aumenta la tensione da ~20 kV a 132-380 kV per il trasporto efficiente su lunghe distanze. Secondo la legge di Joule, l\'alta tensione riduce la corrente e quindi le perdite ohmiche (P = I\u00b2R) nelle linee di trasmissione.',
                 details: [
-                    { label: 'Ingresso', value: '20 kV', icon: '\u{1f50c}' },
-                    { label: 'Uscita', value: '380 kV', icon: '\u26a1' },
-                    { label: 'Efficienza', value: '99.5%', icon: '\u2705' },
+                    { label: 'Ingresso', value: '20 kV' },
+                    { label: 'Uscita', value: '380 kV' },
+                    { label: 'Efficienza', value: '99.5%' },
                 ],
-                icon: '\u{1f50c}',
                 color: 'var(--accent-green)',
-                bgGradient: 'linear-gradient(135deg, rgba(0,230,118,0.12), rgba(0,230,118,0.02))',
             },
             {
                 id: 'cooling',
@@ -253,13 +226,11 @@
                 subtitle: 'Ciclo di Raffreddamento',
                 description: 'Il vapore esausto viene condensato nuovamente in acqua nel condensatore, utilizzando acqua di raffreddamento da fiumi o torri evaporative. L\'acqua condensata torna in caldaia attraverso pompe di alimento, completando il ciclo termodinamico di Rankine chiuso.',
                 details: [
-                    { label: 'Temperatura', value: '30-40\u00b0C', icon: '\u{1f321}' },
-                    { label: 'Pressione', value: '0.05 bar', icon: '\u{1f4ca}' },
-                    { label: 'Ciclo', value: 'Rankine Chiuso', icon: '\u{1f504}' },
+                    { label: 'Temperatura', value: '30-40\u00b0C' },
+                    { label: 'Pressione', value: '0.05 bar' },
+                    { label: 'Ciclo', value: 'Rankine Chiuso' },
                 ],
-                icon: '\u{1f4a7}',
                 color: 'var(--accent-water)',
-                bgGradient: 'linear-gradient(135deg, rgba(30,136,229,0.12), rgba(30,136,229,0.02))',
             },
         ];
 
@@ -269,42 +240,19 @@
             if (!active) return null;
             return (
                 <g transform={`translate(${x},${y}) scale(${scale})`}>
-                    {/* Outer flames */}
                     {[-15, -5, 5, 15].map((ox, i) => (
-                        <ellipse
-                            key={`outer-${i}`}
-                            cx={ox}
-                            cy={0}
-                            rx={5}
-                            ry={16 + Math.sin(i) * 3}
-                            fill={i % 2 === 0 ? '#ff6b35' : '#ff8f00'}
+                        <ellipse key={`o-${i}`} cx={ox} cy={0} rx={5} ry={16 + Math.sin(i) * 3}
+                            fill={i % 2 === 0 ? '#c05020' : '#d08030'}
                             opacity={0.8}
-                            style={{
-                                animation: `flame ${0.35 + i * 0.12}s ease-in-out infinite`,
-                                transformOrigin: `${ox}px 10px`,
-                                animationDelay: `${i * 0.08}s`
-                            }}
-                        />
+                            style={{ animation: `flame ${0.35 + i * 0.12}s ease-in-out infinite`, transformOrigin: `${ox}px 10px`, animationDelay: `${i * 0.08}s` }} />
                     ))}
-                    {/* Inner bright core */}
                     {[-8, 0, 8].map((ox, i) => (
-                        <ellipse
-                            key={`inner-${i}`}
-                            cx={ox}
-                            cy={3}
-                            rx={3.5}
-                            ry={10}
-                            fill="#ffeb3b"
+                        <ellipse key={`i-${i}`} cx={ox} cy={3} rx={3.5} ry={10}
+                            fill="#d0a030"
                             opacity={0.7}
-                            style={{
-                                animation: `flame-core ${0.3 + i * 0.1}s ease-in-out infinite`,
-                                transformOrigin: `${ox}px 8px`,
-                                animationDelay: `${i * 0.12}s`
-                            }}
-                        />
+                            style={{ animation: `flame-core ${0.3 + i * 0.1}s ease-in-out infinite`, transformOrigin: `${ox}px 8px`, animationDelay: `${i * 0.12}s` }} />
                     ))}
-                    {/* White hot center */}
-                    <ellipse cx={0} cy={6} rx={3} ry={6} fill="#fff9c4" opacity={0.6}
+                    <ellipse cx={0} cy={6} rx={3} ry={6} fill="#e0c060" opacity={0.5}
                         style={{ animation: 'flame-core 0.25s ease-in-out infinite' }} />
                 </g>
             );
@@ -315,18 +263,9 @@
             return (
                 <g transform={`translate(${x},${y})`}>
                     {Array.from({ length: count }).map((_, i) => (
-                        <circle
-                            key={i}
-                            cx={(i - count/2) * 7 + Math.sin(i * 1.5) * 3}
-                            cy={0}
-                            r={2.5 + (i % 3)}
-                            fill="var(--accent-steam)"
-                            opacity={0.6}
-                            style={{
-                                animation: `steam-rise ${1.5 + i * 0.25}s ease-out infinite`,
-                                animationDelay: `${i * 0.2}s`
-                            }}
-                        />
+                        <circle key={i} cx={(i - count/2) * 7 + Math.sin(i * 1.5) * 3} cy={0}
+                            r={2.5 + (i % 3)} fill="var(--accent-steam-light)" opacity={0.5}
+                            style={{ animation: `steam-rise ${1.5 + i * 0.25}s ease-out infinite`, animationDelay: `${i * 0.2}s` }} />
                     ))}
                 </g>
             );
@@ -336,36 +275,29 @@
             const blades = 8;
             return (
                 <g transform={`translate(${x},${y})`} className={spinning ? 'turbine-spinning' : 'turbine-idle'}>
-                    {/* Outer ring */}
-                    <circle cx={0} cy={0} r={size + 6} fill="none" stroke={spinning ? 'var(--accent-yellow)' : '#2a2a2a'}
-                        strokeWidth={1} opacity={spinning ? 0.4 : 0.2} style={{ transition: 'all 0.5s' }} />
-                    <circle cx={0} cy={0} r={size + 2} fill="none" stroke={spinning ? 'var(--accent-yellow)' : '#333'}
-                        strokeWidth={0.5} opacity={0.3} />
-                    {/* Blades */}
+                    <circle cx={0} cy={0} r={size + 6} fill="none"
+                        stroke={spinning ? 'var(--accent-yellow)' : 'var(--text-tertiary)'}
+                        strokeWidth={1} opacity={spinning ? 0.5 : 0.2} style={{ transition: 'all 0.5s' }} />
                     <g className="turbine-blade-group">
                         {Array.from({ length: blades }).map((_, i) => {
                             const angle = (360 / blades) * i;
                             return (
                                 <g key={i} transform={`rotate(${angle})`}>
-                                    <path
-                                        d={`M-2,${-size + 4} Q0,${-size/2} 3,${-6} L-3,${-6} Q0,${-size/2} 2,${-size + 4} Z`}
-                                        fill={spinning ? 'var(--accent-yellow)' : '#444'}
-                                        opacity={spinning ? 0.85 : 0.35}
-                                        style={{ transition: 'fill 0.5s, opacity 0.5s' }}
-                                    />
+                                    <path d={`M-2,${-size + 4} Q0,${-size/2} 3,${-6} L-3,${-6} Q0,${-size/2} 2,${-size + 4} Z`}
+                                        fill={spinning ? 'var(--accent-yellow)' : 'var(--text-tertiary)'}
+                                        opacity={spinning ? 0.8 : 0.3}
+                                        style={{ transition: 'fill 0.5s, opacity 0.5s' }} />
                                 </g>
                             );
                         })}
                     </g>
-                    {/* Center hub */}
-                    <circle cx={0} cy={0} r={9} fill={spinning ? '#ffd600' : '#333'}
-                        stroke={spinning ? '#ffab00' : '#444'} strokeWidth={1.5}
+                    <circle cx={0} cy={0} r={9} fill={spinning ? 'var(--accent-yellow)' : 'var(--text-tertiary)'}
+                        stroke={spinning ? 'var(--accent-yellow-light)' : '#aaa'} strokeWidth={1.5}
                         style={{ transition: 'all 0.5s' }} />
                     <circle cx={0} cy={0} r={4} fill="var(--bg-card)" />
-                    {/* RPM indicator */}
                     {spinning && (
                         <text x={0} y={size + 18} textAnchor="middle" fill="var(--accent-yellow)"
-                            fontSize={8} fontFamily="IBM Plex Mono" opacity={0.7}
+                            fontSize={8} fontFamily="IBM Plex Mono" opacity={0.6}
                             style={{ animation: 'progressPulse 1.5s ease-in-out infinite' }}>
                             3000 RPM
                         </text>
@@ -379,32 +311,20 @@
             const mid = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
             return (
                 <g>
-                    {/* Multiple arcs for electricity effect */}
-                    {[-8, 0, 8].map((offset, idx) => {
-                        const my = mid.y + offset;
-                        return (
-                            <path
-                                key={idx}
-                                d={`M${x1},${y1 + offset * 0.5} Q${mid.x},${my} ${x2},${y2 + offset * 0.5}`}
-                                fill="none"
-                                stroke="var(--accent-electric)"
-                                strokeWidth={idx === 1 ? 2 : 1}
-                                strokeDasharray="4,4"
-                                opacity={idx === 1 ? 0.8 : 0.3}
-                                style={{ animation: `flow-dash 0.4s linear infinite`, animationDelay: `${idx * 0.13}s` }}
-                            />
-                        );
-                    })}
-                    {/* Spark particles */}
+                    {[-8, 0, 8].map((offset, idx) => (
+                        <path key={idx}
+                            d={`M${x1},${y1 + offset * 0.5} Q${mid.x},${mid.y + offset} ${x2},${y2 + offset * 0.5}`}
+                            fill="none" stroke="var(--accent-electric)"
+                            strokeWidth={idx === 1 ? 2 : 1} strokeDasharray="4,4"
+                            opacity={idx === 1 ? 0.7 : 0.25}
+                            style={{ animation: `flow-dash 0.4s linear infinite`, animationDelay: `${idx * 0.13}s` }} />
+                    ))}
                     {[0.15, 0.4, 0.65, 0.9].map((t, i) => {
                         const px = (1-t)*(1-t)*x1 + 2*(1-t)*t*mid.x + t*t*x2;
                         const py = (1-t)*(1-t)*y1 + 2*(1-t)*t*mid.y + t*t*y2;
                         return (
-                            <g key={i}>
-                                <circle cx={px} cy={py} r={4} fill="var(--accent-electric)" opacity={0.15} />
-                                <circle cx={px} cy={py} r={2} fill="var(--accent-electric)"
-                                    style={{ animation: `spark 0.6s ease-in-out infinite`, animationDelay: `${i * 0.15}s` }} />
-                            </g>
+                            <circle key={i} cx={px} cy={py} r={2} fill="var(--accent-electric)"
+                                style={{ animation: `spark 0.6s ease-in-out infinite`, animationDelay: `${i * 0.15}s` }} />
                         );
                     })}
                 </g>
@@ -414,29 +334,17 @@
         function CoolingTower({ x, y, active }) {
             return (
                 <g transform={`translate(${x},${y})`}>
-                    {/* Tower body - hyperboloid shape */}
                     <path d="M-22,0 Q-25,-25 -15,-52 Q-10,-58 0,-60 Q10,-58 15,-52 Q25,-25 22,0 Z"
-                        fill="#1e2e3e" stroke={active ? 'var(--accent-water)' : '#2a3a4a'} strokeWidth={1.5}
+                        fill="var(--bg-elevated)" stroke={active ? 'var(--accent-water)' : 'var(--text-tertiary)'} strokeWidth={1.5}
                         style={{ transition: 'stroke 0.5s' }} />
                     <path d="M-18,-5 Q-20,-25 -12,-48 Q0,-55 12,-48 Q20,-25 18,-5 Z"
-                        fill="#162231" opacity={0.5} />
-                    {/* Base */}
-                    <ellipse cx={0} cy={2} rx={24} ry={5} fill="#1a2a3a" stroke={active ? 'var(--accent-water)' : '#2a3a4a'}
-                        strokeWidth={0.8} opacity={0.6} />
-                    {/* Steam clouds */}
+                        fill="var(--bg-card)" opacity={0.5} />
+                    <ellipse cx={0} cy={2} rx={24} ry={5} fill="var(--bg-card)"
+                        stroke={active ? 'var(--accent-water)' : 'var(--text-tertiary)'} strokeWidth={0.8} opacity={0.6} />
                     {active && [0, 1, 2, 3, 4].map(i => (
-                        <circle
-                            key={i}
-                            cx={-6 + i * 3}
-                            cy={-60}
-                            r={3 + i % 2}
-                            fill="var(--accent-steam)"
-                            opacity={0.4}
-                            style={{
-                                animation: `cooling-tower-steam ${2.5 + i * 0.4}s ease-out infinite`,
-                                animationDelay: `${i * 0.35}s`
-                            }}
-                        />
+                        <circle key={i} cx={-6 + i * 3} cy={-60} r={3 + i % 2}
+                            fill="var(--accent-steam-light)" opacity={0.4}
+                            style={{ animation: `cooling-tower-steam ${2.5 + i * 0.4}s ease-out infinite`, animationDelay: `${i * 0.35}s` }} />
                     ))}
                 </g>
             );
@@ -445,25 +353,11 @@
         function FlowPipe({ path, active, color = 'var(--accent-steam)', width = 3, reverse = false }) {
             return (
                 <g>
-                    {/* Pipe background */}
-                    <path d={path} fill="none" stroke={color} strokeWidth={width} opacity={0.1}
-                        strokeLinecap="round" />
-                    {/* Active flow */}
+                    <path d={path} fill="none" stroke={color} strokeWidth={width} opacity={0.12} strokeLinecap="round" />
                     {active && (
-                        <>
-                            <path d={path} fill="none" stroke={color} strokeWidth={width - 1}
-                                opacity={0.15} strokeLinecap="round" />
-                            <path
-                                d={path}
-                                fill="none"
-                                stroke={color}
-                                strokeWidth={width - 1}
-                                strokeDasharray="8,8"
-                                opacity={0.7}
-                                strokeLinecap="round"
-                                style={{ animation: `${reverse ? 'flow-dash-reverse' : 'flow-dash'} 0.7s linear infinite` }}
-                            />
-                        </>
+                        <path d={path} fill="none" stroke={color} strokeWidth={width - 1}
+                            strokeDasharray="8,8" opacity={0.6} strokeLinecap="round"
+                            style={{ animation: `${reverse ? 'flow-dash-reverse' : 'flow-dash'} 0.7s linear infinite` }} />
                     )}
                 </g>
             );
@@ -474,37 +368,29 @@
             const angle = -120 + ratio * 240;
             const r = 18;
             return (
-                <g transform={`translate(${x},${y})`} opacity={active ? 1 : 0.3}
-                    style={{ transition: 'opacity 0.5s' }}>
-                    {/* Gauge arc background */}
+                <g transform={`translate(${x},${y})`} opacity={active ? 1 : 0.25} style={{ transition: 'opacity 0.5s' }}>
                     <path d={`M${-r * Math.cos(-120 * Math.PI/180)},${-r * Math.sin(-120 * Math.PI/180)} A${r},${r} 0 1,1 ${r * Math.cos(-120 * Math.PI/180)},${-r * Math.sin(-120 * Math.PI/180)}`}
-                        fill="none" stroke="#1a2a3a" strokeWidth={3} strokeLinecap="round" />
-                    {/* Gauge arc fill */}
+                        fill="none" stroke="var(--border)" strokeWidth={3} strokeLinecap="round" />
                     {active && ratio > 0 && (
                         <path d={describeArc(0, 0, r, -210, -210 + ratio * 240)}
                             fill="none" stroke={color} strokeWidth={3} strokeLinecap="round"
                             style={{ transition: 'all 0.5s' }} />
                     )}
-                    {/* Needle */}
                     <line x1={0} y1={0}
                         x2={14 * Math.cos((angle - 90) * Math.PI / 180)}
                         y2={14 * Math.sin((angle - 90) * Math.PI / 180)}
-                        stroke={active ? color : '#333'} strokeWidth={1.5} strokeLinecap="round"
+                        stroke={active ? color : 'var(--text-tertiary)'} strokeWidth={1.5} strokeLinecap="round"
                         style={{ transition: 'all 0.5s' }} />
-                    <circle cx={0} cy={0} r={2.5} fill={active ? color : '#333'} />
-                    {/* Value */}
-                    <text x={0} y={12} textAnchor="middle" fill={active ? color : '#444'}
-                        fontSize={7} fontFamily="IBM Plex Mono" fontWeight={600}
-                        style={{ transition: 'fill 0.5s' }}>
+                    <circle cx={0} cy={0} r={2.5} fill={active ? color : 'var(--text-tertiary)'} />
+                    <text x={0} y={12} textAnchor="middle" fill={active ? color : 'var(--text-tertiary)'}
+                        fontSize={7} fontFamily="IBM Plex Mono" fontWeight={500} style={{ transition: 'fill 0.5s' }}>
                         {active ? `${value}${unit}` : '--'}
                     </text>
-                    <text x={0} y={22} textAnchor="middle" fill="var(--text-dim)"
-                        fontSize={6}>{label}</text>
+                    <text x={0} y={22} textAnchor="middle" fill="var(--text-tertiary)" fontSize={6}>{label}</text>
                 </g>
             );
         }
 
-        // Helper for arc path
         function describeArc(cx, cy, r, startAngle, endAngle) {
             const start = polarToCartesian(cx, cy, r, endAngle);
             const end = polarToCartesian(cx, cy, r, startAngle);
@@ -523,151 +409,99 @@
             const phaseIdx = PHASES.findIndex(p => p.id === activePhase);
             const isPhaseActive = (id) => {
                 if (!isRunning) return false;
-                const idx = PHASES.findIndex(p => p.id === id);
-                return idx <= phaseIdx;
+                return PHASES.findIndex(p => p.id === id) <= phaseIdx;
             };
 
             return (
                 <svg viewBox="0 0 960 440" style={{ width: '100%', height: 'auto', display: 'block' }}>
                     <defs>
                         <radialGradient id="fireGlow">
-                            <stop offset="0%" stopColor="#ff6b35" stopOpacity="0.35" />
-                            <stop offset="50%" stopColor="#ff6b35" stopOpacity="0.1" />
-                            <stop offset="100%" stopColor="#ff6b35" stopOpacity="0" />
+                            <stop offset="0%" stopColor="#b05a2a" stopOpacity="0.15" />
+                            <stop offset="100%" stopColor="#b05a2a" stopOpacity="0" />
                         </radialGradient>
                         <radialGradient id="elecGlow">
-                            <stop offset="0%" stopColor="#00e5ff" stopOpacity="0.35" />
-                            <stop offset="50%" stopColor="#00e5ff" stopOpacity="0.1" />
-                            <stop offset="100%" stopColor="#00e5ff" stopOpacity="0" />
+                            <stop offset="0%" stopColor="#4a4a68" stopOpacity="0.15" />
+                            <stop offset="100%" stopColor="#4a4a68" stopOpacity="0" />
                         </radialGradient>
                         <radialGradient id="yellowGlow">
-                            <stop offset="0%" stopColor="#ffd600" stopOpacity="0.25" />
-                            <stop offset="100%" stopColor="#ffd600" stopOpacity="0" />
+                            <stop offset="0%" stopColor="#7a6a2a" stopOpacity="0.12" />
+                            <stop offset="100%" stopColor="#7a6a2a" stopOpacity="0" />
                         </radialGradient>
                         <radialGradient id="greenGlow">
-                            <stop offset="0%" stopColor="#00e676" stopOpacity="0.25" />
-                            <stop offset="100%" stopColor="#00e676" stopOpacity="0" />
+                            <stop offset="0%" stopColor="#4a6a5a" stopOpacity="0.12" />
+                            <stop offset="100%" stopColor="#4a6a5a" stopOpacity="0" />
                         </radialGradient>
-                        <filter id="glow">
-                            <feGaussianBlur stdDeviation="3" result="blur" />
-                            <feMerge>
-                                <feMergeNode in="blur" />
-                                <feMergeNode in="SourceGraphic" />
-                            </feMerge>
-                        </filter>
-                        <filter id="softGlow">
-                            <feGaussianBlur stdDeviation="2" />
-                        </filter>
-                        <linearGradient id="pipeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stopColor="var(--accent-steam)" stopOpacity="0.3" />
-                            <stop offset="100%" stopColor="var(--accent-electric)" stopOpacity="0.3" />
-                        </linearGradient>
                     </defs>
 
                     {/* Background */}
-                    <rect width="960" height="440" fill="var(--bg-secondary)" rx={12} />
-                    <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
-                        <path d="M 30 0 L 0 0 0 30" fill="none" stroke="rgba(255,255,255,0.02)" strokeWidth="0.5" />
-                    </pattern>
-                    <rect width="960" height="440" fill="url(#grid)" rx={12} />
+                    <rect width="960" height="440" fill="var(--bg-elevated)" rx={0} />
+                    <line x1={0} y1={0} x2={960} y2={0} stroke="var(--text-primary)" strokeWidth={1} />
 
-                    {/* ── Title ── */}
-                    <text x={480} y={32} textAnchor="middle" fill="var(--text)" fontSize={13} fontWeight={700} letterSpacing={3} opacity={0.8}>
+                    {/* Title */}
+                    <text x={480} y={30} textAnchor="middle" fill="var(--text-secondary)" fontSize={12}
+                        fontWeight={400} letterSpacing={3}>
                         CICLO TERMODINAMICO DI RANKINE
                     </text>
 
-                    {/* ══════════════════════════════════════════ */}
                     {/* ── BOILER / FURNACE ── */}
-                    {/* Background glow */}
                     {isPhaseActive('fuel') && <circle cx={115} cy={195} r={70} fill="url(#fireGlow)" />}
 
-                    {/* Boiler body */}
-                    <rect x={50} y={95} width={130} height={160} rx={10} fill="var(--bg-card)"
-                        stroke={isPhaseActive('fuel') ? 'var(--accent-fire)' : 'var(--border)'}
-                        strokeWidth={isPhaseActive('fuel') ? 2 : 1}
-                        style={{ transition: 'stroke 0.5s, stroke-width 0.5s' }} />
-                    {/* Boiler inner structure */}
-                    <rect x={60} y={105} width={110} height={70} rx={4} fill="none"
-                        stroke={isPhaseActive('boiler') ? 'var(--accent-steam)' : 'var(--border)'}
-                        strokeWidth={0.8} strokeDasharray="3,3" opacity={0.5} />
+                    <rect x={50} y={95} width={130} height={160} rx={0} fill="transparent"
+                        stroke={isPhaseActive('fuel') ? 'var(--accent-fire)' : 'var(--text-tertiary)'}
+                        strokeWidth={isPhaseActive('fuel') ? 2 : 1} opacity={isPhaseActive('fuel') ? 1 : 0.4}
+                        style={{ transition: 'all 0.4s' }} />
+                    <rect x={60} y={105} width={110} height={70} rx={0} fill="none"
+                        stroke={isPhaseActive('boiler') ? 'var(--accent-steam)' : 'var(--text-tertiary)'}
+                        strokeWidth={0.8} strokeDasharray="3,3" opacity={0.3} />
 
                     <text x={115} y={82} textAnchor="middle"
-                        fill={isPhaseActive('fuel') ? 'var(--accent-fire)' : 'var(--text-dim)'}
-                        fontSize={11} fontWeight={700} letterSpacing={1}
-                        style={{ transition: 'fill 0.5s' }}>CALDAIA</text>
+                        fill={isPhaseActive('fuel') ? 'var(--accent-fire)' : 'var(--text-tertiary)'}
+                        fontSize={11} fontWeight={500} letterSpacing={1} style={{ transition: 'fill 0.4s' }}>CALDAIA</text>
 
-                    {/* Water tubes inside boiler */}
                     {[125, 145, 165].map((y, i) => (
                         <g key={y}>
                             <line x1={65} y1={y} x2={165} y2={y}
-                                stroke={isPhaseActive('boiler') ? 'var(--accent-steam)' : '#1a2a3a'}
-                                strokeWidth={2.5} strokeLinecap="round"
-                                style={{ transition: 'stroke 0.5s' }} />
+                                stroke={isPhaseActive('boiler') ? 'var(--accent-steam)' : 'var(--text-tertiary)'}
+                                strokeWidth={2} strokeLinecap="round" opacity={isPhaseActive('boiler') ? 0.7 : 0.2}
+                                style={{ transition: 'all 0.4s' }} />
                             {isPhaseActive('boiler') && (
                                 <line x1={65} y1={y} x2={165} y2={y}
                                     stroke="var(--accent-steam)" strokeWidth={1}
-                                    strokeDasharray="3,6" opacity={0.5}
+                                    strokeDasharray="3,6" opacity={0.4}
                                     style={{ animation: `flow-dash 1s linear infinite`, animationDelay: `${i * 0.2}s` }} />
                             )}
                         </g>
                     ))}
 
-                    {/* Flames */}
                     <Flame x={115} y={220} active={isPhaseActive('fuel')} scale={1.3} />
-
-                    {/* Heat shimmer */}
-                    {isPhaseActive('fuel') && (
-                        <g opacity={0.3}>
-                            {[0, 1, 2].map(i => (
-                                <line key={i} x1={80 + i * 25} y1={190} x2={80 + i * 25} y2={110}
-                                    stroke="var(--accent-fire)" strokeWidth={0.5}
-                                    style={{ animation: `heatShimmer ${1.5 + i * 0.3}s ease-in-out infinite`, animationDelay: `${i * 0.3}s` }} />
-                            ))}
-                        </g>
-                    )}
-
-                    {/* Steam rising from boiler */}
                     <SteamParticles x={115} y={98} active={isPhaseActive('boiler')} count={8} />
 
-                    {/* Fuel label */}
                     {isPhaseActive('fuel') && (
-                        <text x={115} y={248} textAnchor="middle" fill="var(--accent-fire)" fontSize={7}
-                            fontFamily="IBM Plex Mono" opacity={0.8}>
+                        <text x={115} y={268} textAnchor="middle" fill="var(--accent-fire)" fontSize={7}
+                            fontFamily="IBM Plex Mono" opacity={0.7}>
                             E.Chimica {'\u2192'} E.Termica
                         </text>
                     )}
 
-                    {/* Gauge */}
-                    <GaugeIndicator x={160} y={248} value={1500} max={2000}
-                        label="Temp" unit={'\u00b0C'} color="var(--accent-fire)" active={isPhaseActive('fuel')} />
-
-                    {/* ══════════════════════════════════════════ */}
-                    {/* ── STEAM PIPE to Turbine ── */}
+                    {/* ── STEAM PIPE ── */}
                     <FlowPipe path="M180,155 C220,155 240,175 280,175" active={isPhaseActive('turbine')} color="var(--accent-steam)" width={4} />
-
-                    {/* Pressure arrow label */}
                     {isPhaseActive('turbine') && (
                         <text x={230} y={148} textAnchor="middle" fill="var(--accent-steam)"
-                            fontSize={7} fontFamily="IBM Plex Mono" opacity={0.6}>
-                            250 bar
-                        </text>
+                            fontSize={7} fontFamily="IBM Plex Mono" opacity={0.5}>250 bar</text>
                     )}
 
-                    {/* ══════════════════════════════════════════ */}
                     {/* ── TURBINE ── */}
                     {isPhaseActive('turbine') && <circle cx={345} cy={180} r={55} fill="url(#yellowGlow)" />}
 
-                    <rect x={275} y={115} width={140} height={130} rx={10} fill="var(--bg-card)"
-                        stroke={isPhaseActive('turbine') ? 'var(--accent-yellow)' : 'var(--border)'}
-                        strokeWidth={isPhaseActive('turbine') ? 2 : 1}
-                        style={{ transition: 'stroke 0.5s' }} />
+                    <rect x={275} y={115} width={140} height={130} rx={0} fill="transparent"
+                        stroke={isPhaseActive('turbine') ? 'var(--accent-yellow)' : 'var(--text-tertiary)'}
+                        strokeWidth={isPhaseActive('turbine') ? 2 : 1} opacity={isPhaseActive('turbine') ? 1 : 0.4}
+                        style={{ transition: 'all 0.4s' }} />
 
                     <text x={345} y={102} textAnchor="middle"
-                        fill={isPhaseActive('turbine') ? 'var(--accent-yellow)' : 'var(--text-dim)'}
-                        fontSize={11} fontWeight={700} letterSpacing={1}
-                        style={{ transition: 'fill 0.5s' }}>TURBINA</text>
+                        fill={isPhaseActive('turbine') ? 'var(--accent-yellow)' : 'var(--text-tertiary)'}
+                        fontSize={11} fontWeight={500} letterSpacing={1} style={{ transition: 'fill 0.4s' }}>TURBINA</text>
 
-                    {/* Turbine stages labels */}
                     {isPhaseActive('turbine') && (
                         <g opacity={0.5}>
                             <text x={300} y={130} fill="var(--accent-yellow)" fontSize={6} fontFamily="IBM Plex Mono">AP</text>
@@ -679,72 +513,55 @@
                     <TurbineIcon x={345} y={180} spinning={isPhaseActive('turbine')} size={38} />
 
                     {isPhaseActive('turbine') && (
-                        <text x={345} y={250} textAnchor="middle" fill="var(--accent-yellow)" fontSize={7}
-                            fontFamily="IBM Plex Mono" opacity={0.8}>
+                        <text x={345} y={258} textAnchor="middle" fill="var(--accent-yellow)" fontSize={7}
+                            fontFamily="IBM Plex Mono" opacity={0.7}>
                             E.Termica {'\u2192'} E.Meccanica
                         </text>
                     )}
 
-                    {/* ══════════════════════════════════════════ */}
-                    {/* ── SHAFT to Generator ── */}
+                    {/* ── SHAFT ── */}
                     <FlowPipe path="M415,180 L475,180" active={isPhaseActive('generator')} color="var(--accent-yellow)" width={4} />
 
-                    {/* Shaft visual */}
-                    {isPhaseActive('generator') && (
-                        <g>
-                            <rect x={420} y={176} width={50} height={8} rx={4} fill="none"
-                                stroke="var(--accent-yellow)" strokeWidth={1} opacity={0.3} />
-                            {[0, 1, 2, 3].map(i => (
-                                <line key={i} x1={428 + i * 12} y1={177} x2={428 + i * 12} y2={183}
-                                    stroke="var(--accent-yellow)" strokeWidth={1} opacity={0.4} />
-                            ))}
-                        </g>
-                    )}
-
-                    {/* ══════════════════════════════════════════ */}
                     {/* ── GENERATOR ── */}
                     {isPhaseActive('generator') && <circle cx={530} cy={180} r={50} fill="url(#elecGlow)" />}
 
-                    <rect x={470} y={125} width={120} height={110} rx={10} fill="var(--bg-card)"
-                        stroke={isPhaseActive('generator') ? 'var(--accent-electric)' : 'var(--border)'}
-                        strokeWidth={isPhaseActive('generator') ? 2 : 1}
-                        style={{ transition: 'stroke 0.5s' }} />
+                    <rect x={470} y={125} width={120} height={110} rx={0} fill="transparent"
+                        stroke={isPhaseActive('generator') ? 'var(--accent-electric)' : 'var(--text-tertiary)'}
+                        strokeWidth={isPhaseActive('generator') ? 2 : 1} opacity={isPhaseActive('generator') ? 1 : 0.4}
+                        style={{ transition: 'all 0.4s' }} />
 
                     <text x={530} y={112} textAnchor="middle"
-                        fill={isPhaseActive('generator') ? 'var(--accent-electric)' : 'var(--text-dim)'}
-                        fontSize={11} fontWeight={700} letterSpacing={1}
-                        style={{ transition: 'fill 0.5s' }}>ALTERNATORE</text>
+                        fill={isPhaseActive('generator') ? 'var(--accent-electric)' : 'var(--text-tertiary)'}
+                        fontSize={11} fontWeight={500} letterSpacing={1} style={{ transition: 'fill 0.4s' }}>ALTERNATORE</text>
 
-                    {/* Generator stator */}
                     <circle cx={530} cy={178} r={32} fill="none"
-                        stroke={isPhaseActive('generator') ? 'var(--accent-electric)' : '#2a2a2a'}
-                        strokeWidth={2.5} style={{ transition: 'stroke 0.5s' }} />
-                    {/* Rotor coils */}
+                        stroke={isPhaseActive('generator') ? 'var(--accent-electric)' : 'var(--text-tertiary)'}
+                        strokeWidth={2} opacity={isPhaseActive('generator') ? 0.8 : 0.3}
+                        style={{ transition: 'all 0.4s' }} />
+
                     {isPhaseActive('generator') && (
                         <g>
                             {[0, 60, 120, 180, 240, 300].map((angle, i) => {
                                 const rad = angle * Math.PI / 180;
-                                const cx = 530 + 24 * Math.cos(rad);
-                                const cy = 178 + 24 * Math.sin(rad);
                                 return (
-                                    <circle key={i} cx={cx} cy={cy} r={3} fill="none"
-                                        stroke="var(--accent-electric)" strokeWidth={1.5}
+                                    <circle key={i} cx={530 + 24 * Math.cos(rad)} cy={178 + 24 * Math.sin(rad)}
+                                        r={3} fill="none" stroke="var(--accent-electric)" strokeWidth={1.5}
                                         style={{ animation: `rotor-coil-pulse 0.8s ease-in-out infinite`, animationDelay: `${i * 0.13}s` }} />
                                 );
                             })}
                         </g>
                     )}
-                    {/* G label */}
+
                     <text x={530} y={183} textAnchor="middle"
-                        fill={isPhaseActive('generator') ? 'var(--accent-electric)' : '#444'}
-                        fontSize={18} fontWeight={800} fontFamily="IBM Plex Mono"
-                        style={{ transition: 'fill 0.5s' }}>G</text>
+                        fill={isPhaseActive('generator') ? 'var(--accent-electric)' : 'var(--text-tertiary)'}
+                        fontSize={18} fontWeight={600} fontFamily="IBM Plex Mono"
+                        style={{ transition: 'fill 0.4s' }}>G</text>
 
                     <ElectricArc x1={562} y1={178} x2={655} y2={178} active={isPhaseActive('generator')} />
 
                     {isPhaseActive('generator') && (
                         <text x={530} y={243} textAnchor="middle" fill="var(--accent-electric)" fontSize={7}
-                            fontFamily="IBM Plex Mono" opacity={0.8}>
+                            fontFamily="IBM Plex Mono" opacity={0.7}>
                             E.Meccanica {'\u2192'} E.Elettrica
                         </text>
                     )}
@@ -752,261 +569,164 @@
                     <GaugeIndicator x={575} y={218} value={50} max={60}
                         label="Freq" unit="Hz" color="var(--accent-electric)" active={isPhaseActive('generator')} />
 
-                    {/* ══════════════════════════════════════════ */}
-                    {/* ── WIRE to Transformer (covered by ElectricArc above) ── */}
-
-                    {/* ══════════════════════════════════════════ */}
                     {/* ── TRANSFORMER ── */}
                     {isPhaseActive('transformer') && <circle cx={720} cy={178} r={45} fill="url(#greenGlow)" />}
 
-                    <rect x={655} y={125} width={130} height={110} rx={10} fill="var(--bg-card)"
-                        stroke={isPhaseActive('transformer') ? 'var(--accent-green)' : 'var(--border)'}
-                        strokeWidth={isPhaseActive('transformer') ? 2 : 1}
-                        style={{ transition: 'stroke 0.5s' }} />
+                    <rect x={655} y={125} width={130} height={110} rx={0} fill="transparent"
+                        stroke={isPhaseActive('transformer') ? 'var(--accent-green)' : 'var(--text-tertiary)'}
+                        strokeWidth={isPhaseActive('transformer') ? 2 : 1} opacity={isPhaseActive('transformer') ? 1 : 0.4}
+                        style={{ transition: 'all 0.4s' }} />
 
                     <text x={720} y={112} textAnchor="middle"
-                        fill={isPhaseActive('transformer') ? 'var(--accent-green)' : 'var(--text-dim)'}
-                        fontSize={10} fontWeight={700} letterSpacing={1}
-                        style={{ transition: 'fill 0.5s' }}>TRASFORMATORE</text>
+                        fill={isPhaseActive('transformer') ? 'var(--accent-green)' : 'var(--text-tertiary)'}
+                        fontSize={10} fontWeight={500} letterSpacing={1} style={{ transition: 'fill 0.4s' }}>TRASFORMATORE</text>
 
-                    {/* Transformer coils - primary */}
                     <circle cx={698} cy={176} r={22} fill="none"
-                        stroke={isPhaseActive('transformer') ? 'var(--accent-electric)' : '#333'}
-                        strokeWidth={2} style={{ transition: 'stroke 0.5s' }} />
-                    {/* Transformer coils - secondary */}
+                        stroke={isPhaseActive('transformer') ? 'var(--accent-electric)' : 'var(--text-tertiary)'}
+                        strokeWidth={2} opacity={isPhaseActive('transformer') ? 0.7 : 0.3} style={{ transition: 'all 0.4s' }} />
                     <circle cx={742} cy={176} r={22} fill="none"
-                        stroke={isPhaseActive('transformer') ? 'var(--accent-green)' : '#333'}
-                        strokeWidth={2} style={{ transition: 'stroke 0.5s' }} />
-                    {/* Core */}
-                    <rect x={713} y={158} width={14} height={36} rx={2} fill={isPhaseActive('transformer') ? '#1a3020' : '#1a1a2a'}
-                        stroke={isPhaseActive('transformer') ? 'var(--accent-green-dim)' : '#2a2a2a'} strokeWidth={1}
-                        style={{ transition: 'all 0.5s' }} />
+                        stroke={isPhaseActive('transformer') ? 'var(--accent-green)' : 'var(--text-tertiary)'}
+                        strokeWidth={2} opacity={isPhaseActive('transformer') ? 0.7 : 0.3} style={{ transition: 'all 0.4s' }} />
+                    <rect x={713} y={158} width={14} height={36} rx={2}
+                        fill={isPhaseActive('transformer') ? 'var(--bg-card)' : 'var(--bg-elevated)'}
+                        stroke={isPhaseActive('transformer') ? 'var(--accent-green)' : 'var(--text-tertiary)'}
+                        strokeWidth={1} opacity={0.6} style={{ transition: 'all 0.4s' }} />
 
                     <text x={698} y={180} textAnchor="middle"
-                        fill={isPhaseActive('transformer') ? 'var(--accent-electric)' : '#444'}
-                        fontSize={8} fontFamily="IBM Plex Mono" fontWeight={600}>20kV</text>
+                        fill={isPhaseActive('transformer') ? 'var(--accent-electric)' : 'var(--text-tertiary)'}
+                        fontSize={8} fontFamily="IBM Plex Mono" fontWeight={500}>20kV</text>
                     <text x={742} y={180} textAnchor="middle"
-                        fill={isPhaseActive('transformer') ? 'var(--accent-green)' : '#444'}
-                        fontSize={8} fontFamily="IBM Plex Mono" fontWeight={600}>380kV</text>
+                        fill={isPhaseActive('transformer') ? 'var(--accent-green)' : 'var(--text-tertiary)'}
+                        fontSize={8} fontFamily="IBM Plex Mono" fontWeight={500}>380kV</text>
 
                     {isPhaseActive('transformer') && (
-                        <g>
-                            {/* Step-up arrow */}
-                            <text x={720} y={145} textAnchor="middle" fill="var(--accent-green)" fontSize={12} opacity={0.6}>
-                                {'\u2191'}
-                            </text>
-                            <text x={720} y={220} textAnchor="middle" fill="var(--accent-green)" fontSize={7}
-                                fontFamily="IBM Plex Mono" opacity={0.7}>
-                                {'\u03b7'} = 99.5%
-                            </text>
-                        </g>
+                        <text x={720} y={220} textAnchor="middle" fill="var(--accent-green)" fontSize={7}
+                            fontFamily="IBM Plex Mono" opacity={0.6}>
+                            {'\u03b7'} = 99.5%
+                        </text>
                     )}
 
-                    {/* ══════════════════════════════════════════ */}
-                    {/* ── TRANSMISSION LINES ── */}
+                    {/* ── TRANSMISSION ── */}
                     <FlowPipe path="M785,178 L840,178" active={isPhaseActive('transformer')} color="var(--accent-green)" width={3} />
 
-                    {/* High voltage pylon */}
                     <g transform="translate(880,105)" opacity={isPhaseActive('transformer') ? 1 : 0.25}
-                        style={{ transition: 'opacity 0.5s' }}>
-                        {/* Pylon tower structure */}
-                        <line x1={0} y1={0} x2={0} y2={100} stroke="var(--accent-green)" strokeWidth={2.5} />
-                        {/* Cross arms */}
-                        <line x1={-28} y1={10} x2={28} y2={10} stroke="var(--accent-green)" strokeWidth={2} />
+                        style={{ transition: 'opacity 0.4s' }}>
+                        <line x1={0} y1={0} x2={0} y2={100} stroke="var(--accent-green)" strokeWidth={2} />
+                        <line x1={-28} y1={10} x2={28} y2={10} stroke="var(--accent-green)" strokeWidth={1.5} />
                         <line x1={-22} y1={30} x2={22} y2={30} stroke="var(--accent-green)" strokeWidth={1.5} />
                         <line x1={-16} y1={50} x2={16} y2={50} stroke="var(--accent-green)" strokeWidth={1.5} />
-                        {/* Base */}
-                        <line x1={-14} y1={100} x2={14} y2={100} stroke="var(--accent-green)" strokeWidth={2.5} />
-                        <line x1={-8} y1={100} x2={0} y2={80} stroke="var(--accent-green)" strokeWidth={1} opacity={0.5} />
-                        <line x1={8} y1={100} x2={0} y2={80} stroke="var(--accent-green)" strokeWidth={1} opacity={0.5} />
-                        {/* Insulators */}
+                        <line x1={-14} y1={100} x2={14} y2={100} stroke="var(--accent-green)" strokeWidth={2} />
                         {[-28, 0, 28].map((ox, i) => (
-                            <circle key={i} cx={ox} cy={10} r={3} fill={isPhaseActive('transformer') ? 'var(--accent-green)' : '#333'}
-                                style={{ transition: 'fill 0.5s',
-                                    animation: isPhaseActive('transformer') ? `electric-pulse 1.5s ease-in-out infinite` : 'none',
-                                    animationDelay: `${i * 0.2}s` }} />
+                            <circle key={i} cx={ox} cy={10} r={3}
+                                fill={isPhaseActive('transformer') ? 'var(--accent-green)' : 'var(--text-tertiary)'}
+                                style={{ transition: 'fill 0.4s', animation: isPhaseActive('transformer') ? 'electric-pulse 1.5s ease-in-out infinite' : 'none', animationDelay: `${i * 0.2}s` }} />
                         ))}
-                        {/* Wires going out */}
-                        {isPhaseActive('transformer') && (
-                            <g opacity={0.4}>
-                                <line x1={-28} y1={10} x2={-45} y2={5} stroke="var(--accent-green)" strokeWidth={1} />
-                                <line x1={28} y1={10} x2={45} y2={5} stroke="var(--accent-green)" strokeWidth={1} />
-                            </g>
-                        )}
-                        <text x={0} y={115} textAnchor="middle" fill={isPhaseActive('transformer') ? 'var(--accent-green)' : 'var(--text-dim)'}
-                            fontSize={8} fontWeight={600} style={{ transition: 'fill 0.5s' }}>RETE</text>
+                        <text x={0} y={115} textAnchor="middle"
+                            fill={isPhaseActive('transformer') ? 'var(--accent-green)' : 'var(--text-tertiary)'}
+                            fontSize={8} fontWeight={500} style={{ transition: 'fill 0.4s' }}>RETE</text>
                     </g>
 
-                    {/* ══════════════════════════════════════════ */}
-                    {/* ── COOLING CYCLE (bottom) ── */}
-                    {/* Exhaust steam from turbine going down */}
+                    {/* ── COOLING CYCLE ── */}
                     <FlowPipe path="M345,245 L345,330 L240,330" active={isPhaseActive('cooling')} color="var(--accent-water)" width={3} />
 
-                    {/* Condensatore body */}
-                    <rect x={95} y={300} width={145} height={55} rx={8} fill="var(--bg-card)"
-                        stroke={isPhaseActive('cooling') ? 'var(--accent-water)' : 'var(--border)'}
-                        strokeWidth={isPhaseActive('cooling') ? 2 : 1}
-                        style={{ transition: 'stroke 0.5s' }} />
+                    <rect x={95} y={300} width={145} height={55} rx={0} fill="transparent"
+                        stroke={isPhaseActive('cooling') ? 'var(--accent-water)' : 'var(--text-tertiary)'}
+                        strokeWidth={isPhaseActive('cooling') ? 2 : 1} opacity={isPhaseActive('cooling') ? 1 : 0.4}
+                        style={{ transition: 'all 0.4s' }} />
 
                     <text x={167} y={290} textAnchor="middle"
-                        fill={isPhaseActive('cooling') ? 'var(--accent-water)' : 'var(--text-dim)'}
-                        fontSize={10} fontWeight={700} letterSpacing={1}
-                        style={{ transition: 'fill 0.5s' }}>CONDENSATORE</text>
+                        fill={isPhaseActive('cooling') ? 'var(--accent-water)' : 'var(--text-tertiary)'}
+                        fontSize={10} fontWeight={500} letterSpacing={1} style={{ transition: 'fill 0.4s' }}>CONDENSATORE</text>
 
-                    {/* Water waves inside condenser */}
                     {isPhaseActive('cooling') && (
-                        <g opacity={0.6}>
+                        <g opacity={0.5}>
                             <path d="M110,325 Q120,318 130,325 Q140,332 150,325 Q160,318 170,325 Q180,332 190,325 Q200,318 210,325 Q220,332 225,325"
-                                fill="none" stroke="var(--accent-water)" strokeWidth={1.5}
-                                style={{ animation: 'wave 2s ease-in-out infinite' }} />
-                            <path d="M110,335 Q120,328 130,335 Q140,342 150,335 Q160,328 170,335 Q180,342 190,335 Q200,328 210,335 Q220,342 225,335"
-                                fill="none" stroke="var(--accent-water-light)" strokeWidth={1} opacity={0.4}
-                                style={{ animation: 'wave 2.5s ease-in-out infinite reverse' }} />
+                                fill="none" stroke="var(--accent-water)" strokeWidth={1.5} />
                         </g>
                     )}
 
-                    {/* Return pipe to boiler (feedwater) */}
                     <FlowPipe path="M105,300 L105,270 L75,270 L75,255" active={isPhaseActive('cooling')} color="var(--accent-water)" width={2.5} reverse={true} />
 
                     {isPhaseActive('cooling') && (
-                        <g>
-                            <text x={66} y={280} fill="var(--accent-water)" fontSize={7}
-                                fontFamily="IBM Plex Mono" opacity={0.7}>H{'\u2082'}O</text>
-                            {/* Pump symbol */}
-                            <circle cx={95} cy={275} r={6} fill="none" stroke="var(--accent-water)" strokeWidth={1} opacity={0.5} />
-                            <text x={95} y={278} textAnchor="middle" fill="var(--accent-water)" fontSize={7} opacity={0.5}>P</text>
-                        </g>
+                        <text x={66} y={280} fill="var(--accent-water)" fontSize={7}
+                            fontFamily="IBM Plex Mono" opacity={0.6}>H{'\u2082'}O</text>
                     )}
 
-                    {/* Pipe to cooling tower */}
                     <FlowPipe path="M240,340 L500,340" active={isPhaseActive('cooling')} color="var(--accent-water)" width={2.5} />
 
-                    {/* Cooling towers */}
                     <CoolingTower x={540} y={360} active={isPhaseActive('cooling')} />
                     <CoolingTower x={600} y={360} active={isPhaseActive('cooling')} />
 
                     <text x={570} y={390} textAnchor="middle"
-                        fill={isPhaseActive('cooling') ? 'var(--accent-water)' : 'var(--text-dim)'}
-                        fontSize={8} fontWeight={600} letterSpacing={0.5}
-                        style={{ transition: 'fill 0.5s' }}>TORRI EVAPORATIVE</text>
+                        fill={isPhaseActive('cooling') ? 'var(--accent-water)' : 'var(--text-tertiary)'}
+                        fontSize={8} fontWeight={500} letterSpacing={0.5} style={{ transition: 'fill 0.4s' }}>TORRI EVAPORATIVE</text>
 
                     <GaugeIndicator x={167} y={370} value={35} max={100}
                         label="Temp" unit={'\u00b0C'} color="var(--accent-water)" active={isPhaseActive('cooling')} />
 
-                    {/* ── Overall efficiency label ── */}
+                    {/* Efficiency box */}
                     {isRunning && (
-                        <g style={{ animation: 'fadeIn 0.5s ease' }}>
-                            <rect x={700} y={310} width={140} height={70} rx={8} fill="var(--bg-card)"
-                                stroke="var(--border)" strokeWidth={1} />
-                            <text x={770} y={332} textAnchor="middle" fill="var(--text-dim)" fontSize={8}
-                                fontWeight={600} letterSpacing={1}>RENDIMENTO CICLO</text>
+                        <g style={{ animation: 'fadeIn 0.4s ease' }}>
+                            <rect x={700} y={310} width={140} height={70} rx={0} fill="transparent"
+                                stroke="var(--text-tertiary)" strokeWidth={1} opacity={0.5} />
+                            <text x={770} y={332} textAnchor="middle" fill="var(--text-tertiary)" fontSize={8}
+                                fontWeight={500} letterSpacing={1}>RENDIMENTO CICLO</text>
                             <text x={770} y={358} textAnchor="middle" fill="var(--accent-green)" fontSize={22}
-                                fontWeight={800} fontFamily="IBM Plex Mono"
-                                style={{ animation: 'progressPulse 2s ease-in-out infinite' }}>
+                                fontWeight={600} fontFamily="IBM Plex Mono">
                                 {isPhaseActive('cooling') ? '42' : Math.round(20 + phaseIdx * 4)}%
                             </text>
-                            <text x={770} y={372} textAnchor="middle" fill="var(--text-dim)" fontSize={7}
+                            <text x={770} y={372} textAnchor="middle" fill="var(--text-tertiary)" fontSize={7}
                                 fontFamily="IBM Plex Mono">Carnot limit: ~63%</text>
-                        </g>
-                    )}
-
-                    {/* Phase highlight indicator */}
-                    {isRunning && (
-                        <g>
-                            {PHASES.map((phase, i) => {
-                                const positions = [
-                                    { x: 115, y: 68 }, { x: 115, y: 68 }, { x: 345, y: 88 },
-                                    { x: 530, y: 98 }, { x: 720, y: 98 }, { x: 167, y: 276 }
-                                ];
-                                const pos = positions[i];
-                                if (i !== phaseIdx) return null;
-                                return (
-                                    <circle key={i} cx={pos.x} cy={pos.y - 6} r={3} fill={phase.color}
-                                        style={{ animation: 'electric-pulse 1s ease-in-out infinite' }} />
-                                );
-                            })}
                         </g>
                     )}
                 </svg>
             );
         }
 
-        // ─── Info Card ──────────────────────────────────
+        // ─── Info Card (Dashboard style) ────────────────
 
         function PhaseCard({ phase, isActive, onClick }) {
             return (
-                <div
-                    onClick={onClick}
-                    style={{
-                        background: isActive ? phase.bgGradient : 'var(--bg-card)',
-                        border: `1px solid ${isActive ? phase.color + '66' : 'var(--border)'}`,
-                        borderLeft: `4px solid ${isActive ? phase.color : 'transparent'}`,
-                        borderRadius: 12,
-                        padding: '18px 20px',
-                        cursor: 'pointer',
-                        transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-                        opacity: isActive ? 1 : 0.55,
-                        transform: isActive ? 'scale(1.02)' : 'scale(1)',
-                        boxShadow: isActive ? `0 6px 28px ${phase.color}18, inset 0 1px 0 ${phase.color}22` : 'none',
-                    }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isActive ? 12 : 0 }}>
-                        <span style={{
-                            fontSize: 24,
-                            filter: isActive ? 'none' : 'grayscale(0.5)',
-                            transition: 'filter 0.3s',
-                        }}>{phase.icon}</span>
+                <div onClick={onClick} style={{
+                    background: 'transparent',
+                    borderLeft: `3px solid ${isActive ? phase.color : 'transparent'}`,
+                    borderTop: 'none', borderRight: 'none', borderBottom: 'none',
+                    borderRadius: 0,
+                    padding: '1.2rem 0 1.2rem 1.2rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    opacity: isActive ? 1 : 0.5,
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: isActive ? 10 : 0 }}>
                         <div style={{ flex: 1 }}>
                             <div style={{
-                                fontSize: 14,
-                                fontWeight: 700,
-                                color: isActive ? phase.color : 'var(--text)',
-                                transition: 'color 0.3s',
+                                fontSize: 14, fontWeight: 500,
+                                color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                transition: 'color 0.3s', letterSpacing: '-0.01em',
                             }}>
                                 {phase.title}
                             </div>
-                            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
                                 {phase.subtitle}
                             </div>
                         </div>
-                        {isActive && (
-                            <div style={{
-                                width: 8, height: 8, borderRadius: '50%',
-                                background: phase.color,
-                                animation: 'electric-pulse 1.5s ease-in-out infinite',
-                            }} />
-                        )}
                     </div>
                     {isActive && (
-                        <div style={{ animation: 'fadeInUp 0.35s ease' }}>
+                        <div style={{ animation: 'fadeInSlide 0.3s ease' }}>
                             <p style={{
-                                fontSize: 12.5,
-                                lineHeight: 1.75,
-                                color: 'var(--text)',
-                                margin: '0 0 14px 0',
+                                fontSize: 12.5, lineHeight: 1.75,
+                                color: 'var(--text-secondary)', margin: '0 0 12px 0',
                             }}>
                                 {phase.description}
                             </p>
-                            {/* Detail chips */}
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                                 {phase.details.map((detail, i) => (
-                                    <div key={i} style={{
-                                        background: 'rgba(255,255,255,0.04)',
-                                        borderRadius: 8,
-                                        padding: '6px 12px',
-                                        border: '1px solid var(--border)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 6,
-                                    }}>
-                                        <span style={{ fontSize: 12 }}>{detail.icon}</span>
-                                        <div>
-                                            <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                                {detail.label}
-                                            </div>
-                                            <div style={{ fontSize: 11, fontWeight: 600, color: phase.color, fontFamily: 'IBM Plex Mono' }}>
-                                                {detail.value}
-                                            </div>
+                                    <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        <div style={{ fontSize: 9, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
+                                            {detail.label}
+                                        </div>
+                                        <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-primary)', fontFamily: 'IBM Plex Mono' }}>
+                                            {detail.value}
                                         </div>
                                     </div>
                                 ))}
@@ -1027,51 +747,27 @@
             const voltage = isRunning && phaseIdx >= 4 ? 380 : (isRunning && phaseIdx >= 3 ? 20 : 0);
 
             const stats = [
-                { label: 'Potenza', value: `${output} MW`, color: 'var(--accent-electric)', active: isRunning },
-                { label: 'Rendimento', value: `${efficiency}%`, color: 'var(--accent-green)', active: isRunning },
-                { label: 'Frequenza', value: frequency ? `${frequency} Hz` : '--', color: 'var(--accent-yellow)', active: frequency > 0 },
-                { label: 'Tensione', value: voltage ? `${voltage} kV` : '--', color: 'var(--accent-purple)', active: voltage > 0 },
-                { label: 'Fase', value: `${phaseIdx + 1}/${PHASES.length}`, color: PHASES[phaseIdx].color, active: true },
-                { label: 'Stato', value: isRunning ? 'ATTIVO' : 'FERMO', color: isRunning ? 'var(--accent-green)' : 'var(--accent-red)', active: true },
+                { label: 'Potenza', value: `${output} MW`, active: isRunning },
+                { label: 'Rendimento', value: `${efficiency}%`, active: isRunning },
+                { label: 'Frequenza', value: frequency ? `${frequency} Hz` : '\u2014', active: frequency > 0 },
+                { label: 'Tensione', value: voltage ? `${voltage} kV` : '\u2014', active: voltage > 0 },
+                { label: 'Fase', value: `${phaseIdx + 1}/${PHASES.length}`, active: true },
+                { label: 'Stato', value: isRunning ? 'ATTIVO' : 'FERMO', active: true },
             ];
 
             return (
-                <div style={{
-                    display: 'flex',
-                    gap: 12,
-                    justifyContent: 'center',
-                    flexWrap: 'wrap',
-                    marginBottom: 20,
-                }}>
+                <div style={{ display: 'flex', gap: '3rem', marginBottom: 20, flexWrap: 'wrap' }}>
                     {stats.map((stat, i) => (
-                        <div key={i} style={{
-                            background: 'var(--bg-card)',
-                            borderRadius: 10,
-                            padding: '10px 16px',
-                            textAlign: 'center',
-                            border: `1px solid ${stat.active && isRunning ? stat.color + '33' : 'var(--border)'}`,
-                            minWidth: 95,
-                            transition: 'border-color 0.3s',
-                        }}>
-                            <div style={{
-                                fontSize: 9,
-                                color: 'var(--text-dim)',
-                                textTransform: 'uppercase',
-                                letterSpacing: 1.2,
-                                marginBottom: 4,
-                                fontWeight: 600,
-                            }}>
-                                {stat.label}
-                            </div>
-                            <div style={{
-                                fontSize: 16,
-                                fontWeight: 700,
-                                color: stat.active ? stat.color : 'var(--text-dim)',
-                                fontFamily: 'IBM Plex Mono',
+                        <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                            <span style={{
+                                fontSize: '0.75rem', letterSpacing: '0.05em',
+                                color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 500,
+                            }}>{stat.label}</span>
+                            <span style={{
+                                fontFamily: 'IBM Plex Mono', fontSize: '1.5rem', fontWeight: 500,
+                                color: stat.active ? 'var(--text-primary)' : 'var(--text-tertiary)',
                                 transition: 'color 0.3s',
-                            }}>
-                                {stat.value}
-                            </div>
+                            }}>{stat.value}</span>
                         </div>
                     ))}
                 </div>
@@ -1083,89 +779,52 @@
         function ProgressBar({ activePhase, isRunning }) {
             const phaseIdx = PHASES.findIndex(p => p.id === activePhase);
             return (
-                <div style={{
-                    display: 'flex',
-                    gap: 3,
-                    marginBottom: 20,
-                    padding: '0 4px',
-                    alignItems: 'center',
-                }}>
+                <div style={{ display: 'flex', gap: 3, marginBottom: 20 }}>
                     {PHASES.map((phase, i) => (
-                        <div key={i} style={{ flex: 1, position: 'relative' }}>
-                            <div style={{
-                                height: 5,
-                                borderRadius: 3,
-                                background: isRunning && i <= phaseIdx ? phase.color : 'var(--border)',
-                                transition: 'background 0.5s ease',
-                                boxShadow: isRunning && i === phaseIdx ? `0 0 8px ${phase.color}66` : 'none',
-                            }} />
-                            {isRunning && i === phaseIdx && (
-                                <div style={{
-                                    position: 'absolute',
-                                    top: -2,
-                                    right: 0,
-                                    width: 9,
-                                    height: 9,
-                                    borderRadius: '50%',
-                                    background: phase.color,
-                                    animation: 'progressPulse 1s ease-in-out infinite',
-                                    boxShadow: `0 0 6px ${phase.color}`,
-                                }} />
-                            )}
-                        </div>
+                        <div key={i} style={{
+                            flex: 1, height: 4,
+                            background: isRunning && i <= phaseIdx ? 'var(--accent-bar)' : 'var(--border)',
+                            transition: 'background 0.4s ease',
+                        }} />
                     ))}
                 </div>
             );
         }
 
-        // ─── Energy Flow Visualization ──────────────────
+        // ─── Energy Flow ────────────────────────────────
 
         function EnergyFlowBar({ isRunning, activePhase }) {
             if (!isRunning) return null;
             const phaseIdx = PHASES.findIndex(p => p.id === activePhase);
-
             const stages = [
-                { label: 'Chimica', color: 'var(--accent-fire)', active: phaseIdx >= 0 },
-                { label: 'Termica', color: 'var(--accent-steam)', active: phaseIdx >= 1 },
-                { label: 'Meccanica', color: 'var(--accent-yellow)', active: phaseIdx >= 2 },
-                { label: 'Elettrica', color: 'var(--accent-electric)', active: phaseIdx >= 3 },
-                { label: 'Alta Tensione', color: 'var(--accent-green)', active: phaseIdx >= 4 },
+                { label: 'Chimica', active: phaseIdx >= 0 },
+                { label: 'Termica', active: phaseIdx >= 1 },
+                { label: 'Meccanica', active: phaseIdx >= 2 },
+                { label: 'Elettrica', active: phaseIdx >= 3 },
+                { label: 'Alta Tensione', active: phaseIdx >= 4 },
             ];
-
             return (
                 <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 4,
-                    marginBottom: 20,
-                    padding: '12px 16px',
-                    background: 'var(--bg-card)',
-                    borderRadius: 10,
-                    border: '1px solid var(--border)',
-                    animation: 'fadeIn 0.5s ease',
+                    display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20,
+                    borderTop: '1px solid var(--text-primary)', paddingTop: 12,
+                    animation: 'fadeIn 0.4s ease',
                 }}>
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)', marginRight: 8, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>
-                        Flusso Energia:
+                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)', marginRight: 8, fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                        Flusso:
                     </span>
                     {stages.map((stage, i) => (
                         <React.Fragment key={i}>
                             <span style={{
-                                fontSize: 10,
-                                fontWeight: 600,
-                                color: stage.active ? stage.color : 'var(--text-dim)',
-                                opacity: stage.active ? 1 : 0.3,
-                                transition: 'all 0.5s',
+                                fontSize: 11, fontWeight: 500,
+                                color: stage.active ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                                opacity: stage.active ? 1 : 0.4, transition: 'all 0.4s',
                                 fontFamily: 'IBM Plex Mono',
-                            }}>
-                                {stage.label}
-                            </span>
+                            }}>{stage.label}</span>
                             {i < stages.length - 1 && (
                                 <span style={{
-                                    color: stage.active && stages[i+1].active ? stages[i+1].color : 'var(--text-dim)',
-                                    opacity: stage.active && stages[i+1].active ? 0.8 : 0.2,
-                                    fontSize: 12,
-                                    transition: 'all 0.5s',
+                                    color: stage.active && stages[i+1].active ? 'var(--text-secondary)' : 'var(--text-tertiary)',
+                                    opacity: stage.active && stages[i+1].active ? 0.7 : 0.2,
+                                    fontSize: 12, transition: 'all 0.4s',
                                 }}>{'\u2192'}</span>
                             )}
                         </React.Fragment>
@@ -1217,70 +876,45 @@
 
             const handleStart = () => {
                 setIsRunning(r => {
-                    if (!r) {
-                        setActivePhase('fuel');
-                        setAutoPlay(false);
-                    }
+                    if (!r) { setActivePhase('fuel'); setAutoPlay(false); }
                     return !r;
                 });
             };
 
-            const buttonBase = {
-                border: 'none',
-                borderRadius: 10,
-                padding: '11px 24px',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-                fontFamily: 'Archivo',
-                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                letterSpacing: 0.5,
-                outline: 'none',
+            const btnStyle = {
+                border: 'none', borderRadius: 0, padding: '10px 24px',
+                fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                fontFamily: 'Archivo', transition: 'all 0.2s',
+                letterSpacing: '0.02em', outline: 'none',
+                background: 'transparent', color: 'var(--text-primary)',
+                borderBottom: '2px solid var(--text-tertiary)',
             };
 
             return (
-                <div style={{ maxWidth: 1150, margin: '0 auto', padding: '28px 20px 40px' }}>
-                    {/* Header */}
-                    <div style={{ textAlign: 'center', marginBottom: 28 }}>
-                        <div style={{
-                            display: 'inline-block',
-                            padding: '4px 14px',
-                            borderRadius: 20,
-                            background: 'rgba(0,229,255,0.08)',
-                            border: '1px solid rgba(0,229,255,0.15)',
-                            fontSize: 10,
-                            color: 'var(--accent-electric)',
-                            fontWeight: 600,
-                            letterSpacing: 1.5,
-                            textTransform: 'uppercase',
-                            marginBottom: 14,
-                        }}>
-                            SmartGrid Educational
-                        </div>
+                <div style={{ maxWidth: 1600, margin: '0 auto', padding: '3rem 4rem',
+                    animation: 'fadeInSlide 1.2s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+
+                    {/* Header - matching dashboard style */}
+                    <header style={{ marginBottom: '2rem' }}>
                         <h1 style={{
-                            fontSize: 30,
-                            fontWeight: 800,
-                            letterSpacing: 1,
-                            marginBottom: 10,
-                            background: 'linear-gradient(135deg, var(--accent-fire), var(--accent-yellow), var(--accent-electric), var(--accent-green))',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            lineHeight: 1.2,
+                            fontSize: '2.5rem', fontWeight: 400, letterSpacing: '-0.02em',
+                            color: 'var(--text-primary)', marginBottom: '1rem', lineHeight: 1.1,
+                            paddingLeft: 20, position: 'relative',
                         }}>
-                            Come Funziona una Centrale Elettrica
+                            <span style={{
+                                position: 'absolute', left: 0, top: 0, width: 4, height: 60,
+                                background: 'var(--text-primary)',
+                            }} />
+                            Centrale Elettrica
                         </h1>
                         <p style={{
-                            color: 'var(--text-dim)',
-                            fontSize: 14,
-                            maxWidth: 650,
-                            margin: '0 auto',
-                            lineHeight: 1.6,
+                            color: 'var(--text-secondary)', fontSize: 14, maxWidth: 600, lineHeight: 1.6,
+                            paddingLeft: 20,
                         }}>
-                            Animazione interattiva del ciclo termodinamico di Rankine per la generazione
-                            di energia elettrica. Premi <strong style={{ color: 'var(--accent-green)' }}>AVVIA</strong> per
-                            esplorare ogni fase del processo.
+                            Animazione interattiva del ciclo termodinamico di Rankine.
+                            Premi <strong>AVVIA</strong> per esplorare ogni fase del processo.
                         </p>
-                    </div>
+                    </header>
 
                     <StatsBar activePhase={activePhase} isRunning={isRunning} />
                     <ProgressBar activePhase={activePhase} isRunning={isRunning} />
@@ -1288,56 +922,30 @@
 
                     {/* Diagram */}
                     <div style={{
-                        background: 'var(--bg-secondary)',
-                        borderRadius: 16,
-                        border: `1px solid ${isRunning ? 'var(--border-light)' : 'var(--border)'}`,
-                        padding: 12,
+                        borderTop: '1px solid var(--text-primary)', padding: '1.5rem 0',
                         marginBottom: 24,
-                        animation: isRunning ? 'glow-pulse 4s ease-in-out infinite' : 'none',
-                        transition: 'border-color 0.5s',
-                        overflow: 'hidden',
                     }}>
                         <PowerPlantDiagram activePhase={activePhase} isRunning={isRunning} />
                     </div>
 
                     {/* Controls */}
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginBottom: 28, flexWrap: 'wrap' }}>
-                        <button onClick={prevPhase} style={{
-                            ...buttonBase,
-                            background: 'var(--bg-card)',
-                            color: 'var(--text)',
-                            border: '1px solid var(--border)',
-                        }}
-                        onMouseOver={e => { e.target.style.borderColor = 'var(--border-light)'; e.target.style.background = 'var(--bg-card-hover)'; }}
-                        onMouseOut={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.background = 'var(--bg-card)'; }}>
+                    <div style={{ display: 'flex', gap: 12, marginBottom: 28, flexWrap: 'wrap' }}>
+                        <button onClick={prevPhase} style={btnStyle}>
                             {'\u2190'} Precedente
                         </button>
                         <button onClick={handleStart} style={{
-                            ...buttonBase,
-                            background: isRunning ? 'var(--accent-red)' : 'var(--accent-green)',
-                            color: '#000',
-                            minWidth: 150,
-                            fontWeight: 700,
-                            boxShadow: isRunning ? '0 4px 16px rgba(255,23,68,0.3)' : '0 4px 16px rgba(0,230,118,0.3)',
+                            ...btnStyle,
+                            borderBottom: `2px solid ${isRunning ? 'var(--accent-red)' : 'var(--accent-green)'}`,
+                            fontWeight: 600,
                         }}>
                             {isRunning ? '\u25a0  FERMA' : '\u25b6  AVVIA'}
                         </button>
-                        <button onClick={nextPhase} style={{
-                            ...buttonBase,
-                            background: 'var(--bg-card)',
-                            color: 'var(--text)',
-                            border: '1px solid var(--border)',
-                        }}
-                        onMouseOver={e => { e.target.style.borderColor = 'var(--border-light)'; e.target.style.background = 'var(--bg-card-hover)'; }}
-                        onMouseOut={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.background = 'var(--bg-card)'; }}>
+                        <button onClick={nextPhase} style={btnStyle}>
                             Successiva {'\u2192'}
                         </button>
                         <button onClick={() => setAutoPlay(a => !a)} style={{
-                            ...buttonBase,
-                            background: autoPlay ? 'var(--accent-yellow)' : 'var(--bg-card)',
-                            color: autoPlay ? '#000' : 'var(--text)',
-                            border: `1px solid ${autoPlay ? 'var(--accent-yellow)' : 'var(--border)'}`,
-                            fontWeight: autoPlay ? 700 : 600,
+                            ...btnStyle,
+                            borderBottom: `2px solid ${autoPlay ? 'var(--accent-bar)' : 'var(--text-tertiary)'}`,
                         }}>
                             {autoPlay ? '\u23f8 Auto' : '\u25b6 Auto'}
                         </button>
@@ -1346,62 +954,38 @@
                     {/* Phase Cards */}
                     <div style={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                        gap: 12,
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                        gap: 0,
+                        borderTop: '1px solid var(--text-primary)',
                     }}>
                         {PHASES.map(phase => (
-                            <PhaseCard
-                                key={phase.id}
-                                phase={phase}
+                            <PhaseCard key={phase.id} phase={phase}
                                 isActive={activePhase === phase.id}
-                                onClick={() => setActivePhase(phase.id)}
-                            />
+                                onClick={() => setActivePhase(phase.id)} />
                         ))}
                     </div>
 
-                    {/* Keyboard shortcuts */}
+                    {/* Shortcuts */}
                     <div style={{
-                        marginTop: 28,
-                        textAlign: 'center',
-                        color: 'var(--text-dim)',
-                        fontSize: 11,
-                        display: 'flex',
-                        justifyContent: 'center',
-                        gap: 20,
-                        flexWrap: 'wrap',
+                        marginTop: 28, color: 'var(--text-tertiary)', fontSize: 11,
+                        display: 'flex', gap: 20, flexWrap: 'wrap',
                     }}>
                         {[
                             { key: '\u2190 \u2192', desc: 'Cambia fase' },
                             { key: 'Spazio', desc: 'Avvia/Ferma' },
                             { key: 'A', desc: 'Auto-play' },
-                            { key: 'Click', desc: 'Seleziona fase' },
-                        ].map((shortcut, i) => (
-                            <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{
-                                    background: 'var(--bg-card)',
-                                    border: '1px solid var(--border)',
-                                    borderRadius: 4,
-                                    padding: '2px 8px',
-                                    fontSize: 10,
-                                    fontFamily: 'IBM Plex Mono',
-                                    color: 'var(--text)',
-                                }}>{shortcut.key}</span>
-                                <span>{shortcut.desc}</span>
-                            </span>
+                        ].map((s, i) => (
+                            <span key={i}><strong>{s.key}</strong> {s.desc}</span>
                         ))}
                     </div>
 
                     {/* Back link */}
-                    <div style={{ textAlign: 'center', marginTop: 24 }}>
+                    <div style={{ marginTop: 20 }}>
                         <a href="index.html" style={{
-                            color: 'var(--accent-electric)',
-                            textDecoration: 'none',
-                            fontSize: 12,
-                            opacity: 0.6,
-                            transition: 'opacity 0.2s',
-                        }}
-                        onMouseOver={e => e.target.style.opacity = 1}
-                        onMouseOut={e => e.target.style.opacity = 0.6}>
+                            color: 'var(--text-secondary)', textDecoration: 'none',
+                            fontSize: 12, borderBottom: '1px solid var(--text-tertiary)',
+                            paddingBottom: 2,
+                        }}>
                             {'\u2190'} Torna alla Dashboard SmartGrid
                         </a>
                     </div>
