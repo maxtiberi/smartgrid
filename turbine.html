@@ -1,0 +1,1862 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turbina Elettrica - Electric Turbine</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #e8e6e1;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        /* Header */
+        .header {
+            width: 100%;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 300;
+            letter-spacing: -0.02em;
+            color: #1a1a1a;
+            margin-bottom: 0.25rem;
+        }
+
+        .header h2 {
+            font-size: 2rem;
+            font-weight: 300;
+            color: #4a4a4a;
+        }
+
+        .header .divider {
+            margin-top: 1.5rem;
+            height: 1px;
+            width: 100%;
+            background-color: #1a1a1a;
+        }
+
+        /* Main Content */
+        .main-content {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .left-panel {
+            flex: 1;
+            max-width: 300px;
+        }
+
+        .center-panel {
+            flex: 1;
+            max-width: 280px;
+        }
+
+        .right-panel {
+            flex: 1;
+        }
+
+        /* Legend */
+        .legend {
+            margin-bottom: 2rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #4a4a4a;
+        }
+
+        .legend-text {
+            font-size: 0.75rem;
+            color: #4a4a4a;
+        }
+
+        /* Installation Diagram */
+        .installation {
+            padding: 1rem;
+            border: 1px solid #1a1a1a;
+            margin-bottom: 2rem;
+        }
+
+        .installation-title {
+            font-size: 0.75rem;
+            color: #4a4a4a;
+            text-decoration: underline;
+            margin-bottom: 0.75rem;
+        }
+
+        .bars-container {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 64px;
+        }
+
+        .bar {
+            width: 4px;
+            background-color: #4a4a4a;
+            transition: opacity 0.3s;
+        }
+
+        .bars-label {
+            font-size: 0.75rem;
+            color: #4a4a4a;
+            margin-left: 0.5rem;
+        }
+
+        /* Stats */
+        .stats {
+            margin-bottom: 2rem;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            transition: background-color 0.3s;
+        }
+
+        .stat-box {
+            padding: 0.75rem;
+            border: 1px solid #1a1a1a;
+            font-size: 0.75rem;
+            color: #4a4a4a;
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 300;
+            color: #1a1a1a;
+            margin-top: 0.5rem;
+        }
+
+        /* Turbine Container */
+        .turbine-container {
+            position: relative;
+            width: 256px;
+            height: 256px;
+            margin: 0 auto;
+            border: 1px solid #1a1a1a;
+        }
+
+        /* Waveform Container */
+        .waveform-container {
+            position: relative;
+            width: 256px;
+            height: 256px;
+            margin: 2rem auto 0;
+            border: 1px solid #1a1a1a;
+            background-color: #f5f3ef;
+        }
+
+        .waveform-title {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            font-size: 0.625rem;
+            color: #4a4a4a;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .waveform-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .waveform-info {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            font-size: 0.625rem;
+            color: #4a4a4a;
+            text-align: right;
+        }
+
+        .turbine-rotor {
+            position: absolute;
+            inset: 16px;
+            transition: animation 0.3s;
+        }
+
+        .turbine-blade {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 16px;
+            height: 90px;
+            margin-top: -90px;
+            transform-origin: bottom center;
+        }
+
+        .blade-shape {
+            width: 100%;
+            height: 100%;
+            background-color: #4a4a4a;
+            clip-path: polygon(30% 0%, 70% 0%, 100% 100%, 0% 100%);
+            transition: background-color 0.3s;
+        }
+
+        .turbine-rotor.fault .blade-shape {
+            background-color: #c84a4a;
+        }
+
+        .inner-ring {
+            position: absolute;
+            inset: 48px;
+            border-radius: 50%;
+            background-color: #e8e6e1;
+            border: 2px solid #4a4a4a;
+            transition: border-color 0.3s;
+        }
+
+        .turbine-rotor.fault .inner-ring {
+            border-color: #c84a4a;
+        }
+
+        .central-hub {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 48px;
+            height: 48px;
+            margin-left: -24px;
+            margin-top: -24px;
+            transition: background-color 0.3s, border-color 0.3s;
+            border-radius: 50%;
+            background-color: #4a4a4a;
+            border: 2px solid #1a1a1a;
+            z-index: 10;
+        }
+
+        .turbine-rotor.fault .central-hub {
+            background-color: #c84a4a;
+            border-color: #8a2a2a;
+        }
+
+        .hub-center {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 16px;
+            height: 16px;
+            margin-left: -8px;
+            margin-top: -8px;
+            border-radius: 50%;
+            background-color: #e8e6e1;
+        }
+
+        /* Power Bars */
+        .power-bars {
+            margin-top: 2rem;
+        }
+
+        .power-bar-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .power-label {
+            width: 80px;
+            font-size: 0.75rem;
+            color: #4a4a4a;
+        }
+
+        .power-value {
+            width: 64px;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #1a1a1a;
+        }
+
+        .power-bar-bg {
+            flex: 1;
+            height: 24px;
+            background-color: #d0cec9;
+            border-left: 1px solid #1a1a1a;
+            position: relative;
+        }
+
+        .power-bar-fill {
+            height: 100%;
+            background-color: #4a4a4a;
+            transition: width 0.5s;
+        }
+
+        /* Separator */
+        .separator {
+            width: 100%;
+            height: 1px;
+            background-color: #1a1a1a;
+            margin: 3rem 0 2rem;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .speed-control {
+            flex: 1;
+        }
+
+        .speed-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: #4a4a4a;
+            margin-bottom: 0.5rem;
+        }
+
+        .speed-slider {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #1a1a1a;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #e8e6e1;
+        }
+
+        .speed-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #1a1a1a;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #e8e6e1;
+        }
+
+        .toggle-button {
+            padding: 0.75rem 2rem;
+            font-size: 0.875rem;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid #1a1a1a;
+        }
+
+        .toggle-button.running {
+            background-color: #e8e6e1;
+            color: #4a4a4a;
+        }
+
+        .toggle-button.stopped {
+            background-color: #4a4a4a;
+            color: #e8e6e1;
+        }
+
+        .fault-button {
+            padding: 0.75rem 2rem;
+            font-size: 0.875rem;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid #1a1a1a;
+            background-color: #e8e6e1;
+            color: #8a4a4a;
+        }
+
+        .fault-button.active {
+            background-color: #c84a4a;
+            color: #ffffff;
+            animation: faultPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes faultPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Load Angle Display */
+        .load-angle-display {
+            margin: 2rem auto 3rem;
+            max-width: 600px;
+            padding: 1.5rem;
+            border: 1px solid #1a1a1a;
+            background-color: #f5f3ef;
+        }
+
+        .angle-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .angle-label {
+            font-size: 0.875rem;
+            color: #4a4a4a;
+            font-weight: 500;
+        }
+
+        .angle-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1a1a1a;
+            font-family: 'Courier New', monospace;
+        }
+
+        .angle-bar-container {
+            position: relative;
+            height: 24px;
+            background-color: #d0cec9;
+            border: 1px solid #1a1a1a;
+            margin-bottom: 0.75rem;
+        }
+
+        .angle-bar {
+            height: 100%;
+            background-color: #4a8a4a;
+            transition: width 0.1s linear, background-color 0.3s;
+            width: 33%;
+        }
+
+        .angle-bar.warning {
+            background-color: #aa8a4a;
+        }
+
+        .angle-bar.critical {
+            background-color: #c84a4a;
+        }
+
+        .angle-marker {
+            position: absolute;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            background-color: #c84a4a;
+        }
+
+        .angle-status {
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #4a8a4a;
+            letter-spacing: 0.1em;
+        }
+
+        .angle-status.warning {
+            color: #aa8a4a;
+        }
+
+        .angle-status.critical {
+            color: #c84a4a;
+        }
+
+        /* Status Indicators */
+        .status-indicators {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .indicator {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .indicator-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            border: 1px solid #1a1a1a;
+            transition: all 0.3s;
+        }
+
+        .indicator-circle.active {
+            background-color: #4a4a4a;
+            color: #e8e6e1;
+        }
+
+        .indicator-circle.inactive {
+            background-color: #e8e6e1;
+            color: #4a4a4a;
+        }
+
+        .indicator-label {
+            font-size: 0.75rem;
+            color: #4a4a4a;
+        }
+
+        /* Footer Icons */
+        .footer-icons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .icon-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid #4a4a4a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #4a4a4a;
+            font-size: 1.25rem;
+        }
+
+        /* Alternator Container */
+        .alternator-section {
+            padding: 1.5rem;
+            border: 1px solid #1a1a1a;
+            background-color: #f5f3ef;
+            height: fit-content;
+        }
+
+        .alternator-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #1a1a1a;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .alternator-diagram {
+            display: flex;
+            flex-direction: row;
+            gap: 0.5rem;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .alternator-component {
+            text-align: center;
+            flex: 0 0 auto;
+        }
+
+        .alternator-visual {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 0.5rem;
+            position: relative;
+        }
+
+        .alternator-stator {
+            width: 100%;
+            height: 100%;
+            border: 3px solid #4a4a4a;
+            border-radius: 50%;
+            position: relative;
+            background: linear-gradient(135deg, #d0cec9 0%, #e8e6e1 100%);
+        }
+
+        .alternator-coils {
+            position: absolute;
+            inset: 10px;
+            border-radius: 50%;
+        }
+
+        .alternator-coil {
+            position: absolute;
+            width: 20px;
+            height: 3px;
+            background-color: #8a4a4a;
+            left: 50%;
+            top: 50%;
+            margin-left: -10px;
+            margin-top: -1.5px;
+            transform-origin: center;
+        }
+
+        .alternator-rotor {
+            position: absolute;
+            inset: 25px;
+            border-radius: 50%;
+            background-color: #4a4a4a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .alternator-rotor-inner {
+            width: 50%;
+            height: 50%;
+            border-radius: 50%;
+            background-color: #6a6a6a;
+            position: relative;
+        }
+
+        .alternator-rotor.rotating {
+            animation: spin 2s linear infinite;
+        }
+
+        .alternator-rotor.fault .alternator-rotor-inner {
+            background-color: #c84a4a;
+            border-color: #8a2a2a;
+        }
+
+        .alternator-magnet {
+            position: absolute;
+            width: 8px;
+            height: 20px;
+            background: linear-gradient(to right, #8a4a4a, #4a6a8a);
+            border-radius: 2px;
+            transition: background 0.3s;
+        }
+
+        .alternator-rotor.fault .alternator-magnet {
+            background: linear-gradient(to right, #c84a4a, #aa3a3a);
+        }
+
+        .alternator-magnet.north {
+            top: -25px;
+            left: 50%;
+            margin-left: -4px;
+        }
+
+        .alternator-magnet.south {
+            bottom: -25px;
+            left: 50%;
+            margin-left: -4px;
+        }
+
+        .alternator-arrow {
+            font-size: 1.5rem;
+            color: #4a4a4a;
+            margin: 0 0.25rem;
+        }
+
+        .alternator-label {
+            font-size: 0.75rem;
+            color: #4a4a4a;
+            font-weight: 500;
+        }
+
+        .physics-explanation {
+            font-size: 0.75rem;
+            line-height: 1.6;
+            color: #4a4a4a;
+            padding: 1rem;
+            background-color: #e8e6e1;
+            border-left: 3px solid #4a4a4a;
+        }
+
+        .physics-explanation h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .physics-explanation p {
+            margin-bottom: 0.75rem;
+        }
+
+        .physics-formula {
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            background-color: #d0cec9;
+            padding: 0.5rem;
+            margin: 0.75rem 0;
+            border-radius: 3px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .physics-list {
+            margin-left: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .physics-list li {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Animation */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Power Plant Grid Section */
+        .grid-section {
+            margin-top: 4rem;
+            padding-top: 3rem;
+            border-top: 1px solid #1a1a1a;
+        }
+
+        .grid-section h3 {
+            font-size: 1.5rem;
+            font-weight: 300;
+            color: #1a1a1a;
+            margin-bottom: 2rem;
+        }
+
+        .grid-diagram {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Power Plant */
+        .power-plant {
+            fill: none;
+            stroke: #4a4a4a;
+            stroke-width: 2;
+        }
+
+        .plant-active {
+            fill: rgba(74, 74, 104, 0.1);
+        }
+
+        .chimney {
+            fill: #6a6a6a;
+            stroke: #4a4a4a;
+            stroke-width: 1;
+        }
+
+        .smoke {
+            fill: #a0a0a0;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .smoke.active {
+            opacity: 0.4;
+            animation: smokeRise 3s ease-in-out infinite;
+        }
+
+        /* Fault state for plant turbine */
+        #plantTurbine.fault,
+        #plantTurbineBlades.fault line {
+            stroke: #c84a4a !important;
+            transition: stroke 0.3s;
+        }
+
+        @keyframes smokeRise {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 0.4;
+            }
+            100% {
+                transform: translateY(-30px) scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        /* Energy Flow Lines */
+        .energy-line {
+            stroke: #4a4a4a;
+            stroke-width: 2;
+            stroke-dasharray: 5, 5;
+            opacity: 0.3;
+            transition: all 0.5s;
+        }
+
+        .energy-line.active {
+            stroke: #4a4a68;
+            stroke-width: 3;
+            opacity: 1;
+            animation: energyFlow 2s linear infinite;
+        }
+
+        @keyframes energyFlow {
+            from {
+                stroke-dashoffset: 0;
+            }
+            to {
+                stroke-dashoffset: 20;
+            }
+        }
+
+        /* Grid Components */
+        .grid-component {
+            fill: #e8e6e1;
+            stroke: #4a4a4a;
+            stroke-width: 2;
+            transition: all 0.5s;
+        }
+
+        .grid-component.powered {
+            fill: rgba(74, 74, 104, 0.2);
+            stroke: #4a4a68;
+            stroke-width: 2;
+        }
+
+        .component-icon {
+            fill: #4a4a4a;
+            transition: fill 0.5s;
+        }
+
+        .component-icon.powered {
+            fill: #4a4a68;
+        }
+
+        .grid-label {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 12px;
+            fill: #4a4a4a;
+            font-weight: 400;
+        }
+
+        /* Energy Particles */
+        .energy-particle {
+            fill: #4a4a68;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .energy-particle.active {
+            opacity: 0.8;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-content {
+                flex-direction: column;
+            }
+
+            .left-panel, .center-panel, .right-panel {
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .header h2 {
+                font-size: 1.5rem;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .speed-control {
+                width: 100%;
+            }
+
+            .status-indicators {
+                gap: 1rem;
+            }
+
+            .grid-diagram {
+                overflow-x: auto;
+            }
+
+            .alternator-diagram {
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Turbina elettrica</h1>
+            <h2>Electric turbine</h2>
+            <div class="divider"></div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Left Panel -->
+            <div class="left-panel">
+                <!-- Legend -->
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-dot"></div>
+                        <span class="legend-text">Potenza generata / Power output</span>
+                    </div>
+                </div>
+
+                <!-- Installation Diagram -->
+                <div class="installation">
+                    <p class="installation-title">Installazione / Installation</p>
+                    <div class="bars-container" id="barsContainer">
+                        <!-- Bars will be generated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-dot" id="vehicleDot"></div>
+                        <span class="legend-text">1 veicolo / vehicles</span>
+                    </div>
+                    <div class="stat-box">
+                        <p>Numero di giri</p>
+                        <p>/ Number of rotations</p>
+                        <p class="stat-value" id="rpmValue">1500 RPM</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Panel (Turbine) -->
+            <div class="center-panel">
+                <!-- Turbine Container -->
+                <div class="turbine-container">
+                    <div class="turbine-rotor" id="turbineRotor">
+                        <!-- Blades will be generated by JavaScript -->
+                        <div class="inner-ring"></div>
+                    </div>
+                    <div class="central-hub">
+                        <div class="hub-center"></div>
+                    </div>
+                </div>
+
+                <!-- Waveform Container -->
+                <div class="waveform-container">
+                    <div class="waveform-title">Tensione / Voltage</div>
+                    <canvas class="waveform-canvas" id="waveformCanvas" width="256" height="256"></canvas>
+                    <div class="waveform-info">
+                        <div id="voltageValue">0 V</div>
+                        <div>50 Hz</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel (Alternator) -->
+            <div class="right-panel">
+                <!-- Alternator Section -->
+                <div class="alternator-section">
+                    <h3 class="alternator-title">Alternatore / Alternator</h3>
+
+                    <div class="alternator-diagram">
+                        <!-- Turbine -->
+                        <div class="alternator-component">
+                            <div class="alternator-visual">
+                                <div style="width: 60px; height: 60px; margin: 10px auto; border: 2px solid #4a4a4a; border-radius: 50%; position: relative;">
+                                    <div style="position: absolute; inset: 8px; background-color: #4a4a4a; clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);"></div>
+                                </div>
+                            </div>
+                            <div class="alternator-label">Turbina</div>
+                        </div>
+
+                        <!-- Arrow -->
+                        <div class="alternator-arrow">→</div>
+
+                        <!-- Alternator -->
+                        <div class="alternator-component">
+                            <div class="alternator-visual">
+                                <div class="alternator-stator">
+                                    <!-- Coils (stator windings) -->
+                                    <div class="alternator-coils">
+                                        <div class="alternator-coil" style="transform: rotate(0deg);"></div>
+                                        <div class="alternator-coil" style="transform: rotate(60deg);"></div>
+                                        <div class="alternator-coil" style="transform: rotate(120deg);"></div>
+                                    </div>
+                                    <!-- Rotor with magnets -->
+                                    <div class="alternator-rotor" id="alternatorRotor">
+                                        <div class="alternator-rotor-inner">
+                                            <div class="alternator-magnet north"></div>
+                                            <div class="alternator-magnet south"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="alternator-label">Alternatore</div>
+                        </div>
+
+                        <!-- Arrow -->
+                        <div class="alternator-arrow">→</div>
+
+                        <!-- Output -->
+                        <div class="alternator-component">
+                            <div class="alternator-visual">
+                                <svg width="80" height="80" viewBox="0 0 120 120">
+                                    <!-- Sine wave -->
+                                    <path d="M 10 60 Q 25 20, 40 60 T 70 60 T 100 60"
+                                          fill="none"
+                                          stroke="#4a4a4a"
+                                          stroke-width="2"/>
+                                    <text x="60" y="95" text-anchor="middle" font-size="14" fill="#4a4a4a">AC</text>
+                                    <text x="60" y="110" text-anchor="middle" font-size="11" fill="#4a4a4a">50 Hz</text>
+                                </svg>
+                            </div>
+                            <div class="alternator-label">Corrente AC</div>
+                        </div>
+                    </div>
+
+                    <!-- Physics Explanation -->
+                    <div class="physics-explanation">
+                        <h4>Principio di funzionamento / Operating Principle</h4>
+
+                        <p><strong>Induzione Elettromagnetica (Legge di Faraday):</strong></p>
+                        <p>La turbina fa ruotare il rotore dell'alternatore, che contiene magneti permanenti o elettromagneti. La rotazione crea un campo magnetico variabile che attraversa le bobine di rame dello statore.</p>
+
+                        <div class="physics-formula">
+                            ε = -N × dΦ/dt
+                        </div>
+
+                        <ul class="physics-list">
+                            <li><strong>ε</strong> = Forza elettromotrice indotta (Volt)</li>
+                            <li><strong>N</strong> = Numero di spire della bobina</li>
+                            <li><strong>dΦ/dt</strong> = Variazione del flusso magnetico nel tempo</li>
+                        </ul>
+
+                        <p><strong>Processo di generazione:</strong></p>
+                        <ol class="physics-list">
+                            <li>La turbina ruota a 3000 RPM (50 Hz × 60 sec)</li>
+                            <li>Il rotore magnetico ruota con la turbina</li>
+                            <li>Il campo magnetico variabile induce corrente nelle bobine dello statore</li>
+                            <li>Si genera corrente alternata sinusoidale a 50 Hz</li>
+                            <li>La tensione di picco raggiunge 325 V (230 V RMS)</li>
+                        </ol>
+
+                        <p><strong>Frequenza di rete:</strong> La velocità di rotazione determina la frequenza. Per 50 Hz (Europa) si richiede una velocità di 3000 RPM con alternatore a 2 poli, oppure 1500 RPM con alternatore a 4 poli.</p>
+                    </div>
+                </div>
+
+                <!-- Power Bars -->
+                <div class="power-bars" style="margin-top: 2rem;">
+                    <div class="power-bar-item">
+                        <span class="power-label">Output</span>
+                        <span class="power-value" id="outputValue">625</span>
+                        <div class="power-bar-bg">
+                            <div class="power-bar-fill" id="outputBar" style="width: 50%;"></div>
+                        </div>
+                    </div>
+                    <div class="power-bar-item">
+                        <span class="power-label">Efficienza</span>
+                        <span class="power-value" id="efficiencyValue">87</span>
+                        <div class="power-bar-bg">
+                            <div class="power-bar-fill" id="efficiencyBar" style="width: 87%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Separator -->
+        <div class="separator"></div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="speed-control">
+                <div class="speed-label">
+                    <span>Velocità / Speed</span>
+                    <span id="speedPercentage">50%</span>
+                </div>
+                <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value="50"
+                    class="speed-slider"
+                    id="speedSlider"
+                >
+            </div>
+            <button class="toggle-button running" id="toggleButton">
+                ARRESTA / STOP
+            </button>
+            <button class="fault-button" id="faultButton">
+                SIMULA GUASTO / FAULT
+            </button>
+        </div>
+
+        <!-- Load Angle Display -->
+        <div class="load-angle-display">
+            <div class="angle-info">
+                <span class="angle-label">Angolo di Carico / Load Angle (δ)</span>
+                <span class="angle-value" id="loadAngleValue">30.0°</span>
+            </div>
+            <div class="angle-bar-container">
+                <div class="angle-bar" id="loadAngleBar"></div>
+                <div class="angle-marker critical" style="left: 90%"></div>
+            </div>
+            <div class="angle-status">
+                <span id="angleStatus">STABILE / STABLE</span>
+            </div>
+
+            <!-- Fault Dynamics Explanation -->
+            <div class="physics-explanation" style="margin-top: 1.5rem; font-size: 0.75rem; color: #4a4a4a;">
+                <p><strong>Dinamica del Guasto / Fault Dynamics:</strong></p>
+                <div class="physics-formula" style="font-size: 0.875rem; margin: 0.5rem 0;">
+                    d²δ/dt² = (ω<sub>sync</sub> / 2H) × (P<sub>m</sub> - P<sub>e</sub>) - (D / 2H) × dω/dt
+                </div>
+                <p style="margin-top: 0.5rem;">Durante un guasto sulla rete, la potenza elettrica (P<sub>e</sub>) si riduce drasticamente mentre la potenza meccanica (P<sub>m</sub>) rimane costante. Questo squilibrio causa un'accelerazione del rotore e un aumento dell'angolo di carico δ.</p>
+                <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+                    <li>H = 5.0 s (costante di inerzia)</li>
+                    <li>D = 2.0 p.u. (coefficiente di smorzamento)</li>
+                    <li>δ<sub>critico</sub> ≈ 90° (limite di stabilità)</li>
+                    <li>Se δ > 90°, il generatore perde il sincronismo</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Status Indicators -->
+        <div class="status-indicators">
+            <div class="indicator">
+                <div class="indicator-circle active" id="systemIndicator">●</div>
+                <span class="indicator-label">Sistema</span>
+            </div>
+            <div class="indicator">
+                <div class="indicator-circle active" id="rotorIndicator">●</div>
+                <span class="indicator-label">Rotore</span>
+            </div>
+            <div class="indicator">
+                <div class="indicator-circle active" id="generatorIndicator">●</div>
+                <span class="indicator-label">Generatore</span>
+            </div>
+            <div class="indicator">
+                <div class="indicator-circle active" id="networkIndicator">●</div>
+                <span class="indicator-label">Rete</span>
+            </div>
+        </div>
+
+        <!-- Footer Icons -->
+        <div class="footer-icons">
+            <div class="icon-circle">☰</div>
+            <div class="icon-circle">⚡</div>
+            <div class="icon-circle">⚙</div>
+        </div>
+
+        <!-- Smart Grid Network Section -->
+        <div class="grid-section">
+            <h3>Rete di distribuzione / Distribution Network</h3>
+
+            <svg class="grid-diagram" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+                <!-- Energy Flow Lines -->
+                <g id="energyLines">
+                    <!-- Plant to Transformer -->
+                    <line x1="150" y1="200" x2="300" y2="200" class="energy-line" id="line1"/>
+                    <!-- Transformer to Transmission -->
+                    <line x1="360" y1="200" x2="450" y2="120" class="energy-line" id="line2"/>
+                    <line x1="360" y1="200" x2="450" y2="200" class="energy-line" id="line3"/>
+                    <line x1="360" y1="200" x2="450" y2="280" class="energy-line" id="line4"/>
+                    <!-- Transmission to Distribution -->
+                    <line x1="510" y1="120" x2="650" y2="120" class="energy-line" id="line5"/>
+                    <line x1="510" y1="200" x2="650" y2="200" class="energy-line" id="line6"/>
+                    <line x1="510" y1="280" x2="650" y2="280" class="energy-line" id="line7"/>
+                </g>
+
+                <!-- Energy Particles -->
+                <g id="energyParticles">
+                    <circle r="4" class="energy-particle" id="particle1">
+                        <animateMotion dur="2s" repeatCount="indefinite" path="M 150 200 L 300 200"/>
+                    </circle>
+                    <circle r="3" class="energy-particle" id="particle2">
+                        <animateMotion dur="1.5s" repeatCount="indefinite" path="M 360 200 L 450 120"/>
+                    </circle>
+                    <circle r="3" class="energy-particle" id="particle3">
+                        <animateMotion dur="1.5s" repeatCount="indefinite" begin="0.5s" path="M 360 200 L 450 200"/>
+                    </circle>
+                    <circle r="3" class="energy-particle" id="particle4">
+                        <animateMotion dur="1.5s" repeatCount="indefinite" begin="1s" path="M 360 200 L 450 280"/>
+                    </circle>
+                    <circle r="3" class="energy-particle" id="particle5">
+                        <animateMotion dur="1.8s" repeatCount="indefinite" path="M 510 120 L 650 120"/>
+                    </circle>
+                    <circle r="3" class="energy-particle" id="particle6">
+                        <animateMotion dur="1.8s" repeatCount="indefinite" begin="0.6s" path="M 510 200 L 650 200"/>
+                    </circle>
+                    <circle r="3" class="energy-particle" id="particle7">
+                        <animateMotion dur="1.8s" repeatCount="indefinite" begin="1.2s" path="M 510 280 L 650 280"/>
+                    </circle>
+                </g>
+
+                <!-- Power Plant Building -->
+                <g id="powerPlant">
+                    <!-- Main Building -->
+                    <rect x="50" y="160" width="100" height="80" class="power-plant" id="plantBuilding"/>
+
+                    <!-- Chimneys -->
+                    <rect x="70" y="120" width="15" height="40" class="chimney"/>
+                    <rect x="115" y="110" width="15" height="50" class="chimney"/>
+
+                    <!-- Smoke from chimneys -->
+                    <g id="smokeGroup">
+                        <ellipse cx="77" cy="110" rx="8" ry="6" class="smoke" id="smoke1"/>
+                        <ellipse cx="122" cy="100" rx="8" ry="6" class="smoke" id="smoke2"/>
+                        <ellipse cx="79" cy="95" rx="10" ry="7" class="smoke" id="smoke3"/>
+                        <ellipse cx="124" cy="85" rx="10" ry="7" class="smoke" id="smoke4"/>
+                    </g>
+
+                    <!-- Turbine Symbol inside -->
+                    <circle cx="100" cy="200" r="20" fill="none" stroke="#4a4a4a" stroke-width="2" id="plantTurbine"/>
+                    <g id="plantTurbineBlades" style="transform-origin: 100px 200px;">
+                        <line x1="100" y1="185" x2="100" y2="175" stroke="#4a4a4a" stroke-width="2"/>
+                        <line x1="115" y1="200" x2="125" y2="200" stroke="#4a4a4a" stroke-width="2"/>
+                        <line x1="100" y1="215" x2="100" y2="225" stroke="#4a4a4a" stroke-width="2"/>
+                        <line x1="85" y1="200" x2="75" y2="200" stroke="#4a4a4a" stroke-width="2"/>
+                    </g>
+
+                    <text x="100" y="260" text-anchor="middle" class="grid-label">Centrale / Plant</text>
+                </g>
+
+                <!-- Transformer Station -->
+                <g id="transformer">
+                    <rect x="300" y="180" width="60" height="40" rx="3" class="grid-component" id="transformerBox"/>
+                    <text x="330" y="205" text-anchor="middle" class="component-icon" id="transformerIcon">⚡</text>
+                    <text x="330" y="240" text-anchor="middle" class="grid-label">Trasformatore</text>
+                    <text x="330" y="252" text-anchor="middle" class="grid-label" style="font-size: 10px;">Transformer</text>
+                </g>
+
+                <!-- Transmission Lines (High Voltage) -->
+                <g id="transmission1">
+                    <rect x="450" y="100" width="60" height="40" rx="3" class="grid-component" id="trans1Box"/>
+                    <rect x="465" y="112" width="8" height="16" class="component-icon" id="trans1Icon1"/>
+                    <rect x="477" y="112" width="8" height="16" class="component-icon" id="trans1Icon2"/>
+                    <rect x="489" y="112" width="8" height="16" class="component-icon" id="trans1Icon3"/>
+                    <text x="480" y="160" text-anchor="middle" class="grid-label">Trasmissione 1</text>
+                </g>
+
+                <g id="transmission2">
+                    <rect x="450" y="180" width="60" height="40" rx="3" class="grid-component" id="trans2Box"/>
+                    <rect x="465" y="192" width="8" height="16" class="component-icon" id="trans2Icon1"/>
+                    <rect x="477" y="192" width="8" height="16" class="component-icon" id="trans2Icon2"/>
+                    <rect x="489" y="192" width="8" height="16" class="component-icon" id="trans2Icon3"/>
+                    <text x="480" y="240" text-anchor="middle" class="grid-label">Trasmissione 2</text>
+                </g>
+
+                <g id="transmission3">
+                    <rect x="450" y="260" width="60" height="40" rx="3" class="grid-component" id="trans3Box"/>
+                    <rect x="465" y="272" width="8" height="16" class="component-icon" id="trans3Icon1"/>
+                    <rect x="477" y="272" width="8" height="16" class="component-icon" id="trans3Icon2"/>
+                    <rect x="489" y="272" width="8" height="16" class="component-icon" id="trans3Icon3"/>
+                    <text x="480" y="320" text-anchor="middle" class="grid-label">Trasmissione 3</text>
+                </g>
+
+                <!-- Distribution / City Loads -->
+                <g id="distribution1">
+                    <circle cx="680" cy="120" r="25" class="grid-component" id="dist1Circle"/>
+                    <rect x="672" y="112" width="4" height="8" class="component-icon" id="dist1Icon1"/>
+                    <rect x="679" y="108" width="4" height="12" class="component-icon" id="dist1Icon2"/>
+                    <rect x="686" y="110" width="4" height="10" class="component-icon" id="dist1Icon3"/>
+                    <text x="680" y="160" text-anchor="middle" class="grid-label">Zona Nord</text>
+                </g>
+
+                <g id="distribution2">
+                    <circle cx="680" cy="200" r="25" class="grid-component" id="dist2Circle"/>
+                    <rect x="672" y="192" width="4" height="8" class="component-icon" id="dist2Icon1"/>
+                    <rect x="679" y="188" width="4" height="12" class="component-icon" id="dist2Icon2"/>
+                    <rect x="686" y="190" width="4" height="10" class="component-icon" id="dist2Icon3"/>
+                    <text x="680" y="240" text-anchor="middle" class="grid-label">Zona Centro</text>
+                </g>
+
+                <g id="distribution3">
+                    <circle cx="680" cy="280" r="25" class="grid-component" id="dist3Circle"/>
+                    <rect x="672" y="272" width="4" height="8" class="component-icon" id="dist3Icon1"/>
+                    <rect x="679" y="268" width="4" height="12" class="component-icon" id="dist3Icon2"/>
+                    <rect x="686" y="270" width="4" height="10" class="component-icon" id="dist3Icon3"/>
+                    <text x="680" y="320" text-anchor="middle" class="grid-label">Zona Sud</text>
+                </g>
+            </svg>
+
+            <!-- Grid Stats -->
+            <div style="display: flex; justify-content: center; gap: 3rem; margin-top: 2rem;">
+                <div style="text-align: center;">
+                    <p style="font-size: 0.75rem; color: #4a4a4a; margin-bottom: 0.5rem;">Generazione / Generation</p>
+                    <p style="font-family: 'IBM Plex Mono', monospace; font-size: 1.5rem; color: #1a1a1a;" id="gridGeneration">625 MW</p>
+                </div>
+                <div style="text-align: center;">
+                    <p style="font-size: 0.75rem; color: #4a4a4a; margin-bottom: 0.5rem;">Distribuzione / Distribution</p>
+                    <p style="font-family: 'IBM Plex Mono', monospace; font-size: 1.5rem; color: #1a1a1a;" id="gridDistribution">544 MW</p>
+                </div>
+                <div style="text-align: center;">
+                    <p style="font-size: 0.75rem; color: #4a4a4a; margin-bottom: 0.5rem;">Efficienza / Efficiency</p>
+                    <p style="font-family: 'IBM Plex Mono', monospace; font-size: 1.5rem; color: #1a1a1a;" id="gridEfficiency">87%</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let speed = 50;
+        let isRunning = true;
+        let power = 0;
+        const maxRPM = 3000;
+
+        // Fault simulation state
+        let faultActive = false;
+        let loadAngle = 30.0; // degrees - normal operating angle
+        let angularVelocity = 0; // rad/s deviation from synchronous speed
+        const syncFrequency = 50; // Hz
+        const syncSpeed = 2 * Math.PI * syncFrequency; // rad/s (314.16 rad/s)
+        const inertiaConstant = 5.0; // H in seconds (typical for large turbine)
+        const dampingCoefficient = 2.0; // D in per-unit
+
+        // Elements
+        const speedSlider = document.getElementById('speedSlider');
+        const speedPercentage = document.getElementById('speedPercentage');
+        const toggleButton = document.getElementById('toggleButton');
+        const faultButton = document.getElementById('faultButton');
+        const turbineRotor = document.getElementById('turbineRotor');
+        const rpmValue = document.getElementById('rpmValue');
+        const loadAngleValue = document.getElementById('loadAngleValue');
+        const loadAngleBar = document.getElementById('loadAngleBar');
+        const angleStatus = document.getElementById('angleStatus');
+        const outputValue = document.getElementById('outputValue');
+        const outputBar = document.getElementById('outputBar');
+        const efficiencyValue = document.getElementById('efficiencyValue');
+        const efficiencyBar = document.getElementById('efficiencyBar');
+        const vehicleDot = document.getElementById('vehicleDot');
+        const barsContainer = document.getElementById('barsContainer');
+
+        // Status indicators
+        const systemIndicator = document.getElementById('systemIndicator');
+        const rotorIndicator = document.getElementById('rotorIndicator');
+        const generatorIndicator = document.getElementById('generatorIndicator');
+        const networkIndicator = document.getElementById('networkIndicator');
+
+        // Generate bars for installation diagram
+        function generateBars() {
+            for (let i = 0; i < 12; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.style.height = Math.min(100, (i + 1) * 8) + '%';
+                bar.id = `bar${i}`;
+                barsContainer.appendChild(bar);
+            }
+
+            // Add label
+            const label = document.createElement('span');
+            label.className = 'bars-label';
+            label.id = 'barsLabel';
+            label.innerHTML = `${speed}%<br/>velocità`;
+            barsContainer.appendChild(label);
+        }
+
+        // Generate turbine blades
+        function generateBlades() {
+            const bladeCount = 8;
+            for (let i = 0; i < bladeCount; i++) {
+                const angle = i * (360 / bladeCount);
+                const blade = document.createElement('div');
+                blade.className = 'turbine-blade';
+                blade.style.transform = `rotate(${angle}deg) translateX(-50%)`;
+
+                const bladeShape = document.createElement('div');
+                bladeShape.className = 'blade-shape';
+                blade.appendChild(bladeShape);
+
+                turbineRotor.insertBefore(blade, turbineRotor.firstChild);
+            }
+        }
+
+        // Update rotation animation
+        function updateRotation() {
+            const alternatorRotor = document.getElementById('alternatorRotor');
+
+            if (isRunning && speed > 0) {
+                const currentRPM = Math.round((speed / 100) * maxRPM);
+                const rotationDuration = Math.max(0.1, 60 / currentRPM);
+                turbineRotor.style.animation = `spin ${rotationDuration}s linear infinite`;
+
+                // Synchronize alternator rotation
+                if (alternatorRotor) {
+                    alternatorRotor.classList.add('rotating');
+                    alternatorRotor.style.animation = `spin ${rotationDuration}s linear infinite`;
+                }
+            } else {
+                turbineRotor.style.animation = 'none';
+
+                // Stop alternator rotation
+                if (alternatorRotor) {
+                    alternatorRotor.classList.remove('rotating');
+                    alternatorRotor.style.animation = 'none';
+                }
+            }
+        }
+
+        // Update power calculation
+        function updatePower() {
+            if (isRunning) {
+                power = Math.round(speed * 12.5);
+            } else {
+                power = 0;
+            }
+
+            const currentRPM = isRunning ? Math.round((speed / 100) * maxRPM) : 0;
+            const efficiency = isRunning ? 87 : 0;
+
+            // Update displays
+            rpmValue.textContent = currentRPM.toLocaleString() + ' RPM';
+            outputValue.textContent = power;
+            outputBar.style.width = (power / 1250) * 100 + '%';
+            efficiencyValue.textContent = efficiency;
+            efficiencyBar.style.width = efficiency + '%';
+
+            // Update vehicle dot
+            vehicleDot.style.backgroundColor = isRunning ? '#4a4a4a' : '#c0c0c0';
+
+            // Update bars
+            updateBars();
+
+            // Update status indicators
+            updateIndicators();
+        }
+
+        // Update installation bars
+        function updateBars() {
+            for (let i = 0; i < 12; i++) {
+                const bar = document.getElementById(`bar${i}`);
+                if (bar) {
+                    bar.style.opacity = speed > i * 8 ? 1 : 0.2;
+                }
+            }
+            document.getElementById('barsLabel').innerHTML = `${speed}%<br/>velocità`;
+        }
+
+        // Update status indicators
+        function updateIndicators() {
+            // Sistema is always active
+            systemIndicator.className = 'indicator-circle active';
+            systemIndicator.textContent = '●';
+
+            // Rotore active when running
+            if (isRunning) {
+                rotorIndicator.className = 'indicator-circle active';
+                rotorIndicator.textContent = '●';
+            } else {
+                rotorIndicator.className = 'indicator-circle inactive';
+                rotorIndicator.textContent = '○';
+            }
+
+            // Generatore active when running and speed > 20
+            if (isRunning && speed > 20) {
+                generatorIndicator.className = 'indicator-circle active';
+                generatorIndicator.textContent = '●';
+            } else {
+                generatorIndicator.className = 'indicator-circle inactive';
+                generatorIndicator.textContent = '○';
+            }
+
+            // Rete active when running and speed > 50
+            if (isRunning && speed > 50) {
+                networkIndicator.className = 'indicator-circle active';
+                networkIndicator.textContent = '●';
+            } else {
+                networkIndicator.className = 'indicator-circle inactive';
+                networkIndicator.textContent = '○';
+            }
+        }
+
+        // Update slider background
+        function updateSliderBackground() {
+            speedSlider.style.background = `linear-gradient(to right, #4a4a4a 0%, #4a4a4a ${speed}%, #d0cec9 ${speed}%, #d0cec9 100%)`;
+        }
+
+        // Update Grid Network
+        function updateGrid() {
+            const isActive = isRunning && speed > 0;
+            const powerThreshold = speed > 30;
+
+            // Update power plant
+            const plantBuilding = document.getElementById('plantBuilding');
+            const plantTurbineBlades = document.getElementById('plantTurbineBlades');
+
+            if (isActive) {
+                plantBuilding.classList.add('plant-active');
+
+                // Rotate plant turbine blades
+                const rotationSpeed = Math.max(0.5, 5 - (speed / 20));
+                plantTurbineBlades.style.animation = `spin ${rotationSpeed}s linear infinite`;
+            } else {
+                plantBuilding.classList.remove('plant-active');
+                plantTurbineBlades.style.animation = 'none';
+            }
+
+            // Update smoke
+            const smokeElements = document.querySelectorAll('.smoke');
+            smokeElements.forEach(smoke => {
+                if (isActive) {
+                    smoke.classList.add('active');
+                } else {
+                    smoke.classList.remove('active');
+                }
+            });
+
+            // Update energy lines
+            const energyLines = document.querySelectorAll('.energy-line');
+            energyLines.forEach(line => {
+                if (powerThreshold) {
+                    line.classList.add('active');
+                } else {
+                    line.classList.remove('active');
+                }
+            });
+
+            // Update energy particles
+            const particles = document.querySelectorAll('.energy-particle');
+            particles.forEach(particle => {
+                if (powerThreshold) {
+                    particle.classList.add('active');
+                } else {
+                    particle.classList.remove('active');
+                }
+            });
+
+            // Update grid components based on power level
+            const components = [
+                { prefix: 'transformer', threshold: 20 },
+                { prefix: 'trans1', threshold: 30 },
+                { prefix: 'trans2', threshold: 40 },
+                { prefix: 'trans3', threshold: 50 },
+                { prefix: 'dist1', threshold: 60 },
+                { prefix: 'dist2', threshold: 70 },
+                { prefix: 'dist3', threshold: 80 }
+            ];
+
+            components.forEach(comp => {
+                const isPowered = isRunning && speed >= comp.threshold;
+                const boxes = document.querySelectorAll(`[id^="${comp.prefix}"]`);
+
+                boxes.forEach(box => {
+                    if (box.classList.contains('grid-component') || box.classList.contains('component-icon')) {
+                        if (isPowered) {
+                            box.classList.add('powered');
+                        } else {
+                            box.classList.remove('powered');
+                        }
+                    }
+                });
+            });
+
+            // Update grid stats
+            const generation = power;
+            const efficiency = isRunning ? 87 : 0;
+            const distribution = Math.round(generation * (efficiency / 100));
+
+            document.getElementById('gridGeneration').textContent = generation + ' MW';
+            document.getElementById('gridDistribution').textContent = distribution + ' MW';
+            document.getElementById('gridEfficiency').textContent = efficiency + '%';
+        }
+
+        // Waveform Animation
+        const waveformCanvas = document.getElementById('waveformCanvas');
+        const waveformCtx = waveformCanvas.getContext('2d');
+        const voltageValueDisplay = document.getElementById('voltageValue');
+        let waveformPhase = 0;
+
+        function drawWaveform() {
+            const width = waveformCanvas.width;
+            const height = waveformCanvas.height;
+            const centerY = height / 2;
+
+            // Clear canvas
+            waveformCtx.fillStyle = '#f5f3ef';
+            waveformCtx.fillRect(0, 0, width, height);
+
+            // Draw grid lines
+            waveformCtx.strokeStyle = '#d0cec9';
+            waveformCtx.lineWidth = 1;
+
+            // Horizontal center line
+            waveformCtx.beginPath();
+            waveformCtx.moveTo(0, centerY);
+            waveformCtx.lineTo(width, centerY);
+            waveformCtx.stroke();
+
+            // Vertical grid lines
+            for (let x = 0; x < width; x += width / 4) {
+                waveformCtx.beginPath();
+                waveformCtx.moveTo(x, 0);
+                waveformCtx.lineTo(x, height);
+                waveformCtx.stroke();
+            }
+
+            // Calculate voltage based on RPM
+            // At 3000 RPM (100% speed) -> 50Hz -> 325V peak
+            // Voltage scales with speed
+            const currentRPM = isRunning ? (speed / 100) * maxRPM : 0;
+            const peakVoltage = (currentRPM / maxRPM) * 325;
+            const amplitude = (peakVoltage / 325) * (height / 2 - 20); // Scale to canvas
+
+            // Draw sine wave
+            if (isRunning && speed > 0) {
+                waveformCtx.strokeStyle = '#4a4a4a';
+                waveformCtx.lineWidth = 2;
+                waveformCtx.beginPath();
+
+                // Draw 2 complete cycles (50Hz)
+                const frequency = 2; // 2 cycles visible
+                for (let x = 0; x < width; x++) {
+                    const angle = (x / width) * Math.PI * 2 * frequency + waveformPhase;
+                    const y = centerY - Math.sin(angle) * amplitude;
+
+                    if (x === 0) {
+                        waveformCtx.moveTo(x, y);
+                    } else {
+                        waveformCtx.lineTo(x, y);
+                    }
+                }
+
+                waveformCtx.stroke();
+
+                // Update phase for animation (speed affects animation rate)
+                const animationSpeed = 0.05 * (speed / 100);
+                waveformPhase += animationSpeed;
+                if (waveformPhase > Math.PI * 2) {
+                    waveformPhase -= Math.PI * 2;
+                }
+
+                // Update voltage display
+                const instantVoltage = Math.round(Math.sin(waveformPhase) * peakVoltage);
+                voltageValueDisplay.textContent = `${instantVoltage} V`;
+            } else {
+                // Show 0V when stopped
+                voltageValueDisplay.textContent = '0 V';
+                waveformPhase = 0;
+            }
+
+            // Continue animation
+            requestAnimationFrame(drawWaveform);
+        }
+
+        // Update load angle display
+        function updateLoadAngle() {
+            loadAngleValue.textContent = loadAngle.toFixed(1) + '°';
+
+            // Update bar width (0-180 degrees range)
+            const barWidth = Math.min(100, (loadAngle / 180) * 100);
+            loadAngleBar.style.width = barWidth + '%';
+
+            // Update bar color and status based on angle
+            loadAngleBar.classList.remove('warning', 'critical');
+            angleStatus.classList.remove('warning', 'critical');
+
+            if (loadAngle > 90) {
+                loadAngleBar.classList.add('critical');
+                angleStatus.classList.add('critical');
+                angleStatus.textContent = 'INSTABILE / UNSTABLE';
+            } else if (loadAngle > 60) {
+                loadAngleBar.classList.add('warning');
+                angleStatus.classList.add('warning');
+                angleStatus.textContent = 'ATTENZIONE / WARNING';
+            } else {
+                angleStatus.textContent = 'STABILE / STABLE';
+            }
+        }
+
+        // Simulate fault dynamics - Swing equation
+        function simulateFaultDynamics(dt) {
+            if (!faultActive || !isRunning) return;
+
+            // Calculate mechanical power (Pm) in per-unit
+            const Pm = (speed / 100); // Normalized to 1.0 at 100% speed
+
+            // Calculate electrical power (Pe) during fault
+            // During fault: Pe = (E * V / X) * sin(delta)
+            // Simplified: Pe reduces significantly during fault
+            const maxPe = 1.0;
+            const Pe = faultActive ? maxPe * Math.sin(loadAngle * Math.PI / 180) * 0.3 : maxPe * Math.sin(loadAngle * Math.PI / 180);
+
+            // Accelerating power
+            const Pa = Pm - Pe;
+
+            // Swing equation: d²δ/dt² = (ω_sync / 2H) * (Pm - Pe - D * dω/dt)
+            // Simplified: dω/dt = (ω_sync / 2H) * Pa - (D / 2H) * ω
+            const angularAcceleration = (syncSpeed / (2 * inertiaConstant)) * Pa - (dampingCoefficient / (2 * inertiaConstant)) * angularVelocity;
+
+            // Update angular velocity
+            angularVelocity += angularAcceleration * dt;
+
+            // Update load angle (dδ/dt = ω - ω_sync, but we track deviation)
+            // δ increases when rotor runs faster than synchronous speed
+            loadAngle += (angularVelocity * (180 / Math.PI)) * dt;
+
+            // Limit angle to reasonable range
+            if (loadAngle > 180) {
+                loadAngle = 180;
+                angularVelocity = 0; // Lost synchronism
+            } else if (loadAngle < 0) {
+                loadAngle = 0;
+                angularVelocity = 0;
+            }
+
+            updateLoadAngle();
+        }
+
+        // Animation loop for fault dynamics
+        let lastFaultUpdate = Date.now();
+        function animateFaultDynamics() {
+            const now = Date.now();
+            const dt = (now - lastFaultUpdate) / 1000; // Convert to seconds
+            lastFaultUpdate = now;
+
+            simulateFaultDynamics(dt);
+
+            requestAnimationFrame(animateFaultDynamics);
+        }
+
+        // Update all turbines color during fault
+        function updateTurbinesFaultState() {
+            // Main turbine rotor
+            if (turbineRotor) {
+                if (faultActive) {
+                    turbineRotor.classList.add('fault');
+                } else {
+                    turbineRotor.classList.remove('fault');
+                }
+            }
+
+            // Alternator rotor
+            const alternatorRotor = document.getElementById('alternatorRotor');
+            if (alternatorRotor) {
+                if (faultActive) {
+                    alternatorRotor.classList.add('fault');
+                } else {
+                    alternatorRotor.classList.remove('fault');
+                }
+            }
+
+            // Plant turbine in grid diagram
+            const plantTurbine = document.getElementById('plantTurbine');
+            const plantTurbineBlades = document.getElementById('plantTurbineBlades');
+            if (plantTurbine && plantTurbineBlades) {
+                if (faultActive) {
+                    plantTurbine.classList.add('fault');
+                    plantTurbineBlades.classList.add('fault');
+                } else {
+                    plantTurbine.classList.remove('fault');
+                    plantTurbineBlades.classList.remove('fault');
+                }
+            }
+        }
+
+        // Event listeners
+        speedSlider.addEventListener('input', (e) => {
+            speed = parseInt(e.target.value);
+            speedPercentage.textContent = speed + '%';
+            updateSliderBackground();
+            updatePower();
+            updateRotation();
+            updateGrid();
+        });
+
+        toggleButton.addEventListener('click', () => {
+            isRunning = !isRunning;
+
+            if (isRunning) {
+                toggleButton.textContent = 'ARRESTA / STOP';
+                toggleButton.className = 'toggle-button running';
+            } else {
+                toggleButton.textContent = 'AVVIA / START';
+                toggleButton.className = 'toggle-button stopped';
+
+                // Reset fault if stopping
+                if (faultActive) {
+                    faultActive = false;
+                    faultButton.classList.remove('active');
+                    faultButton.textContent = 'SIMULA GUASTO / FAULT';
+                }
+            }
+
+            updatePower();
+            updateRotation();
+            updateGrid();
+        });
+
+        faultButton.addEventListener('click', () => {
+            if (!isRunning) {
+                alert('Avviare la turbina prima di simulare un guasto / Start the turbine before simulating a fault');
+                return;
+            }
+
+            faultActive = !faultActive;
+
+            if (faultActive) {
+                faultButton.classList.add('active');
+                faultButton.textContent = 'ARRESTA GUASTO / STOP FAULT';
+
+                // Initialize fault conditions
+                angularVelocity = 0;
+                // Keep current load angle, fault will cause it to increase
+
+                // Update all turbines to red
+                updateTurbinesFaultState();
+            } else {
+                faultButton.classList.remove('active');
+                faultButton.textContent = 'SIMULA GUASTO / FAULT';
+
+                // Reset to normal operating conditions
+                loadAngle = 30.0;
+                angularVelocity = 0;
+                updateLoadAngle();
+
+                // Restore all turbines to normal color
+                updateTurbinesFaultState();
+            }
+        });
+
+        // Add CSS animation for plant turbine blades rotation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Initialize
+        generateBars();
+        generateBlades();
+        updateSliderBackground();
+        updatePower();
+        updateRotation();
+        updateGrid();
+        updateLoadAngle();
+        drawWaveform();
+        animateFaultDynamics();
+    </script>
+</body>
+</html>

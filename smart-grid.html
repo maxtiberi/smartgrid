@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Grid Simulation</title>
+    <link rel="stylesheet" href="smart-grid.css">
+    <link rel="stylesheet" href="turbine-styles.css">
+</head>
+<body>
+    <div class="grid-container">
+        <header class="header">
+            <h1 class="title">Smart Grid Control</h1>
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-label">Total Output</span>
+                    <span class="stat-value" id="totalOutput">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Grid Status</span>
+                    <span class="stat-value" id="gridStatus">offline</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Network Topology Visualization -->
+        <div class="topology-section">
+            <h2 class="topology-title">NETWORK TOPOLOGY</h2>
+            <svg class="topology-diagram" viewBox="0 0 1200 500" preserveAspectRatio="xMidYMid meet">
+                <defs>
+                    <!-- Gradients for connections -->
+                    <linearGradient id="nuclear1-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#00ff9f;stop-opacity:0" />
+                        <stop offset="50%" style="stop-color:#00ff9f;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#00ff9f;stop-opacity:0" />
+                    </linearGradient>
+                    <linearGradient id="nuclear2-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#00ff9f;stop-opacity:0" />
+                        <stop offset="50%" style="stop-color:#00ff9f;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#00ff9f;stop-opacity:0" />
+                    </linearGradient>
+                    <linearGradient id="solar-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#ffaa00;stop-opacity:0" />
+                        <stop offset="50%" style="stop-color:#ffaa00;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#ffaa00;stop-opacity:0" />
+                    </linearGradient>
+                    <linearGradient id="wind-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:0" />
+                        <stop offset="50%" style="stop-color:#00d4ff;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#00d4ff;stop-opacity:0" />
+                    </linearGradient>
+                    <linearGradient id="network-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#ff00ff;stop-opacity:0" />
+                        <stop offset="50%" style="stop-color:#ff00ff;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#ff00ff;stop-opacity:0" />
+                    </linearGradient>
+
+                    <!-- Glow filters -->
+                    <filter id="glow">
+                        <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+
+                    <!-- GOOSE glow filter -->
+                    <filter id="goose-glow">
+                        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+
+                    <!-- GOOSE gradient -->
+                    <linearGradient id="goose-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#00bcd4;stop-opacity:1" />
+                        <stop offset="50%" style="stop-color:#00e676;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#00bcd4;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+
+                <!-- Power Lines (connections) -->
+                <g class="topology-connections">
+                    <!-- Plants to Distribution Hub -->
+                    <path class="connection" id="conn-nuclear1" d="M 185 100 L 515 183" data-source="nuclear1"/>
+                    <circle class="energy-particle particle-nuclear1" r="4">
+                        <animateMotion dur="3s" repeatCount="indefinite" path="M 185 100 L 515 183"/>
+                    </circle>
+
+                    <path class="connection" id="conn-nuclear2" d="M 185 300 L 515 217" data-source="nuclear2"/>
+                    <circle class="energy-particle particle-nuclear2" r="4">
+                        <animateMotion dur="3s" repeatCount="indefinite" path="M 185 300 L 515 217"/>
+                    </circle>
+
+                    <path class="connection" id="conn-solar" d="M 435 100 L 515 183" data-source="solar"/>
+                    <circle class="energy-particle particle-solar" r="4">
+                        <animateMotion dur="2.5s" repeatCount="indefinite" path="M 435 100 L 515 183"/>
+                    </circle>
+
+                    <path class="connection" id="conn-wind" d="M 435 300 L 515 217" data-source="wind"/>
+                    <circle class="energy-particle particle-wind" r="4">
+                        <animateMotion dur="2.8s" repeatCount="indefinite" path="M 435 300 L 515 217"/>
+                    </circle>
+
+                    <!-- Distribution Hub to Transmission Units -->
+                    <path class="connection transmission-line" id="conn-dist-trans1" d="M 575 176 L 750 80" data-source="distribution"/>
+                    <circle class="energy-particle particle-distribution" r="3">
+                        <animateMotion dur="2s" repeatCount="indefinite" path="M 575 176 L 750 80"/>
+                    </circle>
+
+                    <path class="connection transmission-line" id="conn-dist-trans2" d="M 575 185 L 750 200" data-source="distribution"/>
+                    <circle class="energy-particle particle-distribution" r="3">
+                        <animateMotion dur="2s" repeatCount="indefinite" begin="0.3s" path="M 575 185 L 750 200"/>
+                    </circle>
+
+                    <path class="connection transmission-line" id="conn-dist-trans3" d="M 575 215 L 750 280" data-source="distribution"/>
+                    <circle class="energy-particle particle-distribution" r="3">
+                        <animateMotion dur="2s" repeatCount="indefinite" begin="0.6s" path="M 575 215 L 750 280"/>
+                    </circle>
+
+                    <path class="connection transmission-line" id="conn-dist-trans4" d="M 575 224 L 750 360" data-source="distribution"/>
+                    <circle class="energy-particle particle-distribution" r="3">
+                        <animateMotion dur="2s" repeatCount="indefinite" begin="0.9s" path="M 575 224 L 750 360"/>
+                    </circle>
+
+                    <!-- GOOSE Messages between T1 and T2 -->
+                    <!-- Communication line T1-T2 -->
+                    <path class="goose-line" d="M 765 95 L 765 185" stroke="#00bcd4" stroke-width="2" fill="none" opacity="0.7"/>
+
+                    <!-- GOOSE message packets (T1 to T2) -->
+                    <circle class="goose-packet" r="4" fill="#00bcd4" opacity="0.9">
+                        <animateMotion dur="1.5s" repeatCount="indefinite" path="M 765 95 L 765 185"/>
+                    </circle>
+
+                    <!-- GOOSE message packets (T2 to T1) -->
+                    <circle class="goose-packet" r="4" fill="#00e676" opacity="0.9">
+                        <animateMotion dur="1.5s" repeatCount="indefinite" path="M 765 185 L 765 95"/>
+                    </circle>
+
+                    <!-- GOOSE label T1-T2 -->
+                    <text x="715" y="140" font-size="10" fill="#1a1a1a" font-family="Archivo, sans-serif" font-weight="400">GOOSE</text>
+
+                    <!-- GOOSE Messages between T2 and T3 -->
+                    <!-- Communication line T2-T3 -->
+                    <path class="goose-line" d="M 765 215 L 765 265" stroke="#00bcd4" stroke-width="2" fill="none" opacity="0.7"/>
+
+                    <!-- GOOSE message packets (T2 to T3) -->
+                    <circle class="goose-packet" r="4" fill="#00bcd4" opacity="0.9">
+                        <animateMotion dur="1.5s" repeatCount="indefinite" begin="0.3s" path="M 765 215 L 765 265"/>
+                    </circle>
+
+                    <!-- GOOSE message packets (T3 to T2) -->
+                    <circle class="goose-packet" r="4" fill="#00e676" opacity="0.9">
+                        <animateMotion dur="1.5s" repeatCount="indefinite" begin="0.3s" path="M 765 265 L 765 215"/>
+                    </circle>
+
+                    <!-- GOOSE label T2-T3 -->
+                    <text x="715" y="240" font-size="10" fill="#1a1a1a" font-family="Archivo, sans-serif" font-weight="400">GOOSE</text>
+
+                    <!-- GOOSE Messages between T3 and T4 -->
+                    <!-- Communication line T3-T4 -->
+                    <path class="goose-line" d="M 765 295 L 765 345" stroke="#00bcd4" stroke-width="2" fill="none" opacity="0.7"/>
+
+                    <!-- GOOSE message packets (T3 to T4) -->
+                    <circle class="goose-packet" r="4" fill="#00bcd4" opacity="0.9">
+                        <animateMotion dur="1.5s" repeatCount="indefinite" begin="0.6s" path="M 765 295 L 765 345"/>
+                    </circle>
+
+                    <!-- GOOSE message packets (T4 to T3) -->
+                    <circle class="goose-packet" r="4" fill="#00e676" opacity="0.9">
+                        <animateMotion dur="1.5s" repeatCount="indefinite" begin="0.6s" path="M 765 345 L 765 295"/>
+                    </circle>
+
+                    <!-- GOOSE label T3-T4 -->
+                    <text x="715" y="320" font-size="10" fill="#1a1a1a" font-family="Archivo, sans-serif" font-weight="400">GOOSE</text>
+
+                    <!-- Transmission Units to City -->
+                    <path class="connection transmission-line" id="conn-trans1-city" d="M 780 80 L 1010 200" data-source="transmission1"/>
+                    <circle class="energy-particle particle-transmission" r="3">
+                        <animateMotion dur="2.5s" repeatCount="indefinite" path="M 780 80 L 1010 200"/>
+                    </circle>
+
+                    <path class="connection transmission-line" id="conn-trans2-city" d="M 780 200 L 1010 200" data-source="transmission2"/>
+                    <circle class="energy-particle particle-transmission" r="3">
+                        <animateMotion dur="2.5s" repeatCount="indefinite" begin="0.4s" path="M 780 200 L 1010 200"/>
+                    </circle>
+
+                    <path class="connection transmission-line" id="conn-trans3-city" d="M 780 280 L 1010 200" data-source="transmission3"/>
+                    <circle class="energy-particle particle-transmission" r="3">
+                        <animateMotion dur="2.5s" repeatCount="indefinite" begin="0.8s" path="M 780 280 L 1010 200"/>
+                    </circle>
+
+                    <path class="connection transmission-line" id="conn-trans4-city" d="M 780 360 L 1010 200" data-source="transmission4"/>
+                    <circle class="energy-particle particle-transmission" r="3">
+                        <animateMotion dur="2.5s" repeatCount="indefinite" begin="1.2s" path="M 780 360 L 1010 200"/>
+                    </circle>
+                </g>
+
+                <!-- Nodes -->
+                <g class="topology-nodes">
+                    <!-- Nuclear Plant 1 Node -->
+                    <g class="node-group" data-node="nuclear1" transform="translate(150, 100)">
+                        <circle class="node-outer nuclear-node" cx="0" cy="0" r="35" fill="none"/>
+
+                        <!-- Turbine Icon (8 blades) -->
+                        <g class="nuclear-turbine" id="nuclear1-turbine">
+                            <!-- Inner ring -->
+                            <circle cx="0" cy="0" r="12" fill="none" stroke="#4a4a4a" stroke-width="1.5"/>
+
+                            <!-- 8 Blades -->
+                            <g class="turbine-blades">
+                                <path d="M 0 -12 L -2 -20 L 2 -20 Z" fill="#4a4a4a" transform="rotate(0 0 0)"/>
+                                <path d="M 0 -12 L -2 -20 L 2 -20 Z" fill="#4a4a4a" transform="rotate(45 0 0)"/>
+                                <path d="M 0 -12 L -2 -20 L 2 -20 Z" fill="#4a4a4a" transform="rotate(90 0 0)"/>
+                                <path d="M 0 -12 L -2 -20 L 2 -20 Z" fill="#4a4a4a" transform="rotate(135 0 0)"/>
+                                <path d="M 0 -12 L -2 -20 L 2 -20 Z" fill="#4a4a4a" transform="rotate(180 0 0)"/>
+                                <path d="M 0 -12 L -2 -20 L 2 -20 Z" fill="#4a4a4a" transform="rotate(225 0 0)"/>
+                                <path d="M 0 -12 L -2 -20 L 2 -20 Z" fill="#4a4a4a" transform="rotate(270 0 0)"/>
+                                <path d="M 0 -12 L -2 -20 L 2 -20 Z" fill="#4a4a4a" transform="rotate(315 0 0)"/>
+                            </g>
+
+                            <!-- Central hub -->
+                            <circle cx="0" cy="0" r="4" fill="#4a4a4a"/>
+                            <circle cx="0" cy="0" r="2" fill="none"/>
+                        </g>
+
+                        <text class="node-label" x="0" y="55" text-anchor="middle">Nuclear α</text>
+                    </g>
+
+                    <!-- Nuclear Plant 2 Node -->
+                    <g class="node-group" data-node="nuclear2" transform="translate(150, 300)">
+                        <circle class="node-outer nuclear-node" cx="0" cy="0" r="35" fill="none"/>
+
+                        <!-- Turbine Icon (8 blades) -->
+                        <g class="nuclear-turbine" id="nuclear2-turbine">
+                            <!-- Inner ring -->
+                            <circle cx="0" cy="0" r="12" fill="none" stroke="#4a4a4a" stroke-width="1.5"/>
+
+                            <!-- 8 Blades -->
+                            <g class="turbine-blades">
+                                <path d="M 0 -12 L -2 -20 L 2 -20 Z" fill="#4a4a4a" transform="rotate(0 0 0)"/>
+                                <path d="M 0 -12 L -2 -20 L 2 -20 Z" fill="#4a4a4a" transform="rotate(45 0 0)"/>
+                                <path d="M 0 -12 L -2 -20 L 2 -20 Z" fill="#4a4a4a" transform="rotate(90 0 0)"/>
+                                <path d="M 0 -12 L -2 -20 L 2 -20 Z" fill="#4a4a4a" transform="rotate(135 0 0)"/>
+                                <path d="M 0 -12 L -2 -20 L 2 -20 Z" fill="#4a4a4a" transform="rotate(180 0 0)"/>
+                                <path d="M 0 -12 L -2 -20 L 2 -20 Z" fill="#4a4a4a" transform="rotate(225 0 0)"/>
+                                <path d="M 0 -12 L -2 -20 L 2 -20 Z" fill="#4a4a4a" transform="rotate(270 0 0)"/>
+                                <path d="M 0 -12 L -2 -20 L 2 -20 Z" fill="#4a4a4a" transform="rotate(315 0 0)"/>
+                            </g>
+
+                            <!-- Central hub -->
+                            <circle cx="0" cy="0" r="4" fill="#4a4a4a"/>
+                            <circle cx="0" cy="0" r="2" fill="none"/>
+                        </g>
+
+                        <text class="node-label" x="0" y="55" text-anchor="middle">Nuclear β</text>
+                    </g>
+
+                    <!-- Solar Farm Node -->
+                    <g class="node-group" data-node="solar" transform="translate(400, 80)">
+                        <circle class="node-outer solar-node" cx="0" cy="0" r="35" fill="none"/>
+
+                        <!-- Solar Panel Icon -->
+                        <g class="solar-panel" id="solar-panel">
+                            <!-- Sun rays -->
+                            <line x1="0" y1="-20" x2="0" y2="-16" stroke="#4a4a4a" stroke-width="1.5"/>
+                            <line x1="14" y1="-14" x2="11" y2="-11" stroke="#4a4a4a" stroke-width="1.5"/>
+                            <line x1="20" y1="0" x2="16" y2="0" stroke="#4a4a4a" stroke-width="1.5"/>
+                            <line x1="14" y1="14" x2="11" y2="11" stroke="#4a4a4a" stroke-width="1.5"/>
+                            <line x1="-14" y1="-14" x2="-11" y2="-11" stroke="#4a4a4a" stroke-width="1.5"/>
+                            <line x1="-20" y1="0" x2="-16" y2="0" stroke="#4a4a4a" stroke-width="1.5"/>
+                            <line x1="-14" y1="14" x2="-11" y2="11" stroke="#4a4a4a" stroke-width="1.5"/>
+                            <line x1="0" y1="20" x2="0" y2="16" stroke="#4a4a4a" stroke-width="1.5"/>
+
+                            <!-- Solar panel grid (3x3) -->
+                            <rect x="-9" y="-9" width="18" height="18" fill="none" stroke="#4a4a4a" stroke-width="1.5"/>
+                            <line x1="-3" y1="-9" x2="-3" y2="9" stroke="#4a4a4a" stroke-width="1"/>
+                            <line x1="3" y1="-9" x2="3" y2="9" stroke="#4a4a4a" stroke-width="1"/>
+                            <line x1="-9" y1="-3" x2="9" y2="-3" stroke="#4a4a4a" stroke-width="1"/>
+                            <line x1="-9" y1="3" x2="9" y2="3" stroke="#4a4a4a" stroke-width="1"/>
+                        </g>
+
+                        <text class="node-label" x="0" y="55" text-anchor="middle">Solar</text>
+                    </g>
+
+                    <!-- Wind Farm Node -->
+                    <g class="node-group" data-node="wind" transform="translate(400, 300)">
+                        <circle class="node-outer wind-node" cx="0" cy="0" r="35" fill="none"/>
+
+                        <!-- Wind Turbine Icon -->
+                        <g class="wind-turbine" id="wind-turbine">
+                            <!-- Tower -->
+                            <line x1="0" y1="0" x2="0" y2="18" stroke="#4a4a4a" stroke-width="2"/>
+                            <line x1="-3" y1="18" x2="3" y2="18" stroke="#4a4a4a" stroke-width="2"/>
+
+                            <!-- Rotor hub and blades -->
+                            <g class="wind-blades">
+                                <!-- Blade 1 (top) -->
+                                <path d="M 0 0 L -1.5 -16 L 1.5 -16 Z" fill="#4a4a4a" transform="rotate(0 0 0)"/>
+                                <!-- Blade 2 (bottom right) -->
+                                <path d="M 0 0 L -1.5 -16 L 1.5 -16 Z" fill="#4a4a4a" transform="rotate(120 0 0)"/>
+                                <!-- Blade 3 (bottom left) -->
+                                <path d="M 0 0 L -1.5 -16 L 1.5 -16 Z" fill="#4a4a4a" transform="rotate(240 0 0)"/>
+                            </g>
+
+                            <!-- Central hub -->
+                            <circle cx="0" cy="0" r="3" fill="#4a4a4a"/>
+                            <circle cx="0" cy="0" r="1.5" fill="none" stroke="#4a4a4a" stroke-width="0.5"/>
+                        </g>
+
+                        <text class="node-label" x="0" y="55" text-anchor="middle">Wind</text>
+                    </g>
+
+                    <!-- Distribution Hub Node -->
+                    <g class="node-group" data-node="distribution" transform="translate(545, 200)">
+                        <rect class="node-outer network-node" x="-30" y="-30" width="60" height="60" rx="6" fill="none"/>
+
+                        <!-- Distribution Hub Icon (Electrical Grid) -->
+                        <g class="distribution-hub" id="distribution-hub">
+                            <!-- Transmission tower structure -->
+                            <line x1="0" y1="-15" x2="0" y2="12" stroke="#4a4a4a" stroke-width="2"/>
+
+                            <!-- Top crossbar -->
+                            <line x1="-10" y1="-15" x2="10" y2="-15" stroke="#4a4a4a" stroke-width="2"/>
+                            <line x1="-10" y1="-15" x2="-8" y2="-12" stroke="#4a4a4a" stroke-width="1.5"/>
+                            <line x1="10" y1="-15" x2="8" y2="-12" stroke="#4a4a4a" stroke-width="1.5"/>
+
+                            <!-- Middle crossbar -->
+                            <line x1="-8" y1="-5" x2="8" y2="-5" stroke="#4a4a4a" stroke-width="2"/>
+                            <line x1="-8" y1="-5" x2="-6" y2="-2" stroke="#4a4a4a" stroke-width="1.5"/>
+                            <line x1="8" y1="-5" x2="6" y2="-2" stroke="#4a4a4a" stroke-width="1.5"/>
+
+                            <!-- Lower crossbar -->
+                            <line x1="-6" y1="5" x2="6" y2="5" stroke="#4a4a4a" stroke-width="2"/>
+
+                            <!-- Power lines (3 phase) -->
+                            <circle cx="-10" cy="-15" r="1.5" fill="#4a4a4a"/>
+                            <circle cx="0" cy="-15" r="1.5" fill="#4a4a4a"/>
+                            <circle cx="10" cy="-15" r="1.5" fill="#4a4a4a"/>
+
+                            <!-- Base -->
+                            <line x1="-4" y1="12" x2="4" y2="12" stroke="#4a4a4a" stroke-width="2.5"/>
+                        </g>
+
+                        <text class="node-label" x="0" y="48" text-anchor="middle">Hub</text>
+                    </g>
+
+                    <!-- Transmission Unit 1 -->
+                    <g class="node-group transmission-node" data-node="transmission1" transform="translate(765, 80)">
+                        <rect class="node-outer trans-node" x="-15" y="-15" width="30" height="30" rx="3"/>
+                        <line x1="-8" y1="-5" x2="-8" y2="8" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="8" y1="-5" x2="8" y2="8" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="-10" y1="-5" x2="-6" y2="-5" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="6" y1="-5" x2="10" y2="-5" stroke="#4a4a68" stroke-width="1.5"/>
+                        <text class="node-label trans-label" x="0" y="28" text-anchor="middle">T1</text>
+                    </g>
+
+                    <!-- Transmission Unit 2 -->
+                    <g class="node-group transmission-node" data-node="transmission2" transform="translate(765, 200)">
+                        <rect class="node-outer trans-node" x="-15" y="-15" width="30" height="30" rx="3"/>
+                        <line x1="-8" y1="-5" x2="-8" y2="8" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="8" y1="-5" x2="8" y2="8" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="-10" y1="-5" x2="-6" y2="-5" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="6" y1="-5" x2="10" y2="-5" stroke="#4a4a68" stroke-width="1.5"/>
+                        <text class="node-label trans-label" x="0" y="28" text-anchor="middle">T2</text>
+                    </g>
+
+                    <!-- Transmission Unit 3 -->
+                    <g class="node-group transmission-node" data-node="transmission3" transform="translate(765, 280)">
+                        <rect class="node-outer trans-node" x="-15" y="-15" width="30" height="30" rx="3"/>
+                        <line x1="-8" y1="-5" x2="-8" y2="8" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="8" y1="-5" x2="8" y2="8" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="-10" y1="-5" x2="-6" y2="-5" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="6" y1="-5" x2="10" y2="-5" stroke="#4a4a68" stroke-width="1.5"/>
+                        <text class="node-label trans-label" x="0" y="28" text-anchor="middle">T3</text>
+                    </g>
+
+                    <!-- Transmission Unit 4 -->
+                    <g class="node-group transmission-node" data-node="transmission4" transform="translate(765, 360)">
+                        <rect class="node-outer trans-node" x="-15" y="-15" width="30" height="30" rx="3"/>
+                        <line x1="-8" y1="-5" x2="-8" y2="8" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="8" y1="-5" x2="8" y2="8" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="-10" y1="-5" x2="-6" y2="-5" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="6" y1="-5" x2="10" y2="-5" stroke="#4a4a68" stroke-width="1.5"/>
+                        <text class="node-label trans-label" x="0" y="28" text-anchor="middle">T4</text>
+                    </g>
+
+                    <!-- City Node -->
+                    <g class="node-group" data-node="city" transform="translate(1050, 200)">
+                        <circle class="node-outer city-node" cx="0" cy="0" r="40"/>
+                        <circle class="node-inner" cx="0" cy="0" r="30" fill="#8b92a8" opacity="0.2"/>
+                        <rect x="-20" y="-5" width="8" height="15" fill="#8b92a8"/>
+                        <rect x="-8" y="-12" width="8" height="22" fill="#8b92a8"/>
+                        <rect x="4" y="-8" width="8" height="18" fill="#8b92a8"/>
+                        <rect x="12" y="-10" width="8" height="20" fill="#8b92a8"/>
+                        <text class="node-label" x="0" y="60" text-anchor="middle">City Grid</text>
+                    </g>
+                </g>
+            </svg>
+        </div>
+
+        <div class="main-grid">
+            <!-- Power Plants Section -->
+            <div class="power-plants">
+                <!-- Nuclear Plant 1 -->
+                <div class="plant-card nuclear" data-plant="nuclear1">
+                    <div class="plant-header">
+                        <div class="plant-icon">
+                            <svg viewBox="0 0 100 100" class="icon-nuclear">
+                                <circle cx="50" cy="50" r="15" class="reactor-core"/>
+                                <path d="M50 20 L50 35 M50 65 L50 80 M20 50 L35 50 M65 50 L80 50" class="reactor-lines"/>
+                                <circle cx="50" cy="20" r="5" class="reactor-dot"/>
+                                <circle cx="50" cy="80" r="5" class="reactor-dot"/>
+                                <circle cx="20" cy="50" r="5" class="reactor-dot"/>
+                                <circle cx="80" cy="50" r="5" class="reactor-dot"/>
+                            </svg>
+                        </div>
+                        <h3>Nuclear Plant Alpha</h3>
+                    </div>
+                    <div class="plant-output">
+                        <span class="output-value">0</span>
+                        <span class="output-capacity">/ 1200</span>
+                    </div>
+                    <div class="power-level-control">
+                        <label class="power-label">Power Level</label>
+                        <input type="range" min="0" max="100" value="0" class="power-slider" id="nuclear1-slider">
+                        <span class="power-percentage">0%</span>
+                    </div>
+                    <div class="power-indicators">
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                    </div>
+                    <button class="toggle-btn" data-target="nuclear1">
+                        <span class="btn-text">start</span>
+                    </button>
+                    <div class="power-flow"></div>
+                </div>
+
+                <!-- Nuclear Plant 2 -->
+                <div class="plant-card nuclear" data-plant="nuclear2">
+                    <div class="plant-header">
+                        <div class="plant-icon">
+                            <svg viewBox="0 0 100 100" class="icon-nuclear">
+                                <circle cx="50" cy="50" r="15" class="reactor-core"/>
+                                <path d="M50 20 L50 35 M50 65 L50 80 M20 50 L35 50 M65 50 L80 50" class="reactor-lines"/>
+                                <circle cx="50" cy="20" r="5" class="reactor-dot"/>
+                                <circle cx="50" cy="80" r="5" class="reactor-dot"/>
+                                <circle cx="20" cy="50" r="5" class="reactor-dot"/>
+                                <circle cx="80" cy="50" r="5" class="reactor-dot"/>
+                            </svg>
+                        </div>
+                        <h3>Nuclear Plant Beta</h3>
+                    </div>
+                    <div class="plant-output">
+                        <span class="output-value">0</span>
+                        <span class="output-capacity">/ 1200</span>
+                    </div>
+                    <div class="power-level-control">
+                        <label class="power-label">Power Level</label>
+                        <input type="range" min="0" max="100" value="0" class="power-slider" id="nuclear2-slider">
+                        <span class="power-percentage">0%</span>
+                    </div>
+                    <div class="power-indicators">
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                        <div class="indicator-circle"></div>
+                    </div>
+                    <button class="toggle-btn" data-target="nuclear2">
+                        <span class="btn-text">start</span>
+                    </button>
+                    <div class="power-flow"></div>
+                </div>
+
+                <!-- Solar Plant -->
+                <div class="plant-card solar" data-plant="solar">
+                    <div class="plant-header">
+                        <div class="plant-icon">
+                            <svg viewBox="0 0 100 100" class="icon-solar">
+                                <circle cx="50" cy="50" r="20" class="sun"/>
+                                <line x1="50" y1="10" x2="50" y2="25" class="ray"/>
+                                <line x1="50" y1="75" x2="50" y2="90" class="ray"/>
+                                <line x1="10" y1="50" x2="25" y2="50" class="ray"/>
+                                <line x1="75" y1="50" x2="90" y2="50" class="ray"/>
+                                <line x1="20" y1="20" x2="32" y2="32" class="ray"/>
+                                <line x1="68" y1="68" x2="80" y2="80" class="ray"/>
+                                <line x1="80" y1="20" x2="68" y2="32" class="ray"/>
+                                <line x1="32" y1="68" x2="20" y2="80" class="ray"/>
+                            </svg>
+                        </div>
+                        <h3>Solar Farm</h3>
+                    </div>
+                    <div class="plant-output">
+                        <span class="output-value">0</span>
+                        <span class="output-capacity">/ 500</span>
+                    </div>
+                    <button class="toggle-btn" data-target="solar">
+                        <span class="btn-text">start</span>
+                    </button>
+                    <div class="power-flow"></div>
+                </div>
+
+                <!-- Wind Plant -->
+                <div class="plant-card wind" data-plant="wind">
+                    <div class="plant-header">
+                        <div class="plant-icon">
+                            <svg viewBox="0 0 100 100" class="icon-wind">
+                                <line x1="50" y1="50" x2="50" y2="90" class="turbine-pole"/>
+                                <g class="turbine-blades">
+                                    <path d="M50 50 L50 20 L45 25 Z" class="blade"/>
+                                    <path d="M50 50 L75 65 L70 60 Z" class="blade"/>
+                                    <path d="M50 50 L25 65 L30 60 Z" class="blade"/>
+                                </g>
+                                <circle cx="50" cy="50" r="4" class="turbine-hub"/>
+                            </svg>
+                        </div>
+                        <h3>Wind Farm</h3>
+                    </div>
+                    <div class="plant-output">
+                        <span class="output-value">0</span>
+                        <span class="output-capacity">/ 400</span>
+                    </div>
+                    <button class="toggle-btn" data-target="wind">
+                        <span class="btn-text">start</span>
+                    </button>
+                    <div class="power-flow"></div>
+                </div>
+            </div>
+
+            <!-- Distribution Network -->
+            <div class="network-section">
+                <div class="network-card" data-network="distribution">
+                    <div class="network-header">
+                        <div class="network-icon">
+                            <svg viewBox="0 0 100 100" class="icon-network">
+                                <line x1="20" y1="80" x2="20" y2="40" class="tower-line"/>
+                                <line x1="80" y1="80" x2="80" y2="40" class="tower-line"/>
+                                <line x1="10" y1="40" x2="30" y2="40" class="tower-cross"/>
+                                <line x1="70" y1="40" x2="90" y2="40" class="tower-cross"/>
+                                <path d="M20 40 Q50 50 80 40" class="power-cable"/>
+                                <path d="M20 45 Q50 55 80 45" class="power-cable"/>
+                                <circle cx="20" cy="80" r="3" class="tower-base"/>
+                                <circle cx="80" cy="80" r="3" class="tower-base"/>
+                            </svg>
+                        </div>
+                        <h3>Distribution Network</h3>
+                    </div>
+                    <div class="network-status">
+                        <span class="status-indicator"></span>
+                        <span class="status-text">offline</span>
+                    </div>
+                    <button class="toggle-btn" data-target="distribution">
+                        <span class="btn-text">start</span>
+                    </button>
+                    <div class="network-flow"></div>
+                </div>
+            </div>
+
+            <!-- City -->
+            <div class="city-section">
+                <div class="city-card">
+                    <div class="city-icon">
+                        <svg viewBox="0 0 100 100" class="icon-city">
+                            <rect x="10" y="40" width="15" height="50" class="building"/>
+                            <rect x="30" y="25" width="15" height="65" class="building"/>
+                            <rect x="50" y="35" width="15" height="55" class="building"/>
+                            <rect x="70" y="30" width="15" height="60" class="building"/>
+
+                            <rect x="12" y="45" width="3" height="3" class="window"/>
+                            <rect x="17" y="45" width="3" height="3" class="window"/>
+                            <rect x="12" y="52" width="3" height="3" class="window"/>
+                            <rect x="17" y="52" width="3" height="3" class="window"/>
+                            <rect x="12" y="59" width="3" height="3" class="window"/>
+                            <rect x="17" y="59" width="3" height="3" class="window"/>
+
+                            <rect x="32" y="30" width="3" height="3" class="window"/>
+                            <rect x="37" y="30" width="3" height="3" class="window"/>
+                            <rect x="32" y="37" width="3" height="3" class="window"/>
+                            <rect x="37" y="37" width="3" height="3" class="window"/>
+                            <rect x="32" y="44" width="3" height="3" class="window"/>
+                            <rect x="37" y="44" width="3" height="3" class="window"/>
+
+                            <rect x="52" y="40" width="3" height="3" class="window"/>
+                            <rect x="57" y="40" width="3" height="3" class="window"/>
+                            <rect x="52" y="47" width="3" height="3" class="window"/>
+                            <rect x="57" y="47" width="3" height="3" class="window"/>
+
+                            <rect x="72" y="35" width="3" height="3" class="window"/>
+                            <rect x="77" y="35" width="3" height="3" class="window"/>
+                            <rect x="72" y="42" width="3" height="3" class="window"/>
+                            <rect x="77" y="42" width="3" height="3" class="window"/>
+                        </svg>
+                    </div>
+                    <h2>City Grid</h2>
+                    <div class="city-stats">
+                        <div class="city-stat">
+                            <span class="city-label">Power Received</span>
+                            <span class="city-value" id="cityPower">0</span>
+                        </div>
+                        <div class="city-stat">
+                            <span class="city-label">Demand</span>
+                            <span class="city-value">2800</span>
+                        </div>
+                        <div class="city-stat" id="transmissionReduction" style="display: none;">
+                            <span class="city-label" style="color: #ff4444;">⚠ Transmission Loss</span>
+                            <span class="city-value" id="transmissionReductionValue" style="color: #ff4444;">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Turbine Section -->
+        <div class="turbine-section">
+            <h2 class="turbine-section-title">TURBINA ELETTRICA / ELECTRIC TURBINE</h2>
+
+            <div class="turbine-main-content">
+                <!-- Left Panel -->
+                <div class="turbine-left-panel">
+                    <!-- Legend -->
+                    <div class="turbine-legend">
+                        <div class="turbine-legend-item">
+                            <div class="turbine-legend-dot"></div>
+                            <span class="turbine-legend-text">Potenza generata / Power output</span>
+                        </div>
+                    </div>
+
+                    <!-- Installation Diagram -->
+                    <div class="turbine-installation">
+                        <p class="turbine-installation-title">Installazione / Installation</p>
+                        <div class="turbine-bars-container" id="turbineBarsContainer">
+                            <!-- Bars will be generated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="turbine-stats">
+                        <div class="turbine-stat-item">
+                            <div class="turbine-stat-dot" id="turbineVehicleDot"></div>
+                            <span class="turbine-legend-text">1 veicolo / vehicles</span>
+                        </div>
+                        <div class="turbine-stat-box">
+                            <p>Numero di giri</p>
+                            <p>/ Number of rotations</p>
+                            <p class="turbine-stat-value" id="turbineRpmValue">1500 RPM</p>
+                        </div>
+                    </div>
+
+                    <!-- Teleprotection Status Section -->
+                    <div class="teleprotection-section">
+                        <h4 class="teleprotection-title">Teleprotezione Differenziale / Differential Teleprotection</h4>
+                        <div class="teleprotection-status">
+                            <div class="teleprotection-item">
+                                <span class="teleprotection-label">T1 ↔ T2</span>
+                                <div class="teleprotection-icon-container" id="teleprotection-status">
+                                    <!-- Closed State Icon (Default) -->
+                                    <svg class="teleprotection-icon closed" id="teleprotection-closed" viewBox="0 0 100 100">
+                                        <!-- Circuit breaker closed -->
+                                        <rect x="10" y="35" width="80" height="30" rx="5" fill="none" stroke="#4a8a4a" stroke-width="3"/>
+                                        <line x1="30" y1="50" x2="70" y2="50" stroke="#4a8a4a" stroke-width="4"/>
+                                        <circle cx="30" cy="50" r="6" fill="#4a8a4a"/>
+                                        <circle cx="70" cy="50" r="6" fill="#4a8a4a"/>
+                                        <!-- Terminals -->
+                                        <line x1="5" y1="50" x2="25" y2="50" stroke="#4a4a4a" stroke-width="3"/>
+                                        <line x1="75" y1="50" x2="95" y2="50" stroke="#4a4a4a" stroke-width="3"/>
+                                    </svg>
+                                    <!-- Open State Icon -->
+                                    <svg class="teleprotection-icon open" id="teleprotection-open" viewBox="0 0 100 100" style="display: none;">
+                                        <!-- Circuit breaker open -->
+                                        <rect x="10" y="35" width="80" height="30" rx="5" fill="none" stroke="#c84a4a" stroke-width="3"/>
+                                        <line x1="30" y1="50" x2="50" y2="35" stroke="#c84a4a" stroke-width="4"/>
+                                        <line x1="55" y1="35" x2="70" y2="50" stroke="#c84a4a" stroke-width="4"/>
+                                        <circle cx="30" cy="50" r="6" fill="#c84a4a"/>
+                                        <circle cx="70" cy="50" r="6" fill="#c84a4a"/>
+                                        <!-- Terminals -->
+                                        <line x1="5" y1="50" x2="25" y2="50" stroke="#4a4a4a" stroke-width="3"/>
+                                        <line x1="75" y1="50" x2="95" y2="50" stroke="#4a4a4a" stroke-width="3"/>
+                                        <!-- X mark to indicate fault -->
+                                        <line x1="50" y1="15" x2="60" y2="25" stroke="#c84a4a" stroke-width="2"/>
+                                        <line x1="60" y1="15" x2="50" y2="25" stroke="#c84a4a" stroke-width="2"/>
+                                    </svg>
+                                </div>
+                                <span class="teleprotection-state" id="teleprotection-state-text">CHIUSO / CLOSED</span>
+                            </div>
+                            <div class="teleprotection-info">
+                                <span class="info-text">Connessione: DC1 (T1) ↔ DC2 (T2)</span>
+                                <span class="info-text router-status" id="router-dc1-status">DC1: <span class="status-dot ok"></span>Raggiungibile</span>
+                                <span class="info-text router-status" id="router-dc2-status">DC2: <span class="status-dot ok"></span>Raggiungibile</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Panel -->
+                <div class="turbine-right-panel">
+                    <!-- Turbine Container -->
+                    <div class="turbine-container">
+                        <div class="turbine-rotor" id="turbineRotor">
+                            <!-- Blades will be generated by JavaScript -->
+                            <div class="turbine-inner-ring"></div>
+                        </div>
+                        <div class="turbine-central-hub">
+                            <div class="turbine-hub-center"></div>
+                        </div>
+                    </div>
+
+                    <!-- Waveform Container -->
+                    <div class="turbine-waveform-container">
+                        <div class="turbine-waveform-title">Tensione / Voltage</div>
+                        <canvas class="turbine-waveform-canvas" id="turbineWaveformCanvas" width="256" height="256"></canvas>
+                        <div class="turbine-waveform-info">
+                            <div id="turbineVoltageValue">0 V</div>
+                            <div>50 Hz</div>
+                        </div>
+                    </div>
+
+                    <!-- Power Bars -->
+                    <div class="turbine-power-bars">
+                        <div class="turbine-power-bar-item">
+                            <span class="turbine-power-label">Output</span>
+                            <span class="turbine-power-value" id="turbineOutputValue">625</span>
+                            <div class="turbine-power-bar-bg">
+                                <div class="turbine-power-bar-fill" id="turbineOutputBar" style="width: 50%;"></div>
+                            </div>
+                        </div>
+                        <div class="turbine-power-bar-item">
+                            <span class="turbine-power-label">Efficienza</span>
+                            <span class="turbine-power-value" id="turbineEfficiencyValue">87</span>
+                            <div class="turbine-power-bar-bg">
+                                <div class="turbine-power-bar-fill" id="turbineEfficiencyBar" style="width: 87%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="turbine-controls">
+                <div class="turbine-speed-control">
+                    <div class="turbine-speed-label">
+                        <span>Velocità / Speed</span>
+                        <span id="turbineSpeedPercentage">50%</span>
+                    </div>
+                    <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value="50"
+                        class="turbine-speed-slider"
+                        id="turbineSpeedSlider"
+                    >
+                </div>
+                <button class="turbine-toggle-button running" id="turbineToggleButton">
+                    ARRESTA / STOP
+                </button>
+            </div>
+
+            <!-- Status Indicators -->
+            <div class="turbine-status-indicators">
+                <div class="turbine-indicator">
+                    <div class="turbine-indicator-circle active" id="turbineSystemIndicator">●</div>
+                    <span class="turbine-indicator-label">Sistema</span>
+                </div>
+                <div class="turbine-indicator">
+                    <div class="turbine-indicator-circle active" id="turbineRotorIndicator">●</div>
+                    <span class="turbine-indicator-label">Rotore</span>
+                </div>
+                <div class="turbine-indicator">
+                    <div class="turbine-indicator-circle active" id="turbineGeneratorIndicator">●</div>
+                    <span class="turbine-indicator-label">Generatore</span>
+                </div>
+                <div class="turbine-indicator">
+                    <div class="turbine-indicator-circle active" id="turbineNetworkIndicator">●</div>
+                    <span class="turbine-indicator-label">Rete</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Router Topology Section -->
+        <div class="router-topology-section">
+            <h2 class="topology-title">SMART GRID ROUTER INFRASTRUCTURE</h2>
+
+            <!-- Router Statistics Infographic -->
+            <div class="router-stats-infographic" id="router-stats-infographic">
+                <div class="stats-card">
+                    <div class="stats-ring-container">
+                        <svg class="stats-ring" viewBox="0 0 36 36">
+                            <circle class="ring-bg" cx="18" cy="18" r="15.9" fill="none" stroke="#e0e0e0" stroke-width="3"/>
+                            <circle class="ring-progress" id="routers-ring" cx="18" cy="18" r="15.9" fill="none" stroke="#dc3545" stroke-width="3" stroke-dasharray="0 100" stroke-linecap="round" transform="rotate(-90 18 18)"/>
+                        </svg>
+                        <div class="ring-content">
+                            <span class="ring-value" id="active-routers">0</span>
+                            <span class="ring-total">/<span id="total-routers">4</span></span>
+                        </div>
+                    </div>
+                    <div class="stats-info">
+                        <span class="stats-label">SR Linux Routers</span>
+                        <span class="stats-sublabel" id="routers-status-text">Offline</span>
+                    </div>
+                </div>
+                <div class="stats-card">
+                    <div class="stats-ring-container">
+                        <svg class="stats-ring" viewBox="0 0 36 36">
+                            <circle class="ring-bg" cx="18" cy="18" r="15.9" fill="none" stroke="#e0e0e0" stroke-width="3"/>
+                            <circle class="ring-progress" id="rtus-ring" cx="18" cy="18" r="15.9" fill="none" stroke="#dc3545" stroke-width="3" stroke-dasharray="0 100" stroke-linecap="round" transform="rotate(-90 18 18)"/>
+                        </svg>
+                        <div class="ring-content">
+                            <span class="ring-value" id="active-rtus">0</span>
+                            <span class="ring-total">/<span id="total-rtus">4</span></span>
+                        </div>
+                    </div>
+                    <div class="stats-info">
+                        <span class="stats-label">RTU Units</span>
+                        <span class="stats-sublabel" id="rtus-status-text">Offline</span>
+                    </div>
+                </div>
+                <div class="stats-card overall">
+                    <div class="stats-ring-container large">
+                        <svg class="stats-ring" viewBox="0 0 36 36">
+                            <circle class="ring-bg" cx="18" cy="18" r="15.9" fill="none" stroke="#e0e0e0" stroke-width="3"/>
+                            <circle class="ring-progress" id="overall-ring" cx="18" cy="18" r="15.9" fill="none" stroke="#dc3545" stroke-width="3" stroke-dasharray="0 100" stroke-linecap="round" transform="rotate(-90 18 18)"/>
+                        </svg>
+                        <div class="ring-content">
+                            <span class="ring-value" id="active-devices">0</span>
+                            <span class="ring-total">/<span id="total-devices">8</span></span>
+                        </div>
+                    </div>
+                    <div class="stats-info">
+                        <span class="stats-label">Overall Health</span>
+                        <span class="stats-sublabel" id="overall-status-text">Offline</span>
+                    </div>
+                </div>
+            </div>
+
+            <svg class="router-diagram" viewBox="0 0 1000 650" preserveAspectRatio="xMidYMid meet">
+                <!-- Connection Lines with Port Labels -->
+                <g class="router-connections">
+                    <!-- DC-1 to Leaf-1 (eth-1/1 ↔ eth-1/1) -->
+                    <path class="router-connection" d="M 350 150 L 250 350" data-link="dc1-leaf1" data-router="dc1" data-interface="ethernet-1/1"/>
+                    <text class="port-label dc-port" x="285" y="220" transform="rotate(-55 285 220)">e1/1</text>
+                    <text class="port-label leaf-port" x="255" y="310" transform="rotate(-55 255 310)">e1/1</text>
+
+                    <!-- DC-1 to Leaf-2 (eth-1/2 ↔ eth-1/1) -->
+                    <path class="router-connection" d="M 350 150 L 450 350" data-link="dc1-leaf2" data-router="dc1" data-interface="ethernet-1/2"/>
+                    <text class="port-label dc-port" x="385" y="220" transform="rotate(55 385 220)">e1/2</text>
+                    <text class="port-label leaf-port" x="435" y="310" transform="rotate(55 435 310)">e1/1</text>
+
+                    <!-- DC-2 to Leaf-2 (eth-1/1 ↔ eth-1/2) -->
+                    <path class="router-connection" d="M 650 150 L 550 350" data-link="dc2-leaf2" data-router="dc2" data-interface="ethernet-1/1"/>
+                    <text class="port-label dc-port" x="615" y="220" transform="rotate(-55 615 220)">e1/1</text>
+                    <text class="port-label leaf-port" x="555" y="310" transform="rotate(-55 555 310)">e1/2</text>
+
+                    <!-- DC-2 to Leaf-1 (eth-1/2 ↔ eth-1/3) -->
+                    <path class="router-connection" d="M 650 150 L 750 350" data-link="dc2-leaf1" data-router="dc2" data-interface="ethernet-1/2"/>
+                    <text class="port-label dc-port" x="685" y="220" transform="rotate(55 685 220)">e1/2</text>
+                    <text class="port-label leaf-port" x="735" y="310" transform="rotate(55 735 310)">e1/3</text>
+
+                    <!-- Leafs to RTUs -->
+                    <path class="router-connection rtu-connection" d="M 250 395 L 250 500" data-link="leaf1-rtu1"/>
+                    <path class="router-connection rtu-connection" d="M 450 395 L 450 500" data-link="leaf2-rtu2"/>
+                    <path class="router-connection rtu-connection" d="M 550 395 L 550 500" data-link="leaf2-rtu3"/>
+                    <path class="router-connection rtu-connection" d="M 750 395 L 750 500" data-link="leaf1-rtu4"/>
+                </g>
+
+                <!-- Security Packet Animations -->
+                <g class="security-packets" id="security-packets">
+                    <!-- Encrypted packets with shield (shown when encryption is enabled) -->
+                    <!-- DC-1 to Leaf-1 -->
+                    <g class="secure-packet">
+                        <circle r="5" fill="#4CAF50" opacity="0.9"/>
+                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
+                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
+                        </svg>
+                        <animateMotion dur="3s" repeatCount="indefinite" path="M 350 150 L 250 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite"/>
+                    </g>
+                    <!-- DC-1 to Leaf-2 -->
+                    <g class="secure-packet">
+                        <circle r="5" fill="#4CAF50" opacity="0.9"/>
+                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
+                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
+                        </svg>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="0.5s" path="M 350 150 L 450 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="0.5s"/>
+                    </g>
+                    <!-- DC-2 to Leaf-2 -->
+                    <g class="secure-packet">
+                        <circle r="5" fill="#4CAF50" opacity="0.9"/>
+                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
+                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
+                        </svg>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="1s" path="M 650 150 L 550 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1s"/>
+                    </g>
+                    <!-- DC-2 to Leaf-1 -->
+                    <g class="secure-packet">
+                        <circle r="5" fill="#4CAF50" opacity="0.9"/>
+                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
+                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
+                        </svg>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="1.5s" path="M 650 150 L 750 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1.5s"/>
+                    </g>
+
+                    <!-- Insecure packets with open lock (shown when encryption is disabled) -->
+                    <!-- DC-1 to Leaf-1 -->
+                    <g class="insecure-packet">
+                        <circle r="5" fill="#FF5252" opacity="0.9"/>
+                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
+                            <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
+                            <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
+                        </svg>
+                        <animateMotion dur="3s" repeatCount="indefinite" path="M 350 150 L 250 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite"/>
+                    </g>
+                    <!-- DC-1 to Leaf-2 -->
+                    <g class="insecure-packet">
+                        <circle r="5" fill="#FF5252" opacity="0.9"/>
+                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
+                            <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
+                            <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
+                        </svg>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="0.5s" path="M 350 150 L 450 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="0.5s"/>
+                    </g>
+                    <!-- DC-2 to Leaf-2 -->
+                    <g class="insecure-packet">
+                        <circle r="5" fill="#FF5252" opacity="0.9"/>
+                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
+                            <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
+                            <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
+                        </svg>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="1s" path="M 650 150 L 550 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1s"/>
+                    </g>
+                    <!-- DC-2 to Leaf-1 -->
+                    <g class="insecure-packet">
+                        <circle r="5" fill="#FF5252" opacity="0.9"/>
+                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
+                            <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
+                            <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
+                        </svg>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="1.5s" path="M 650 150 L 750 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1.5s"/>
+                    </g>
+                </g>
+
+                <!-- Router Nodes -->
+                <g class="router-nodes">
+                    <!-- Spine Layer: Data Centers -->
+                    <g class="router-node dc-node" data-router="dc1" transform="translate(350, 120)">
+                        <rect class="router-outer" x="-40" y="-25" width="80" height="50" rx="4"/>
+                        <circle class="router-led" cx="-25" cy="-12" r="2"/>
+                        <circle class="router-led" cx="-15" cy="-12" r="2"/>
+                        <circle class="router-led" cx="-25" cy="6" r="2"/>
+                        <circle class="router-led" cx="-15" cy="6" r="2"/>
+                        <text class="router-label" x="0" y="45" text-anchor="middle">DC-1</text>
+                        <text class="router-ip" x="0" y="60" text-anchor="middle">172.20.20.5</text>
+                    </g>
+
+                    <g class="router-node dc-node" data-router="dc2" transform="translate(650, 120)">
+                        <rect class="router-outer" x="-40" y="-25" width="80" height="50" rx="4"/>
+                        <circle class="router-led" cx="-25" cy="-12" r="2"/>
+                        <circle class="router-led" cx="-15" cy="-12" r="2"/>
+                        <circle class="router-led" cx="-25" cy="6" r="2"/>
+                        <circle class="router-led" cx="-15" cy="6" r="2"/>
+                        <text class="router-label" x="0" y="45" text-anchor="middle">DC-2</text>
+                        <text class="router-ip" x="0" y="60" text-anchor="middle">172.20.20.8</text>
+                    </g>
+
+                    <!-- Leaf Layer: Leaf Switches -->
+                    <g class="router-node leaf-node" data-router="leaf1" transform="translate(250, 370)">
+                        <rect class="router-outer" x="-35" y="-20" width="70" height="40" rx="3"/>
+                        <line x1="-25" y1="-10" x2="-25" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="-10" y1="-10" x2="-10" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="5" y1="-10" x2="5" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="20" y1="-10" x2="20" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
+                        <text class="router-label" x="0" y="38" text-anchor="middle">Leaf-1</text>
+                        <text class="router-ip" x="0" y="53" text-anchor="middle">172.20.20.2</text>
+                    </g>
+
+                    <g class="router-node leaf-node" data-router="leaf2" transform="translate(450, 370)">
+                        <rect class="router-outer" x="-35" y="-20" width="70" height="40" rx="3"/>
+                        <line x1="-25" y1="-10" x2="-25" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="-10" y1="-10" x2="-10" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="5" y1="-10" x2="5" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="20" y1="-10" x2="20" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
+                        <text class="router-label" x="0" y="38" text-anchor="middle">Leaf-2</text>
+                        <text class="router-ip" x="0" y="53" text-anchor="middle">172.20.20.3</text>
+                    </g>
+
+                    <!-- Placeholder positions for Leaf-2 second connection point -->
+                    <g class="router-node leaf-node leaf2-alt" data-router="leaf2" transform="translate(550, 370)">
+                        <rect class="router-outer" x="-35" y="-20" width="70" height="40" rx="3" fill="none" stroke-dasharray="4,4"/>
+                        <text class="router-label" x="0" y="38" text-anchor="middle" opacity="0.5">Leaf-2</text>
+                    </g>
+
+                    <!-- Placeholder for Leaf-1 second connection point (from DC-2) -->
+                    <g class="router-node leaf-node leaf1-alt" data-router="leaf1" transform="translate(750, 370)">
+                        <rect class="router-outer" x="-35" y="-20" width="70" height="40" rx="3" fill="none" stroke-dasharray="4,4"/>
+                        <text class="router-label" x="0" y="38" text-anchor="middle" opacity="0.5">Leaf-1</text>
+                    </g>
+
+                    <!-- High Voltage Transmission Towers -->
+                    <!-- Power lines connecting the towers -->
+                    <g class="transmission-towers">
+                        <!-- Connection lines between towers -->
+                        <line class="hv-line" x1="250" y1="610" x2="400" y2="610" stroke="#4a4a4a" stroke-width="3"/>
+                        <line class="hv-line" x1="400" y1="610" x2="550" y2="610" stroke="#4a4a4a" stroke-width="3"/>
+                        <line class="hv-line" x1="550" y1="610" x2="700" y2="610" stroke="#4a4a4a" stroke-width="3"/>
+
+                        <!-- Upper power lines (3-phase) -->
+                        <line class="hv-line" x1="250" y1="605" x2="450" y2="605" stroke="#6a6a6a" stroke-width="2"/>
+                        <line class="hv-line" x1="450" y1="605" x2="550" y2="605" stroke="#6a6a6a" stroke-width="2"/>
+                        <line class="hv-line" x1="550" y1="605" x2="750" y2="605" stroke="#6a6a6a" stroke-width="2"/>
+
+                        <line class="hv-line" x1="250" y1="615" x2="450" y2="615" stroke="#6a6a6a" stroke-width="2"/>
+                        <line class="hv-line" x1="450" y1="615" x2="550" y2="615" stroke="#6a6a6a" stroke-width="2"/>
+                        <line class="hv-line" x1="550" y1="615" x2="750" y2="615" stroke="#6a6a6a" stroke-width="2"/>
+
+                        <!-- Energy pulse animations on power lines -->
+                        <!-- Line 1 to 2 - Multiple pulses for realistic AC current simulation -->
+                        <circle class="hv-pulse" r="6" fill="#ffd700" opacity="0.9">
+                            <animateMotion dur="2s" repeatCount="indefinite" path="M 250 610 L 450 610"/>
+                            <animate attributeName="opacity" values="0.4;1;0.4" dur="2s" repeatCount="indefinite"/>
+                            <animate attributeName="r" values="5;7;5" dur="2s" repeatCount="indefinite"/>
+                        </circle>
+                        <circle class="hv-pulse" r="5" fill="#ffed4e" opacity="0.7">
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.3s" path="M 250 605 L 450 605"/>
+                            <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite" begin="0.3s"/>
+                            <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" begin="0.3s"/>
+                        </circle>
+                        <circle class="hv-pulse" r="5" fill="#ffed4e" opacity="0.7">
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.6s" path="M 250 615 L 450 615"/>
+                            <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite" begin="0.6s"/>
+                            <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" begin="0.6s"/>
+                        </circle>
+                        <!-- Additional fast pulses -->
+                        <circle class="hv-pulse" r="4" fill="#fff" opacity="0.5">
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="1s" path="M 250 610 L 450 610"/>
+                            <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2s" repeatCount="indefinite" begin="1s"/>
+                        </circle>
+                        <circle class="hv-pulse" r="3" fill="#ffa500" opacity="0.6">
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="1.5s" path="M 250 610 L 450 610"/>
+                            <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2s" repeatCount="indefinite" begin="1.5s"/>
+                        </circle>
+
+                        <!-- Line 2 to 3 -->
+                        <circle class="hv-pulse" r="6" fill="#ffd700" opacity="0.9">
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.2s" path="M 450 610 L 550 610"/>
+                            <animate attributeName="opacity" values="0.4;1;0.4" dur="2s" repeatCount="indefinite" begin="0.2s"/>
+                            <animate attributeName="r" values="5;7;5" dur="2s" repeatCount="indefinite" begin="0.2s"/>
+                        </circle>
+                        <circle class="hv-pulse" r="5" fill="#ffed4e" opacity="0.7">
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.5s" path="M 450 605 L 550 605"/>
+                            <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+                            <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+                        </circle>
+                        <circle class="hv-pulse" r="5" fill="#ffed4e" opacity="0.7">
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.8s" path="M 450 615 L 550 615"/>
+                            <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite" begin="0.8s"/>
+                            <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" begin="0.8s"/>
+                        </circle>
+                        <circle class="hv-pulse" r="4" fill="#fff" opacity="0.5">
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="1.2s" path="M 450 610 L 550 610"/>
+                            <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2s" repeatCount="indefinite" begin="1.2s"/>
+                        </circle>
+                        <circle class="hv-pulse" r="3" fill="#ffa500" opacity="0.6">
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="1.7s" path="M 450 610 L 550 610"/>
+                            <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2s" repeatCount="indefinite" begin="1.7s"/>
+                        </circle>
+
+                        <!-- Line 3 to 4 -->
+                        <circle class="hv-pulse" r="6" fill="#ffd700" opacity="0.9">
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.4s" path="M 550 610 L 750 610"/>
+                            <animate attributeName="opacity" values="0.4;1;0.4" dur="2s" repeatCount="indefinite" begin="0.4s"/>
+                            <animate attributeName="r" values="5;7;5" dur="2s" repeatCount="indefinite" begin="0.4s"/>
+                        </circle>
+                        <circle class="hv-pulse" r="5" fill="#ffed4e" opacity="0.7">
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.7s" path="M 550 605 L 750 605"/>
+                            <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite" begin="0.7s"/>
+                            <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" begin="0.7s"/>
+                        </circle>
+                        <circle class="hv-pulse" r="5" fill="#ffed4e" opacity="0.7">
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="1s" path="M 550 615 L 750 615"/>
+                            <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite" begin="1s"/>
+                            <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" begin="1s"/>
+                        </circle>
+                        <circle class="hv-pulse" r="4" fill="#fff" opacity="0.5">
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="1.4s" path="M 550 610 L 750 610"/>
+                            <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2s" repeatCount="indefinite" begin="1.4s"/>
+                        </circle>
+                        <circle class="hv-pulse" r="3" fill="#ffa500" opacity="0.6">
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="1.9s" path="M 550 610 L 750 610"/>
+                            <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2s" repeatCount="indefinite" begin="1.9s"/>
+                        </circle>
+
+                        <!-- Tower 1 -->
+                        <g transform="translate(250, 590)">
+                            <!-- Vertical connection from RTU to tower -->
+                            <line x1="0" y1="-70" x2="0" y2="0" stroke="#8a8a8a" stroke-width="2" stroke-dasharray="4,4"/>
+
+                            <!-- Tower base -->
+                            <polygon points="-15,50 15,50 8,0 -8,0" fill="#5a5a5a" stroke="#3a3a3a" stroke-width="1"/>
+                            <!-- Tower cross beams -->
+                            <line x1="-12" y1="15" x2="12" y2="15" stroke="#3a3a3a" stroke-width="2"/>
+                            <line x1="-10" y1="30" x2="10" y2="30" stroke="#3a3a3a" stroke-width="2"/>
+                            <!-- Insulators -->
+                            <rect x="-18" y="12" width="4" height="8" fill="#8b4513" rx="1"/>
+                            <rect x="14" y="12" width="4" height="8" fill="#8b4513" rx="1"/>
+                            <circle cx="-16" cy="23" r="2" fill="#4a90e2">
+                                <animate attributeName="opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite"/>
+                            </circle>
+                            <circle cx="16" cy="23" r="2" fill="#4a90e2">
+                                <animate attributeName="opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite" begin="1.5s"/>
+                            </circle>
+                            <!-- Electric arc effects -->
+                            <circle cx="-16" cy="23" r="3" fill="#87ceeb" opacity="0.3">
+                                <animate attributeName="opacity" values="0;0.5;0" dur="4s" repeatCount="indefinite"/>
+                                <animate attributeName="r" values="2;4;2" dur="4s" repeatCount="indefinite"/>
+                            </circle>
+                            <circle cx="16" cy="23" r="3" fill="#87ceeb" opacity="0.3">
+                                <animate attributeName="opacity" values="0;0.5;0" dur="4s" repeatCount="indefinite" begin="2s"/>
+                                <animate attributeName="r" values="2;4;2" dur="4s" repeatCount="indefinite" begin="2s"/>
+                            </circle>
+                        </g>
+
+                        <!-- Tower 2 -->
+                        <g transform="translate(450, 590)">
+                            <line x1="0" y1="-70" x2="0" y2="0" stroke="#8a8a8a" stroke-width="2" stroke-dasharray="4,4"/>
+                            <polygon points="-15,50 15,50 8,0 -8,0" fill="#5a5a5a" stroke="#3a3a3a" stroke-width="1"/>
+                            <line x1="-12" y1="15" x2="12" y2="15" stroke="#3a3a3a" stroke-width="2"/>
+                            <line x1="-10" y1="30" x2="10" y2="30" stroke="#3a3a3a" stroke-width="2"/>
+                            <rect x="-18" y="12" width="4" height="8" fill="#8b4513" rx="1"/>
+                            <rect x="14" y="12" width="4" height="8" fill="#8b4513" rx="1"/>
+                            <circle cx="-16" cy="23" r="2" fill="#4a90e2">
+                                <animate attributeName="opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite" begin="0.5s"/>
+                            </circle>
+                            <circle cx="16" cy="23" r="2" fill="#4a90e2">
+                                <animate attributeName="opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite" begin="2s"/>
+                            </circle>
+                            <circle cx="-16" cy="23" r="3" fill="#87ceeb" opacity="0.3">
+                                <animate attributeName="opacity" values="0;0.5;0" dur="4s" repeatCount="indefinite" begin="0.5s"/>
+                                <animate attributeName="r" values="2;4;2" dur="4s" repeatCount="indefinite" begin="0.5s"/>
+                            </circle>
+                            <circle cx="16" cy="23" r="3" fill="#87ceeb" opacity="0.3">
+                                <animate attributeName="opacity" values="0;0.5;0" dur="4s" repeatCount="indefinite" begin="2.5s"/>
+                                <animate attributeName="r" values="2;4;2" dur="4s" repeatCount="indefinite" begin="2.5s"/>
+                            </circle>
+                        </g>
+
+                        <!-- Tower 3 -->
+                        <g transform="translate(550, 590)">
+                            <line x1="0" y1="-70" x2="0" y2="0" stroke="#8a8a8a" stroke-width="2" stroke-dasharray="4,4"/>
+                            <polygon points="-15,50 15,50 8,0 -8,0" fill="#5a5a5a" stroke="#3a3a3a" stroke-width="1"/>
+                            <line x1="-12" y1="15" x2="12" y2="15" stroke="#3a3a3a" stroke-width="2"/>
+                            <line x1="-10" y1="30" x2="10" y2="30" stroke="#3a3a3a" stroke-width="2"/>
+                            <rect x="-18" y="12" width="4" height="8" fill="#8b4513" rx="1"/>
+                            <rect x="14" y="12" width="4" height="8" fill="#8b4513" rx="1"/>
+                            <circle cx="-16" cy="23" r="2" fill="#4a90e2">
+                                <animate attributeName="opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite" begin="1s"/>
+                            </circle>
+                            <circle cx="16" cy="23" r="2" fill="#4a90e2">
+                                <animate attributeName="opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite" begin="2.5s"/>
+                            </circle>
+                            <circle cx="-16" cy="23" r="3" fill="#87ceeb" opacity="0.3">
+                                <animate attributeName="opacity" values="0;0.5;0" dur="4s" repeatCount="indefinite" begin="1s"/>
+                                <animate attributeName="r" values="2;4;2" dur="4s" repeatCount="indefinite" begin="1s"/>
+                            </circle>
+                            <circle cx="16" cy="23" r="3" fill="#87ceeb" opacity="0.3">
+                                <animate attributeName="opacity" values="0;0.5;0" dur="4s" repeatCount="indefinite" begin="3s"/>
+                                <animate attributeName="r" values="2;4;2" dur="4s" repeatCount="indefinite" begin="3s"/>
+                            </circle>
+                        </g>
+
+                        <!-- Tower 4 -->
+                        <g transform="translate(750, 590)">
+                            <line x1="0" y1="-70" x2="0" y2="0" stroke="#8a8a8a" stroke-width="2" stroke-dasharray="4,4"/>
+                            <polygon points="-15,50 15,50 8,0 -8,0" fill="#5a5a5a" stroke="#3a3a3a" stroke-width="1"/>
+                            <line x1="-12" y1="15" x2="12" y2="15" stroke="#3a3a3a" stroke-width="2"/>
+                            <line x1="-10" y1="30" x2="10" y2="30" stroke="#3a3a3a" stroke-width="2"/>
+                            <rect x="-18" y="12" width="4" height="8" fill="#8b4513" rx="1"/>
+                            <rect x="14" y="12" width="4" height="8" fill="#8b4513" rx="1"/>
+                            <circle cx="-16" cy="23" r="2" fill="#4a90e2">
+                                <animate attributeName="opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite" begin="1.5s"/>
+                            </circle>
+                            <circle cx="16" cy="23" r="2" fill="#4a90e2">
+                                <animate attributeName="opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite" begin="3s"/>
+                            </circle>
+                            <circle cx="-16" cy="23" r="3" fill="#87ceeb" opacity="0.3">
+                                <animate attributeName="opacity" values="0;0.5;0" dur="4s" repeatCount="indefinite" begin="1.5s"/>
+                                <animate attributeName="r" values="2;4;2" dur="4s" repeatCount="indefinite" begin="1.5s"/>
+                            </circle>
+                            <circle cx="16" cy="23" r="3" fill="#87ceeb" opacity="0.3">
+                                <animate attributeName="opacity" values="0;0.5;0" dur="4s" repeatCount="indefinite" begin="3.5s"/>
+                                <animate attributeName="r" values="2;4;2" dur="4s" repeatCount="indefinite" begin="3.5s"/>
+                            </circle>
+                        </g>
+                    </g>
+
+                    <!-- RTU Units -->
+                    <!-- RTU Layer -->
+                    <g class="router-node rtu-node" data-router="rtu1" transform="translate(250, 520)">
+                        <rect class="router-outer" x="-30" y="-18" width="60" height="36" rx="3"/>
+                        <circle class="rtu-led" cx="-15" cy="-5" r="4"/>
+                        <circle class="rtu-led" cx="0" cy="-5" r="4"/>
+                        <circle class="rtu-led" cx="15" cy="-5" r="4"/>
+                        <rect x="-20" y="2" width="40" height="8" fill="#6a6a7a" rx="1"/>
+                        <text class="router-label" x="0" y="35" text-anchor="middle">RTU-1</text>
+                        <text class="router-ip" x="0" y="50" text-anchor="middle">172.20.20.20</text>
+                    </g>
+
+                    <g class="router-node rtu-node" data-router="rtu2" transform="translate(450, 520)">
+                        <rect class="router-outer" x="-30" y="-18" width="60" height="36" rx="3"/>
+                        <circle class="rtu-led" cx="-15" cy="-5" r="4"/>
+                        <circle class="rtu-led" cx="0" cy="-5" r="4"/>
+                        <circle class="rtu-led" cx="15" cy="-5" r="4"/>
+                        <rect x="-20" y="2" width="40" height="8" fill="#6a6a7a" rx="1"/>
+                        <text class="router-label" x="0" y="35" text-anchor="middle">RTU-2</text>
+                        <text class="router-ip" x="0" y="50" text-anchor="middle">172.20.20.21</text>
+                    </g>
+
+                    <g class="router-node rtu-node" data-router="rtu3" transform="translate(550, 520)">
+                        <rect class="router-outer" x="-30" y="-18" width="60" height="36" rx="3"/>
+                        <circle class="rtu-led" cx="-15" cy="-5" r="4"/>
+                        <circle class="rtu-led" cx="0" cy="-5" r="4"/>
+                        <circle class="rtu-led" cx="15" cy="-5" r="4"/>
+                        <rect x="-20" y="2" width="40" height="8" fill="#6a6a7a" rx="1"/>
+                        <text class="router-label" x="0" y="35" text-anchor="middle">RTU-3</text>
+                        <text class="router-ip" x="0" y="50" text-anchor="middle">172.20.20.22</text>
+                    </g>
+
+                    <g class="router-node rtu-node" data-router="rtu4" transform="translate(750, 520)">
+                        <rect class="router-outer" x="-30" y="-18" width="60" height="36" rx="3"/>
+                        <circle class="rtu-led" cx="-15" cy="-5" r="4"/>
+                        <circle class="rtu-led" cx="0" cy="-5" r="4"/>
+                        <circle class="rtu-led" cx="15" cy="-5" r="4"/>
+                        <rect x="-20" y="2" width="40" height="8" fill="#6a6a7a" rx="1"/>
+                        <text class="router-label" x="0" y="35" text-anchor="middle">RTU-4</text>
+                        <text class="router-ip" x="0" y="50" text-anchor="middle">172.20.20.23</text>
+                    </g>
+                </g>
+            </svg>
+
+            <!-- Security Panel -->
+            <div class="security-panel">
+                <div class="security-header">
+                    <svg width="24" height="24" viewBox="0 0 24 24" class="security-icon">
+                        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="currentColor"/>
+                    </svg>
+                    <h3>Security</h3>
+                </div>
+                <div class="security-content">
+                    <div class="security-row">
+                        <span class="security-label">Anysec Encryption:</span>
+                        <label class="security-switch">
+                            <input type="checkbox" id="anysec-toggle">
+                            <span class="security-slider"></span>
+                        </label>
+                        <span class="security-status" id="security-status">Disabled</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Teleprotection System Section -->
+        <div class="teleprotection-system-section">
+            <h2 class="section-title">TELEPROTECTION SYSTEM</h2>
+            <svg class="teleprotection-diagram" viewBox="0 0 1000 280" preserveAspectRatio="xMidYMid meet">
+                <defs>
+                    <!-- Gradient for high-voltage line -->
+                    <linearGradient id="hv-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#ffd700;stop-opacity:1" />
+                        <stop offset="50%" style="stop-color:#ffed4e;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#ffd700;stop-opacity:1" />
+                    </linearGradient>
+                    <!-- Glow filter -->
+                    <filter id="glow-tp" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                    <!-- Signal pulse animation -->
+                    <linearGradient id="signal-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#00bcd4;stop-opacity:0" />
+                        <stop offset="50%" style="stop-color:#00bcd4;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#00bcd4;stop-opacity:0" />
+                    </linearGradient>
+                </defs>
+
+                <!-- High-Voltage Line (top) -->
+                <g class="hv-transmission-line">
+                    <!-- Main HV line - extended to connect to substations -->
+                    <line x1="80" y1="50" x2="920" y2="50" stroke="#4a4a4a" stroke-width="4"/>
+                    <line x1="80" y1="45" x2="920" y2="45" stroke="#6a6a6a" stroke-width="2"/>
+                    <line x1="80" y1="55" x2="920" y2="55" stroke="#6a6a6a" stroke-width="2"/>
+
+                    <!-- HV Label -->
+                    <text x="500" y="35" text-anchor="middle" class="hv-label">High-voltage line</text>
+
+                    <!-- Energy pulses on HV line -->
+                    <circle r="5" fill="#ffd700" opacity="0.9" filter="url(#glow-tp)">
+                        <animateMotion dur="3s" repeatCount="indefinite" path="M 80 50 L 920 50"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle r="4" fill="#ffed4e" opacity="0.7">
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="1s" path="M 80 50 L 920 50"/>
+                        <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3s" repeatCount="indefinite" begin="1s"/>
+                    </circle>
+                    <circle r="5" fill="#ffd700" opacity="0.9" filter="url(#glow-tp)">
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="2s" path="M 920 50 L 80 50"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="2s"/>
+                    </circle>
+
+                    <!-- Transmission towers -->
+                    <g transform="translate(300, 50)">
+                        <polygon points="-8,0 8,0 5,35 -5,35" fill="#5a5a5a" stroke="#3a3a3a" stroke-width="1"/>
+                        <line x1="-12" y1="10" x2="12" y2="10" stroke="#3a3a3a" stroke-width="2"/>
+                        <line x1="-10" y1="20" x2="10" y2="20" stroke="#3a3a3a" stroke-width="2"/>
+                    </g>
+                    <g transform="translate(500, 50)">
+                        <polygon points="-8,0 8,0 5,35 -5,35" fill="#5a5a5a" stroke="#3a3a3a" stroke-width="1"/>
+                        <line x1="-12" y1="10" x2="12" y2="10" stroke="#3a3a3a" stroke-width="2"/>
+                        <line x1="-10" y1="20" x2="10" y2="20" stroke="#3a3a3a" stroke-width="2"/>
+                    </g>
+                    <g transform="translate(700, 50)">
+                        <polygon points="-8,0 8,0 5,35 -5,35" fill="#5a5a5a" stroke="#3a3a3a" stroke-width="1"/>
+                        <line x1="-12" y1="10" x2="12" y2="10" stroke="#3a3a3a" stroke-width="2"/>
+                        <line x1="-10" y1="20" x2="10" y2="20" stroke="#3a3a3a" stroke-width="2"/>
+                    </g>
+                </g>
+
+                <!-- Substation A (Left) -->
+                <g class="substation substation-a" transform="translate(80, 140)">
+                    <text x="-15" y="-70" text-anchor="end" class="substation-title" fill="#0088cc">Substation A</text>
+
+                    <!-- Protection Equipment -->
+                    <rect x="-45" y="-45" width="90" height="90" rx="8" fill="#e8f4fc" stroke="#0088cc" stroke-width="2"/>
+                    <!-- Transformer icon -->
+                    <circle cx="0" cy="-10" r="18" fill="none" stroke="#0088cc" stroke-width="2"/>
+                    <circle cx="0" cy="15" r="18" fill="none" stroke="#0088cc" stroke-width="2"/>
+                    <!-- Lightning bolt (protection symbol) -->
+                    <path d="M -5 -15 L 2 -5 L -2 -5 L 5 10 L -2 0 L 2 0 Z" fill="#ffc107" stroke="#ff9800" stroke-width="0.5"/>
+
+                    <!-- Connection to HV line -->
+                    <line x1="0" y1="-45" x2="0" y2="-90" stroke="#4a4a4a" stroke-width="3"/>
+
+                    <text x="0" y="65" text-anchor="middle" class="equipment-label">Protection</text>
+                    <text x="0" y="80" text-anchor="middle" class="equipment-label">equipment/function</text>
+                </g>
+
+                <!-- Teleprotection Equipment A (RTU-1) -->
+                <g class="teleprotection-equipment tp-equip-a" transform="translate(220, 140)">
+                    <rect x="-50" y="-35" width="100" height="70" rx="5" fill="#e3f2fd" stroke="#2196f3" stroke-width="2"/>
+                    <!-- RTU icon -->
+                    <rect x="-35" y="-20" width="70" height="40" rx="3" fill="#bbdefb" stroke="#1976d2" stroke-width="1"/>
+                    <circle cx="-20" cy="-5" r="4" fill="#4caf50" class="tp-led"/>
+                    <circle cx="-5" cy="-5" r="4" fill="#4caf50" class="tp-led"/>
+                    <circle cx="10" cy="-5" r="4" fill="#4caf50" class="tp-led"/>
+                    <rect x="-25" y="5" width="50" height="8" fill="#90caf9" rx="1"/>
+
+                    <text x="0" y="55" text-anchor="middle" class="equipment-label">Teleprotection</text>
+                    <text x="0" y="70" text-anchor="middle" class="equipment-label">equipment/function</text>
+                    <text x="0" y="85" text-anchor="middle" class="equipment-sublabel">(RTU-1)</text>
+                </g>
+
+                <!-- Telecommunication System (Center - Routers) -->
+                <g class="telecom-system" transform="translate(500, 140)">
+                    <rect x="-120" y="-45" width="240" height="90" rx="8" fill="#e0f7fa" stroke="#00acc1" stroke-width="3"/>
+
+                    <!-- Router icons -->
+                    <g transform="translate(-70, 0)">
+                        <rect x="-30" y="-25" width="60" height="50" rx="4" fill="#b2ebf2" stroke="#0097a7" stroke-width="1.5"/>
+                        <circle cx="-15" cy="-10" r="3" fill="#00bcd4"/>
+                        <circle cx="0" cy="-10" r="3" fill="#00bcd4"/>
+                        <circle cx="15" cy="-10" r="3" fill="#00bcd4"/>
+                        <line x1="-20" y1="5" x2="20" y2="5" stroke="#0097a7" stroke-width="2"/>
+                        <line x1="-20" y1="12" x2="20" y2="12" stroke="#0097a7" stroke-width="2"/>
+                        <text x="0" y="35" text-anchor="middle" class="router-small-label">DC-1</text>
+                    </g>
+                    <g transform="translate(70, 0)">
+                        <rect x="-30" y="-25" width="60" height="50" rx="4" fill="#b2ebf2" stroke="#0097a7" stroke-width="1.5"/>
+                        <circle cx="-15" cy="-10" r="3" fill="#00bcd4"/>
+                        <circle cx="0" cy="-10" r="3" fill="#00bcd4"/>
+                        <circle cx="15" cy="-10" r="3" fill="#00bcd4"/>
+                        <line x1="-20" y1="5" x2="20" y2="5" stroke="#0097a7" stroke-width="2"/>
+                        <line x1="-20" y1="12" x2="20" y2="12" stroke="#0097a7" stroke-width="2"/>
+                        <text x="0" y="35" text-anchor="middle" class="router-small-label">DC-2</text>
+                    </g>
+
+                    <!-- Connection between routers -->
+                    <line x1="-35" y1="0" x2="35" y2="0" stroke="#00bcd4" stroke-width="2" stroke-dasharray="4,2"/>
+
+                    <text x="0" y="65" text-anchor="middle" class="telecom-label">Telecommunication</text>
+                    <text x="0" y="80" text-anchor="middle" class="telecom-label">system</text>
+                </g>
+
+                <!-- Teleprotection Equipment B (RTU-4) -->
+                <g class="teleprotection-equipment tp-equip-b" transform="translate(780, 140)">
+                    <rect x="-50" y="-35" width="100" height="70" rx="5" fill="#e3f2fd" stroke="#2196f3" stroke-width="2"/>
+                    <!-- RTU icon -->
+                    <rect x="-35" y="-20" width="70" height="40" rx="3" fill="#bbdefb" stroke="#1976d2" stroke-width="1"/>
+                    <circle cx="-20" cy="-5" r="4" fill="#4caf50" class="tp-led"/>
+                    <circle cx="-5" cy="-5" r="4" fill="#4caf50" class="tp-led"/>
+                    <circle cx="10" cy="-5" r="4" fill="#4caf50" class="tp-led"/>
+                    <rect x="-25" y="5" width="50" height="8" fill="#90caf9" rx="1"/>
+
+                    <text x="0" y="55" text-anchor="middle" class="equipment-label">Teleprotection</text>
+                    <text x="0" y="70" text-anchor="middle" class="equipment-label">equipment/function</text>
+                    <text x="0" y="85" text-anchor="middle" class="equipment-sublabel">(RTU-4)</text>
+                </g>
+
+                <!-- Substation B (Right) -->
+                <g class="substation substation-b" transform="translate(920, 140)">
+                    <text x="-15" y="-70" text-anchor="end" class="substation-title" fill="#0088cc">Substation B</text>
+
+                    <!-- Protection Equipment -->
+                    <rect x="-45" y="-45" width="90" height="90" rx="8" fill="#e8f4fc" stroke="#0088cc" stroke-width="2"/>
+                    <!-- Transformer icon -->
+                    <circle cx="0" cy="-10" r="18" fill="none" stroke="#0088cc" stroke-width="2"/>
+                    <circle cx="0" cy="15" r="18" fill="none" stroke="#0088cc" stroke-width="2"/>
+                    <!-- Lightning bolt (protection symbol) -->
+                    <path d="M -5 -15 L 2 -5 L -2 -5 L 5 10 L -2 0 L 2 0 Z" fill="#ffc107" stroke="#ff9800" stroke-width="0.5"/>
+
+                    <!-- Connection to HV line -->
+                    <line x1="0" y1="-45" x2="0" y2="-90" stroke="#4a4a4a" stroke-width="3"/>
+
+                    <text x="0" y="65" text-anchor="middle" class="equipment-label">Protection</text>
+                    <text x="0" y="80" text-anchor="middle" class="equipment-label">equipment/function</text>
+                </g>
+
+                <!-- Connection lines between components -->
+                <g class="teleprotection-connections">
+                    <!-- Substation A to Teleprotection A -->
+                    <line x1="125" y1="140" x2="170" y2="140" stroke="#2196f3" stroke-width="2"/>
+                    <!-- Teleprotection A to Telecom -->
+                    <line x1="270" y1="140" x2="380" y2="140" stroke="#00bcd4" stroke-width="3"/>
+                    <!-- Telecom to Teleprotection B -->
+                    <line x1="620" y1="140" x2="730" y2="140" stroke="#00bcd4" stroke-width="3"/>
+                    <!-- Teleprotection B to Substation B -->
+                    <line x1="830" y1="140" x2="875" y2="140" stroke="#2196f3" stroke-width="2"/>
+
+                    <!-- Signal animations on telecom links -->
+                    <circle r="4" fill="#00bcd4" filter="url(#glow-tp)">
+                        <animateMotion dur="1.5s" repeatCount="indefinite" path="M 270 140 L 380 140"/>
+                        <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle r="4" fill="#00bcd4" filter="url(#glow-tp)">
+                        <animateMotion dur="1.5s" repeatCount="indefinite" begin="0.5s" path="M 620 140 L 730 140"/>
+                        <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" repeatCount="indefinite" begin="0.5s"/>
+                    </circle>
+                    <!-- Return signals -->
+                    <circle r="3" fill="#4dd0e1">
+                        <animateMotion dur="1.5s" repeatCount="indefinite" begin="0.75s" path="M 380 140 L 270 140"/>
+                        <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite" begin="0.75s"/>
+                    </circle>
+                    <circle r="3" fill="#4dd0e1">
+                        <animateMotion dur="1.5s" repeatCount="indefinite" begin="1.25s" path="M 730 140 L 620 140"/>
+                        <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite" begin="1.25s"/>
+                    </circle>
+                </g>
+
+                <!-- Teleprotection System bracket -->
+                <g class="teleprotection-bracket">
+                    <path d="M 170 230 L 170 245 L 830 245 L 830 230" fill="none" stroke="#333" stroke-width="1.5"/>
+                    <line x1="500" y1="245" x2="500" y2="255" stroke="#333" stroke-width="1.5"/>
+                    <text x="500" y="270" text-anchor="middle" class="bracket-label">Teleprotection system</text>
+                </g>
+            </svg>
+        </div>
+    </div>
+
+    <script src="smart-grid.js"></script>
+    <script src="turbine-control.js"></script>
+</body>
+</html>

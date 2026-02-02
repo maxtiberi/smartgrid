@@ -1,0 +1,10 @@
+node_modules/
+.claude/
+backup/
+github-pages-demo/
+
+# TLS certificates
+*.crt
+*.key
+*.csr
+*.srl

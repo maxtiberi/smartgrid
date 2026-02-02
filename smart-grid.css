@@ -1,0 +1,2317 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root {
+    --nuclear-primary: #4a4a68;
+    --nuclear-glow: #5a5a78;
+    --solar-primary: #6b6b88;
+    --solar-glow: #7a7a98;
+    --wind-primary: #5a5a78;
+    --wind-glow: #6a6a88;
+    --network-primary: #4a4a68;
+    --network-glow: #5a5a78;
+
+    --bg-dark: #e8e6e1;
+    --bg-card: #d0cec9;
+    --bg-elevated: #f5f3ef;
+    --text-primary: #1a1a1a;
+    --text-secondary: #4a4a4a;
+    --text-tertiary: #6a6a6a;
+    --accent-danger: #8a4a4a;
+    --accent-success: #4a6a5a;
+    --accent-success-alt: var(--accent-success-alt);
+    --accent-warning: #8a7a4a;
+    --accent-error: var(--accent-error);
+    --accent-bar: #4a4a68;
+    --color-border-dark: #3a3a3a;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Archivo', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 3rem 4rem;
+    overflow-x: hidden;
+    font-weight: 400;
+}
+
+.grid-container {
+    max-width: 1600px;
+    margin: 0 auto;
+    animation: fadeInSlide 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInSlide {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.header {
+    margin-bottom: 2rem;
+    animation: fadeInSlide 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+    animation-delay: 0.2s;
+    animation-fill-mode: both;
+}
+
+/* Network Topology Section */
+.topology-section {
+    margin-bottom: 3rem;
+    background: transparent;
+    border: none;
+    border-top: 1px solid var(--text-primary);
+    border-radius: 0;
+    padding: 2rem 0;
+    animation: fadeInSlide 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+    animation-delay: 0.25s;
+    animation-fill-mode: both;
+}
+
+.topology-title {
+    font-family: 'Archivo', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    margin-bottom: 2rem;
+    position: relative;
+    padding-left: 0;
+}
+
+.topology-title::before {
+    display: none;
+}
+
+.topology-diagram {
+    width: 100%;
+    height: auto;
+    min-height: 300px;
+}
+
+/* Topology Connections */
+.connection {
+    stroke: var(--text-secondary);
+    stroke-width: 2;
+    fill: none;
+    opacity: 0.3;
+    transition: all 0.4s;
+}
+
+.connection.active {
+    opacity: 1;
+    stroke-width: 3;
+}
+
+.transmission-line {
+    stroke: var(--network-primary);
+    stroke-width: 1.5;
+    opacity: 0.3;
+}
+
+.transmission-line.active {
+    opacity: 0.8;
+    stroke-width: 2;
+}
+
+.connection[data-source="nuclear1"].active,
+.connection[data-source="nuclear2"].active {
+    stroke: var(--nuclear-primary);
+    filter: drop-shadow(0 0 8px var(--nuclear-glow));
+}
+
+.connection[data-source="solar"].active {
+    stroke: var(--solar-primary);
+    filter: drop-shadow(0 0 8px var(--solar-glow));
+}
+
+.connection[data-source="wind"].active {
+    stroke: var(--wind-primary);
+    filter: drop-shadow(0 0 8px var(--wind-glow));
+}
+
+.connection[data-source="distribution"].active {
+    stroke: var(--network-primary);
+    filter: drop-shadow(0 0 8px var(--network-glow));
+    animation: connectionPulse 2s ease-in-out infinite;
+}
+
+@keyframes connectionPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* Energy Particles */
+.energy-particle {
+    opacity: 0;
+    transition: opacity 0.4s;
+}
+
+.energy-particle.active {
+    opacity: 1;
+}
+
+.particle-nuclear1.active,
+.particle-nuclear2.active {
+    fill: var(--nuclear-primary);
+    filter: drop-shadow(0 0 6px var(--nuclear-glow));
+}
+
+.particle-solar.active {
+    fill: var(--solar-primary);
+    filter: drop-shadow(0 0 6px var(--solar-glow));
+}
+
+.particle-wind.active {
+    fill: var(--wind-primary);
+    filter: drop-shadow(0 0 6px var(--wind-glow));
+}
+
+.particle-network.active,
+.particle-distribution.active,
+.particle-transmission.active {
+    fill: var(--network-primary);
+    filter: drop-shadow(0 0 6px var(--network-glow));
+}
+
+/* GOOSE Communication Lines */
+.goose-line {
+    animation: goosePulse 2s ease-in-out infinite;
+}
+
+.goose-packet {
+    filter: drop-shadow(0 0 4px currentColor);
+}
+
+@keyframes goosePulse {
+    0%, 100% {
+        opacity: 0.7;
+        stroke-width: 3;
+    }
+    50% {
+        opacity: 1;
+        stroke-width: 4;
+    }
+}
+
+/* Topology Nodes */
+.node-group {
+    transition: all 0.4s;
+}
+
+.node-outer {
+    fill: var(--bg-elevated);
+    stroke: var(--text-secondary);
+    stroke-width: 2;
+    opacity: 0.5;
+    transition: all 0.4s;
+}
+
+.node-inner {
+    transition: all 0.4s;
+}
+
+.node-group.active .node-outer {
+    opacity: 1;
+    stroke-width: 3;
+}
+
+.node-group.active .nuclear-node {
+    stroke: var(--nuclear-primary);
+    filter: drop-shadow(0 0 12px var(--nuclear-glow));
+}
+
+.node-group.active .solar-node {
+    stroke: var(--solar-primary);
+    filter: drop-shadow(0 0 12px var(--solar-glow));
+}
+
+.node-group.active .wind-node {
+    stroke: var(--wind-primary);
+    filter: drop-shadow(0 0 12px var(--wind-glow));
+}
+
+.node-group.active .network-node {
+    stroke: var(--network-primary);
+    filter: drop-shadow(0 0 12px var(--network-glow));
+}
+
+.node-group.active .city-node {
+    stroke: var(--accent-success);
+    fill: rgba(0, 255, 136, 0.1);
+    filter: drop-shadow(0 0 12px rgba(0, 255, 136, 0.5));
+}
+
+.node-group.active .city-node + .node-inner {
+    fill: var(--accent-success);
+    opacity: 0.3;
+}
+
+.node-group.active .city-node ~ rect {
+    fill: var(--accent-success);
+}
+
+/* Transmission Nodes */
+.transmission-node .trans-node {
+    fill: var(--bg-elevated);
+    stroke: var(--text-tertiary);
+    stroke-width: 1.5;
+    opacity: 0.6;
+    transition: all 0.4s;
+}
+
+.transmission-node.active .trans-node {
+    stroke: var(--network-primary);
+    stroke-width: 2;
+    opacity: 1;
+    filter: drop-shadow(0 0 6px var(--network-glow));
+}
+
+.node-label {
+    font-family: 'Archivo', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    fill: var(--text-secondary);
+    letter-spacing: 0;
+    text-transform: none;
+    transition: all 0.4s;
+}
+
+.node-group.active .node-label {
+    fill: var(--text-primary);
+}
+
+.trans-label {
+    font-size: 10px;
+    font-weight: 600;
+}
+
+/* Wind turbine animation in topology */
+.node-group[data-node="wind"].active .topo-blades {
+    animation: topoWindSpin 2s linear infinite;
+    transform-origin: 0px 5px;
+}
+
+@keyframes topoWindSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Solar pulse in topology */
+.node-group[data-node="solar"].active .node-inner {
+    animation: topSolarPulse 3s ease-in-out infinite;
+}
+
+@keyframes topSolarPulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.6; }
+}
+
+.title {
+    font-family: 'Archivo', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    margin-bottom: 3rem;
+    line-height: 1.1;
+    padding-left: 20px;
+    position: relative;
+}
+
+.title::after {
+    content: '';
+    position: absolute;
+    bottom: -1.5rem;
+    left: 0;
+    width: 4px;
+    height: 60px;
+    background: var(--text-primary);
+}
+
+.stats {
+    display: flex;
+    gap: 3rem;
+    margin-top: 2rem;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.stat-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 2.5rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.main-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+.power-plants {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+.plant-card, .network-card, .city-card {
+    background: transparent;
+    border: none;
+    border-left: 3px solid transparent;
+    border-radius: 0;
+    padding: 1.5rem 0 1.5rem 1.5rem;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.plant-card {
+    animation: fadeInSlide 1s cubic-bezier(0.16, 1, 0.3, 1);
+    animation-fill-mode: both;
+}
+
+.plant-card:nth-child(1) { animation-delay: 0.3s; }
+.plant-card:nth-child(2) { animation-delay: 0.4s; }
+.plant-card:nth-child(3) { animation-delay: 0.5s; }
+.plant-card:nth-child(4) { animation-delay: 0.6s; }
+
+.network-card {
+    animation: fadeInSlide 1s cubic-bezier(0.16, 1, 0.3, 1);
+    animation-delay: 0.7s;
+    animation-fill-mode: both;
+}
+
+.city-card {
+    animation: fadeInSlide 1s cubic-bezier(0.16, 1, 0.3, 1);
+    animation-delay: 0.8s;
+    animation-fill-mode: both;
+}
+
+.plant-card.active {
+    border-left-color: var(--accent-bar);
+}
+
+.plant-card.nuclear.active {
+    border-left-color: var(--nuclear-primary);
+}
+
+.plant-card.solar.active {
+    border-left-color: var(--solar-primary);
+}
+
+.plant-card.wind.active {
+    border-left-color: var(--wind-primary);
+}
+
+.plant-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.plant-icon {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.plant-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.plant-header h3 {
+    font-family: 'Archivo', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    text-transform: none;
+}
+
+/* Nuclear Icons */
+.nuclear .reactor-core {
+    fill: none;
+    stroke: var(--nuclear-primary);
+    stroke-width: 2;
+}
+
+.nuclear .reactor-lines {
+    stroke: var(--nuclear-primary);
+    stroke-width: 2;
+}
+
+.nuclear .reactor-dot {
+    fill: var(--nuclear-primary);
+}
+
+/* Solar Icons */
+.solar .sun {
+    fill: var(--solar-primary);
+    stroke: var(--solar-primary);
+    stroke-width: 2;
+}
+
+.solar .ray {
+    stroke: var(--solar-primary);
+    stroke-width: 3;
+    stroke-linecap: round;
+}
+
+.solar.active .ray {
+    animation: rayRotate 8s linear infinite;
+    transform-origin: 50px 50px;
+}
+
+@keyframes rayRotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Wind Icons */
+.wind .turbine-pole {
+    stroke: var(--wind-primary);
+    stroke-width: 2;
+}
+
+.wind .blade {
+    fill: var(--wind-primary);
+    stroke: var(--wind-primary);
+    stroke-width: 1;
+}
+
+.wind .turbine-hub {
+    fill: var(--wind-primary);
+}
+
+.wind.active .turbine-blades {
+    animation: windSpin 2s linear infinite;
+    transform-origin: 50px 50px;
+}
+
+@keyframes windSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.plant-output {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.output-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.output-capacity {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+/* Power Level Control */
+.power-level-control {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.power-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-weight: 500;
+    min-width: 80px;
+}
+
+.power-slider {
+    flex: 1;
+    height: 2px;
+    background: var(--text-tertiary);
+    outline: none;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.power-slider:hover {
+    opacity: 1;
+}
+
+.power-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    background: var(--text-primary);
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+.power-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: var(--text-primary);
+    cursor: pointer;
+    border-radius: 50%;
+    border: none;
+}
+
+.power-percentage {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    min-width: 40px;
+    text-align: right;
+}
+
+/* Power Indicators */
+.power-indicators {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 1.5rem;
+    max-width: 100px;
+}
+
+.indicator-circle {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--text-secondary);
+    background: transparent;
+    transition: all 0.3s ease;
+}
+
+.indicator-circle.active {
+    background: #8a4a4a;
+    border-color: #8a4a4a;
+    box-shadow: 0 0 8px rgba(138, 74, 74, 0.6);
+}
+
+.toggle-btn {
+    width: auto;
+    padding: 0.5rem 1.2rem;
+    font-family: 'Archivo', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: 1px solid var(--text-primary);
+    background: transparent;
+    color: var(--text-primary);
+    border-radius: 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: visible;
+}
+
+.toggle-btn:hover {
+    background: var(--text-primary);
+    color: var(--bg-dark);
+}
+
+.toggle-btn.active {
+    background: var(--text-primary);
+    color: var(--bg-dark);
+}
+
+/* Power Flow Animation */
+.power-flow {
+    display: none;
+}
+
+/* Network Section */
+.network-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.network-card {
+    height: fit-content;
+}
+
+.network-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.network-icon {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.network-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.network-header h3 {
+    font-family: 'Archivo', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    text-transform: none;
+}
+
+.tower-line, .tower-cross {
+    stroke: var(--network-primary);
+    stroke-width: 2;
+}
+
+.power-cable {
+    stroke: var(--network-primary);
+    stroke-width: 1.5;
+    fill: none;
+}
+
+.tower-base {
+    fill: var(--network-primary);
+}
+
+.network-card.active .power-cable {
+    animation: cableFlow 2s linear infinite;
+    stroke-dasharray: 10 5;
+}
+
+@keyframes cableFlow {
+    from { stroke-dashoffset: 0; }
+    to { stroke-dashoffset: 30; }
+}
+
+.network-card.active .tower-line {
+    filter: drop-shadow(0 0 8px var(--network-glow));
+}
+
+.network-status {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    transition: all 0.3s;
+}
+
+.network-card.active .status-indicator {
+    background: var(--text-primary);
+}
+
+.status-text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.network-card.active .status-text {
+    color: var(--text-primary);
+}
+
+.network-flow {
+    display: none;
+}
+
+/* City Section */
+.city-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.city-card {
+    height: fit-content;
+    text-align: left;
+    border: none;
+    border-left: 3px solid transparent;
+}
+
+.city-card.powered {
+    border-left-color: var(--accent-success);
+}
+
+.city-icon {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 1.5rem;
+}
+
+.city-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.building {
+    fill: var(--text-secondary);
+    stroke: var(--bg-card);
+    stroke-width: 1;
+    transition: fill 0.5s ease;
+}
+
+.window {
+    fill: var(--text-secondary);
+    opacity: 0.3;
+    transition: fill 0.5s ease, opacity 0.5s ease;
+}
+
+/* No power - Red */
+.city-card.power-none .building {
+    fill: #8a4a4a;
+}
+
+/* Low power (1-2199) - transitioning */
+.city-card.power-low .building {
+    fill: #6a5a4a;
+}
+
+/* High power (2200+) - Green */
+.city-card.power-high .building {
+    fill: var(--accent-success);
+}
+
+.city-card.power-high .window {
+    fill: #ffff00;
+    opacity: 1;
+    animation: windowFlicker 3s ease-in-out infinite;
+}
+
+.city-card.power-high .window:nth-child(5) { animation-delay: 0.1s; }
+.city-card.power-high .window:nth-child(6) { animation-delay: 0.2s; }
+.city-card.power-high .window:nth-child(7) { animation-delay: 0.3s; }
+.city-card.power-high .window:nth-child(8) { animation-delay: 0.4s; }
+.city-card.power-high .window:nth-child(9) { animation-delay: 0.5s; }
+
+@keyframes windowFlicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.city-card h2 {
+    font-family: 'Archivo', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin-bottom: 1.5rem;
+    color: var(--text-primary);
+}
+
+.city-card.powered h2 {
+    color: var(--text-primary);
+}
+
+.city-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.city-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.city-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.city-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.city-card.powered .city-value {
+    color: var(--text-primary);
+}
+
+/* Transmission Alert Notifications */
+.transmission-alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--bg-elevated);
+    border: 2px solid var(--accent-danger);
+    border-radius: 0;
+    padding: 1rem 1.5rem;
+    min-width: 320px;
+    max-width: 400px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.transmission-alert.recovery {
+    border-color: var(--accent-success);
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.alert-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    position: relative;
+}
+
+.alert-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.transmission-alert:not(.recovery) .alert-icon {
+    color: var(--accent-danger);
+}
+
+.transmission-alert.recovery .alert-icon {
+    color: var(--accent-success);
+}
+
+.alert-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.alert-text strong {
+    font-family: 'Archivo', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.alert-text span {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.alert-close {
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+    background: transparent;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+}
+
+.alert-close:hover {
+    color: var(--text-primary);
+}
+
+/* Offline Transmission Unit Styling */
+.node-group.offline .trans-node {
+    stroke: var(--accent-danger);
+    fill: rgba(138, 74, 74, 0.1);
+    stroke-width: 2;
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(138, 74, 74, 0.6));
+}
+
+.node-group.offline .node-label {
+    fill: var(--accent-danger);
+}
+
+.connection.offline {
+    stroke: var(--accent-danger);
+    stroke-width: 2;
+    opacity: 0.6;
+    stroke-dasharray: 5, 5;
+    animation: dashOffset 1s linear infinite;
+}
+
+@keyframes dashOffset {
+    to {
+        stroke-dashoffset: -10;
+    }
+}
+
+/* Router Topology Section */
+.router-topology-section {
+    background: transparent;
+    padding: 2rem 0;
+    margin: 2rem 0;
+    border: none;
+    border-top: 1px solid var(--text-primary);
+}
+
+/* Router Stats Infographic */
+.router-stats-infographic {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.stats-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--bg-card);
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--text-tertiary);
+    min-width: 200px;
+    transition: all 0.3s ease;
+}
+
+.stats-card:hover {
+    border-color: var(--text-secondary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stats-card.overall {
+    min-width: 220px;
+}
+
+/* Ring Container */
+.stats-ring-container {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    flex-shrink: 0;
+}
+
+.stats-ring-container.large {
+    width: 70px;
+    height: 70px;
+}
+
+.stats-ring {
+    width: 100%;
+    height: 100%;
+}
+
+.ring-bg {
+    stroke: var(--bg-elevated);
+    stroke-width: 3;
+}
+
+.ring-progress {
+    stroke-width: 3;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.5s ease, stroke 0.3s ease;
+}
+
+.ring-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+}
+
+.ring-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text-primary);
+}
+
+.stats-ring-container.large .ring-value {
+    font-size: 1.3rem;
+}
+
+.ring-total {
+    font-size: 0.7rem;
+    font-weight: 500;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text-tertiary);
+}
+
+.stats-ring-container.large .ring-total {
+    font-size: 0.8rem;
+}
+
+.stats-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.stats-label {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+}
+
+.stats-sublabel {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.stats-sublabel.status-good {
+    color: var(--accent-success);
+}
+
+.stats-sublabel.status-warning {
+    color: var(--accent-warning);
+}
+
+.stats-sublabel.status-critical {
+    color: var(--accent-danger);
+}
+
+/* Port Labels */
+.port-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    fill: var(--text-tertiary);
+    font-weight: 500;
+}
+
+.port-label.dc-port {
+    fill: var(--nuclear-primary);
+}
+
+.port-label.leaf-port {
+    fill: var(--wind-primary);
+}
+
+/* RTU LED Colors */
+.rtu-led {
+    fill: #8a4a4a;
+    transition: fill 0.3s ease;
+}
+
+.rtu-led.led-online {
+    fill: var(--accent-success);
+}
+
+.rtu-led.led-offline {
+    fill: var(--accent-danger);
+}
+
+.rtu-led.led-unknown {
+    fill: #8a8a8a;
+}
+
+/* RTU Node Status */
+.rtu-node.rtu-online .router-outer {
+    stroke: var(--accent-success);
+}
+
+.rtu-node.rtu-offline .router-outer {
+    stroke: var(--accent-danger);
+}
+
+.rtu-node.rtu-unknown .router-outer {
+    stroke: var(--text-tertiary);
+}
+
+/* Teleprotection System Section */
+.teleprotection-system-section {
+    background: transparent;
+    padding: 2rem 0;
+    margin: 2rem 0;
+    border-top: 1px solid var(--text-primary);
+}
+
+.teleprotection-system-section .section-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.teleprotection-diagram {
+    width: 100%;
+    height: auto;
+    min-height: 280px;
+    background: transparent;
+}
+
+.substation-title {
+    font-family: 'Archivo', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    fill: #0088cc;
+}
+
+.hv-label {
+    font-family: 'Archivo', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    fill: #000000;
+}
+
+.equipment-label {
+    font-family: 'Archivo', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    fill: var(--text-secondary);
+}
+
+.equipment-sublabel {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 400;
+    fill: var(--text-tertiary);
+}
+
+.telecom-label {
+    font-family: 'Archivo', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    fill: #00acc1;
+}
+
+.router-small-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 500;
+    fill: #0097a7;
+}
+
+.bracket-label {
+    font-family: 'Archivo', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    fill: var(--text-primary);
+}
+
+.tp-led {
+    transition: fill 0.3s ease;
+}
+
+.tp-equip-a.tp-online .tp-led,
+.tp-equip-b.tp-online .tp-led {
+    fill: #4caf50;
+}
+
+.tp-equip-a.tp-offline .tp-led,
+.tp-equip-b.tp-offline .tp-led {
+    fill: #f44336;
+}
+
+.router-diagram {
+    width: 100%;
+    height: auto;
+    background: transparent;
+    min-height: 550px;
+}
+
+/* Router Connections */
+.router-connection {
+    stroke: var(--text-tertiary);
+    stroke-width: 1.5;
+    fill: none;
+    opacity: 0.4;
+    transition: all 0.3s;
+}
+
+.router-connection:hover {
+    stroke: var(--text-secondary);
+    opacity: 0.8;
+    stroke-width: 2;
+}
+
+/* Link active (healthy) - Green */
+.router-connection.link-up {
+    stroke: #28a745 !important;
+    stroke-width: 2 !important;
+    opacity: 0.9 !important;
+}
+
+/* Link down (fault) - Red */
+.router-connection.link-down {
+    stroke: #dc3545 !important;
+    stroke-width: 3 !important;
+    opacity: 1 !important;
+    stroke-dasharray: 5, 5;
+    animation: linkFault 1s linear infinite;
+}
+
+@keyframes linkFault {
+    to {
+        stroke-dashoffset: -10;
+    }
+}
+
+/* Router Nodes */
+.router-node {
+    cursor: default;
+    transition: all 0.3s;
+}
+
+.router-outer {
+    fill: transparent;
+    stroke: transparent;
+    stroke-width: 0;
+    transition: all 0.3s;
+}
+
+.router-node:hover .router-outer {
+    stroke: var(--text-primary);
+    filter: drop-shadow(0 0 8px rgba(138, 146, 168, 0.4));
+}
+
+/* DC Nodes */
+.dc-node .router-outer {
+    fill: transparent;
+    stroke: var(--color-border-dark);
+    stroke-width: 2;
+}
+
+.dc-node .router-panel {
+    fill: transparent;
+    stroke: var(--color-border-dark);
+    stroke-width: 1;
+    opacity: 0.6;
+}
+
+.dc-node .router-led {
+    fill: var(--accent-success);
+    opacity: 0.8;
+}
+
+.dc-node:hover .router-led {
+    opacity: 1;
+    filter: drop-shadow(0 0 4px var(--accent-success));
+}
+
+/* Leaf Nodes */
+.leaf-node .router-outer {
+    fill: transparent;
+    stroke: var(--color-border-dark);
+    stroke-width: 2;
+}
+
+.leaf-node line {
+    stroke: var(--color-border-dark);
+    stroke-width: 1.5;
+    opacity: 0.8;
+}
+
+.leaf-node:hover line {
+    stroke: var(--text-primary);
+    opacity: 1;
+}
+
+/* RTU Nodes */
+.rtu-node .router-outer {
+    fill: transparent;
+    stroke: var(--color-border-dark);
+    stroke-width: 2;
+}
+
+.rtu-node circle {
+    stroke: var(--color-border-dark);
+    stroke-width: 0.5;
+    opacity: 0.8;
+}
+
+.rtu-node:hover circle {
+    opacity: 1;
+    filter: drop-shadow(0 0 4px rgba(138, 74, 74, 0.6));
+}
+
+.rtu-node rect:not(.router-outer) {
+    opacity: 0.5;
+}
+
+/* Router Labels */
+.router-label {
+    fill: var(--text-primary);
+    font-family: 'Archivo', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.router-ip {
+    fill: var(--text-secondary);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    opacity: 0.7;
+}
+
+.router-node:hover .router-label {
+    fill: var(--text-primary);
+}
+
+.router-node:hover .router-ip {
+    opacity: 1;
+}
+
+/* Active state for routers */
+.router-node.active .router-outer {
+    stroke: var(--accent-success);
+    stroke-width: 2;
+}
+
+.router-node.active .router-led {
+    fill: var(--accent-success);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.router-connection.active {
+    stroke: var(--network-primary);
+    opacity: 0.8;
+    stroke-width: 2;
+    animation: flowAnimation 2s linear infinite;
+}
+
+@keyframes flowAnimation {
+    0% {
+        stroke-dasharray: 8, 8;
+        stroke-dashoffset: 0;
+    }
+    100% {
+        stroke-dashoffset: 16;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .main-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .power-plants {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .title {
+        font-size: 2rem;
+    }
+
+    .power-plants {
+        grid-template-columns: 1fr;
+    }
+
+    .stats {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+
+/* ===== ROUTER MONITORING UI STYLES ===== */
+
+/* Router Node Status Styles */
+.router-node {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.router-node.router-connected {
+    filter: drop-shadow(0 0 8px var(--accent-success));
+}
+
+.router-node.router-disconnected {
+    filter: drop-shadow(0 0 12px var(--accent-danger));
+    animation: pulse-red 2s infinite;
+}
+
+.router-node.router-stale {
+    filter: drop-shadow(0 0 8px var(--accent-warning));
+}
+
+.router-node.router-unknown {
+    opacity: 0.6;
+    filter: grayscale(0.5);
+}
+
+@keyframes pulse-red {
+    0%, 100% {
+        filter: drop-shadow(0 0 8px var(--accent-danger));
+    }
+    50% {
+        filter: drop-shadow(0 0 16px var(--accent-danger));
+    }
+}
+
+/* Router Tooltip Styles */
+.router-tooltip {
+    position: fixed;
+    background: var(--bg-card);
+    border: 1px solid var(--text-tertiary);
+    border-radius: 8px;
+    padding: 0;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    min-width: 250px;
+    max-width: 350px;
+    animation: tooltipFadeIn 0.2s ease;
+    pointer-events: none;
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--text-tertiary);
+    background: var(--bg-elevated);
+    border-radius: 8px 8px 0 0;
+}
+
+.router-name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.status-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.status-connected {
+    background: var(--accent-success);
+    color: white;
+}
+
+.status-badge.status-disconnected {
+    background: var(--accent-danger);
+    color: white;
+}
+
+.status-badge.status-stale {
+    background: var(--accent-warning);
+    color: white;
+}
+
+.status-badge.status-unknown {
+    background: var(--text-tertiary);
+    color: white;
+}
+
+.tooltip-body {
+    padding: 12px 16px;
+}
+
+.metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 13px;
+}
+
+.metric-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.metric-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.metric-value.metric-warning {
+    color: var(--accent-warning);
+}
+
+.metric-value.metric-critical {
+    color: var(--accent-danger);
+}
+
+.tooltip-footer {
+    padding: 8px 16px;
+    border-top: 1px solid var(--text-tertiary);
+    background: var(--bg-elevated);
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-align: center;
+    border-radius: 0 0 8px 8px;
+}
+
+.loading-text {
+    padding: 12px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* Router Detail Panel Styles */
+.router-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 20000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: panelFadeIn 0.3s ease;
+}
+
+@keyframes panelFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.panel-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+}
+
+.panel-content {
+    position: relative;
+    background: var(--bg-card);
+    border-radius: 12px;
+    max-width: 1100px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+    animation: panelSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes panelSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(32px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 32px;
+    border-bottom: 1px solid var(--text-tertiary);
+    background: var(--bg-elevated);
+    border-radius: 12px 12px 0 0;
+}
+
+.panel-header h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.panel-close {
+    background: none;
+    border: none;
+    font-size: 32px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    border-radius: 6px;
+}
+
+.panel-close:hover {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.panel-body {
+    padding: 32px;
+}
+
+.metrics-section {
+    margin-bottom: 32px;
+}
+
+.metrics-section:last-child {
+    margin-bottom: 0;
+}
+
+.metrics-section h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.metric-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--text-tertiary);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.metric-card .metric-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-value-display {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--accent-primary);
+    padding: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--text-tertiary);
+    border-radius: 6px;
+    text-align: center;
+}
+
+.metric-value-display.status-closed {
+    color: var(--accent-success-alt);
+    border-color: var(--accent-success-alt);
+    background: rgba(74, 138, 74, 0.1);
+}
+
+.metric-value-display.status-open {
+    color: var(--accent-error);
+    border-color: var(--accent-error);
+    background: rgba(200, 74, 74, 0.1);
+}
+
+/* High Voltage Transmission Towers */
+.transmission-towers .hv-line {
+    filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.4));
+}
+
+.transmission-towers .hv-pulse {
+    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.9)) drop-shadow(0 0 16px rgba(255, 215, 0, 0.6));
+}
+
+/* Add glow effect to power lines */
+.transmission-towers .hv-line:hover {
+    filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.6));
+}
+
+/* Security Panel */
+.security-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--text-tertiary);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 40px 0 20px 0;
+    width: 35%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.security-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--text-tertiary);
+}
+
+.security-icon {
+    color: var(--text-primary);
+}
+
+.security-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.security-content {
+    padding: 8px 0;
+}
+
+.security-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.security-label {
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.security-switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 24px;
+}
+
+.security-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.security-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #5a5a5a;
+    transition: 0.3s;
+    border-radius: 24px;
+}
+
+.security-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+.security-switch input:checked + .security-slider {
+    background-color: #4CAF50;
+}
+
+.security-switch input:checked + .security-slider:before {
+    transform: translateX(24px);
+}
+
+.security-status {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 14px;
+    min-width: 80px;
+}
+
+.security-status.enabled {
+    color: #4CAF50;
+}
+
+.security-status.disabled {
+    color: #FF5252;
+}
+
+/* Security Packet Animations */
+.secure-packet {
+    filter: drop-shadow(0 0 6px rgba(76, 175, 80, 0.8));
+}
+
+.insecure-packet {
+    filter: drop-shadow(0 0 6px rgba(255, 82, 82, 0.8));
+}
+
+.metric-gauge {
+    position: relative;
+    width: 100%;
+    height: 48px;
+    background: var(--bg-card);
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--text-tertiary);
+}
+
+.gauge-fill {
+    height: 100%;
+    transition: width 0.5s ease;
+}
+
+.metric-gauge.normal .gauge-fill {
+    background: linear-gradient(90deg, var(--accent-success), #5a7a6a);
+}
+
+.metric-gauge.warning .gauge-fill {
+    background: linear-gradient(90deg, var(--accent-warning), #9a8a5a);
+}
+
+.metric-gauge.critical .gauge-fill {
+    background: linear-gradient(90deg, var(--accent-danger), #9a5a5a);
+}
+
+.gauge-value {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+}
+
+.metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-elevated);
+    border: 1px solid var(--text-tertiary);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.metrics-table thead {
+    background: var(--bg-card);
+}
+
+.metrics-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--text-tertiary);
+}
+
+.metrics-table td {
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--text-tertiary);
+}
+
+.metrics-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.metrics-table tbody tr {
+    transition: background 0.2s ease;
+}
+
+.metrics-table tbody tr:hover {
+    background: var(--bg-card);
+}
+
+.status-indicator {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-indicator.status-up {
+    background: var(--accent-success);
+    color: white;
+}
+
+.status-indicator.status-down {
+    background: var(--accent-danger);
+    color: white;
+}
+
+.bgp-summary {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 16px;
+    padding: 16px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--text-tertiary);
+    border-radius: 8px;
+}
+
+.bgp-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.stat-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.no-data {
+    padding: 24px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-style: italic;
+    background: var(--bg-elevated);
+    border: 1px solid var(--text-tertiary);
+    border-radius: 8px;
+}
+
+/* Responsive adjustments for router panel */
+@media (max-width: 768px) {
+    .panel-content {
+        width: 95%;
+        max-height: 95vh;
+    }
+
+    .panel-header {
+        padding: 16px 20px;
+    }
+
+    .panel-header h2 {
+        font-size: 20px;
+    }
+
+    .panel-body {
+        padding: 20px;
+    }
+
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .metrics-table {
+        font-size: 12px;
+    }
+}
+
+/* ==================== NUCLEAR TURBINE ANIMATIONS ==================== */
+
+.nuclear-turbine {
+    transition: transform 0.3s ease;
+}
+
+.nuclear-turbine.rotating {
+    animation: nuclearTurbineSpin 2s linear infinite;
+}
+
+/* Red alert animation for when plant is active but grid is offline */
+.nuclear-node.alert,
+.solar-node.alert,
+.wind-node.alert {
+    animation: redPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes nuclearTurbineSpin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes redPulse {
+    0%, 100% {
+        stroke: #4a4a4a;
+        stroke-width: 2;
+    }
+    50% {
+        stroke: #ff4444;
+        stroke-width: 3;
+    }
+}
+
+/* ==================== TELEPROTECTION SECTION ==================== */
+
+.teleprotection-section {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: var(--bg-elevated);
+    border-radius: 8px;
+    border: 1px solid var(--text-tertiary);
+}
+
+.teleprotection-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    text-align: center;
+    letter-spacing: 0.05em;
+}
+
+.teleprotection-status {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.teleprotection-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    background: var(--bg-card);
+    border-radius: 6px;
+    border: 1px solid var(--text-tertiary);
+}
+
+.teleprotection-label {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+.teleprotection-icon-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 1rem;
+}
+
+.teleprotection-icon {
+    width: 100px;
+    height: 60px;
+    transition: opacity 0.3s ease;
+}
+
+.teleprotection-state {
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+}
+
+.teleprotection-state.closed {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.teleprotection-state.open {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.teleprotection-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: var(--bg-elevated);
+    border-radius: 4px;
+}
+
+.info-text {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.router-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-dot.ok {
+    background-color: var(--accent-success-alt);
+}
+
+.status-dot.fault {
+    background-color: var(--accent-error);
+    animation: pulse-fault 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-fault {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Teleprotection Network Fault Styles */
+.tp-fault {
+    stroke: #dc3545 !important;
+    stroke-width: 2 !important;
+    stroke-dasharray: 8, 4 !important;
+    animation: tpFaultPulse 1s linear infinite !important;
+}
+
+.tp-fault-led {
+    fill: #dc3545 !important;
+    animation: tpLedBlink 0.8s ease-in-out infinite !important;
+}
+
+.tp-fault-text {
+    fill: #dc3545 !important;
+    font-weight: 700 !important;
+    animation: tpTextPulse 1.5s ease-in-out infinite !important;
+}
+
+.tp-signal-hidden {
+    opacity: 0 !important;
+    visibility: hidden !important;
+}
+
+@keyframes tpFaultPulse {
+    0%, 100% {
+        stroke-opacity: 1;
+        stroke-dashoffset: 0;
+    }
+    50% {
+        stroke-opacity: 0.6;
+    }
+    100% {
+        stroke-dashoffset: -12;
+    }
+}
+
+@keyframes tpLedBlink {
+    0%, 100% {
+        opacity: 1;
+        filter: drop-shadow(0 0 4px #dc3545);
+    }
+    50% {
+        opacity: 0.4;
+        filter: none;
+    }
+}
+
+@keyframes tpTextPulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
