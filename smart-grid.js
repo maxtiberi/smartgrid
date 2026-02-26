@@ -250,9 +250,17 @@ class SmartGrid {
                 }
             }
 
-            // Force full transmission power
+            // Force all transmission units alive and hide loss banner
+            this._transmissionUnitsBeforeOverride = {};
+            Object.keys(this.transmissionUnits).forEach(unitId => {
+                this._transmissionUnitsBeforeOverride[unitId] = this.transmissionUnits[unitId].alive;
+                this.transmissionUnits[unitId].alive = true;
+                this.updateTransmissionStatus(unitId, true);
+            });
             this._transmissionMultiplierBeforeOverride = this.transmissionPowerMultiplier;
             this.transmissionPowerMultiplier = 1.0;
+            const reductionDiv = document.getElementById('transmissionReduction');
+            if (reductionDiv) reductionDiv.style.display = 'none';
 
             // Refresh city power display
             this.updateDisplay();
@@ -296,10 +304,17 @@ class SmartGrid {
                 }
             }
 
-            // Restore transmission multiplier
+            // Restore transmission units and multiplier
+            if (this._transmissionUnitsBeforeOverride) {
+                Object.keys(this._transmissionUnitsBeforeOverride).forEach(unitId => {
+                    this.transmissionUnits[unitId].alive = this._transmissionUnitsBeforeOverride[unitId];
+                    this.updateTransmissionStatus(unitId, this.transmissionUnits[unitId].alive);
+                });
+            }
             if (this._transmissionMultiplierBeforeOverride !== undefined) {
                 this.transmissionPowerMultiplier = this._transmissionMultiplierBeforeOverride;
             }
+            this.updateCityPowerReduction();
 
             this.updateDisplay();
 
