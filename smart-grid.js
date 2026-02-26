@@ -234,6 +234,29 @@ class SmartGrid {
                 connection.classList.add('link-up');
             });
 
+            // Force distribution network online
+            this._networkStateBeforeOverride = this.network.active;
+            if (!this.network.active) {
+                this.network.active = true;
+                const card = document.querySelector('[data-network="distribution"]');
+                if (card) {
+                    const btn = card.querySelector('.toggle-btn');
+                    const st = card.querySelector('.status-text');
+                    card.classList.add('active');
+                    if (btn) btn.classList.add('active');
+                    if (btn) btn.querySelector('.btn-text').textContent = 'stop';
+                    if (st) st.textContent = 'online';
+                    this.updateTopology('distribution', true);
+                }
+            }
+
+            // Force full transmission power
+            this._transmissionMultiplierBeforeOverride = this.transmissionPowerMultiplier;
+            this.transmissionPowerMultiplier = 1.0;
+
+            // Refresh city power display
+            this.updateDisplay();
+
             // Update teleprotection as all-up
             this.updateTeleprotectionStatus();
             const allUpLinks = {};
@@ -258,6 +281,28 @@ class SmartGrid {
             if (warningEl) warningEl.classList.add('visible');
 
         } else {
+            // Restore distribution network to its previous state
+            if (this._networkStateBeforeOverride === false) {
+                this.network.active = false;
+                const card = document.querySelector('[data-network="distribution"]');
+                if (card) {
+                    const btn = card.querySelector('.toggle-btn');
+                    const st = card.querySelector('.status-text');
+                    card.classList.remove('active');
+                    if (btn) btn.classList.remove('active');
+                    if (btn) btn.querySelector('.btn-text').textContent = 'start';
+                    if (st) st.textContent = 'offline';
+                    this.updateTopology('distribution', false);
+                }
+            }
+
+            // Restore transmission multiplier
+            if (this._transmissionMultiplierBeforeOverride !== undefined) {
+                this.transmissionPowerMultiplier = this._transmissionMultiplierBeforeOverride;
+            }
+
+            this.updateDisplay();
+
             // Remove override styling
             document.querySelectorAll('.router-node').forEach(node => {
                 node.classList.remove('manual-override');
