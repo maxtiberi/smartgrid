@@ -66,6 +66,8 @@ class SmartGrid {
             dc2Reachable: true
         };
 
+        this.manualOverride = false;
+
         // Transmission power multiplier (1.0 = 100%, 0.75 = 75%, etc.)
         // Reduced by 25% for each offline transmission unit
         this.transmissionPowerMultiplier = 1.0;
@@ -116,6 +118,12 @@ class SmartGrid {
 
         // Start router monitoring
         this.startRouterMonitoring();
+
+        // Manual override toggle
+        const overrideToggle = document.getElementById('manual-override-toggle');
+        if (overrideToggle) {
+            overrideToggle.addEventListener('change', () => this.toggleManualOverride());
+        }
     }
 
     togglePlant(plantId) {
@@ -198,6 +206,73 @@ class SmartGrid {
         }
 
         this.updateDisplay();
+    }
+
+    toggleManualOverride() {
+        const toggle = document.getElementById('manual-override-toggle');
+        this.manualOverride = toggle && toggle.checked;
+
+        const statusEl = document.getElementById('override-status');
+        const warningEl = document.getElementById('override-warning');
+
+        if (this.manualOverride) {
+            // Force all routers to connected
+            Object.keys(this.routers).forEach(routerId => {
+                this.routers[routerId].status = 'connected';
+                this.updateRouterVisualization(routerId, { status: 'connected' });
+            });
+
+            // Force all RTUs to online
+            Object.keys(this.rtus).forEach(rtuId => {
+                this.rtus[rtuId].status = 'online';
+                this.updateRtuVisualization(rtuId, { status: 'online' });
+            });
+
+            // Force all links to up
+            document.querySelectorAll('.router-connection[data-link]').forEach(connection => {
+                connection.classList.remove('link-down');
+                connection.classList.add('link-up');
+            });
+
+            // Update teleprotection as all-up
+            this.updateTeleprotectionStatus();
+            const allUpLinks = {};
+            document.querySelectorAll('.router-connection[data-link]').forEach(el => {
+                allUpLinks[el.dataset.link] = 'up';
+            });
+            this.updateTeleprotectionFromLinks(allUpLinks);
+
+            // Update stats
+            this.updateInfographicStats();
+
+            // Add orange dashed outline to all router/RTU nodes
+            document.querySelectorAll('.router-node').forEach(node => {
+                node.classList.add('manual-override');
+            });
+
+            // Show warning and update status text
+            if (statusEl) {
+                statusEl.textContent = 'Active';
+                statusEl.className = 'override-status active';
+            }
+            if (warningEl) warningEl.classList.add('visible');
+
+        } else {
+            // Remove override styling
+            document.querySelectorAll('.router-node').forEach(node => {
+                node.classList.remove('manual-override');
+            });
+
+            if (statusEl) {
+                statusEl.textContent = 'Inactive';
+                statusEl.className = 'override-status inactive';
+            }
+            if (warningEl) warningEl.classList.remove('visible');
+
+            // Re-poll real status immediately
+            this.checkAllRouters();
+            this.checkAllLinks();
+        }
     }
 
     updatePowerLevel(plantId, percentage) {
@@ -748,6 +823,7 @@ class SmartGrid {
     }
 
     async checkAllRouters() {
+        if (this.manualOverride) return;
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -798,6 +874,7 @@ class SmartGrid {
     }
 
     async checkAllRtus() {
+        if (this.manualOverride) return;
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -1434,6 +1511,7 @@ class SmartGrid {
 
     // Check link status based on interface operational state
     async checkAllLinks() {
+        if (this.manualOverride) return;
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 5000);

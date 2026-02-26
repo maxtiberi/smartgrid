@@ -2315,3 +2315,135 @@ body {
     }
 }
 
+/* ===== MANUAL OVERRIDE PANEL ===== */
+
+.override-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--text-tertiary);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 20px 0 20px 0;
+    width: 35%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.override-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--text-tertiary);
+}
+
+.override-icon {
+    color: #ff9800;
+}
+
+.override-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.override-content {
+    padding: 8px 0;
+}
+
+.override-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.override-label {
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.override-switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 24px;
+}
+
+.override-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.override-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #5a5a5a;
+    transition: 0.3s;
+    border-radius: 24px;
+}
+
+.override-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+.override-switch input:checked + .override-slider {
+    background-color: #ff9800;
+}
+
+.override-switch input:checked + .override-slider:before {
+    transform: translateX(24px);
+}
+
+.override-status {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 14px;
+    min-width: 80px;
+}
+
+.override-status.active {
+    color: #ff9800;
+}
+
+.override-status.inactive {
+    color: var(--text-secondary);
+}
+
+.override-warning {
+    display: none;
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: rgba(255, 152, 0, 0.12);
+    border: 1px solid #ff9800;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #ff9800;
+    text-align: center;
+}
+
+.override-warning.visible {
+    display: block;
+}
+
+/* Orange dashed outline on overridden router/RTU nodes */
+.router-node.manual-override .router-outer {
+    stroke: #ff9800 !important;
+    stroke-width: 2.5 !important;
+    stroke-dasharray: 6, 3 !important;
+}
+

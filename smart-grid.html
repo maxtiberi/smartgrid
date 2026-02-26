@@ -1287,6 +1287,29 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Manual Override Panel -->
+            <div class="override-panel">
+                <div class="override-header">
+                    <svg width="24" height="24" viewBox="0 0 24 24" class="override-icon">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h2v-2h-2v2zm0-4h2V7h-2v6z" fill="currentColor"/>
+                    </svg>
+                    <h3>Manual Override</h3>
+                </div>
+                <div class="override-content">
+                    <div class="override-row">
+                        <span class="override-label">Force All Online:</span>
+                        <label class="override-switch">
+                            <input type="checkbox" id="manual-override-toggle">
+                            <span class="override-slider"></span>
+                        </label>
+                        <span class="override-status inactive" id="override-status">Inactive</span>
+                    </div>
+                    <div class="override-warning" id="override-warning">
+                        Manual Override Active — statuses are simulated, not from live telemetry
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Teleprotection System Section -->
