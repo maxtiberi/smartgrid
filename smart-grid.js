@@ -651,6 +651,7 @@ class SmartGrid {
     }
 
     async checkTransmissionUnit(unitId) {
+        if (this.manualOverride) return;
         const unit = this.transmissionUnits[unitId];
         if (!unit) return;
 
