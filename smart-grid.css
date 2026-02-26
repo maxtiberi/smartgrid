@@ -1192,7 +1192,7 @@ body {
     font-size: 0.9rem;
     font-weight: 600;
     letter-spacing: 0.15em;
-    color: var(--text-secondary);
+    color: #000000;
     margin-bottom: 1.5rem;
     text-align: center;
 }
@@ -1208,7 +1208,7 @@ body {
     font-family: 'Archivo', sans-serif;
     font-size: 11px;
     font-weight: 600;
-    fill: #0088cc;
+    fill: #000000;
 }
 
 .hv-label {
@@ -1222,35 +1222,35 @@ body {
     font-family: 'Archivo', sans-serif;
     font-size: 10px;
     font-weight: 500;
-    fill: var(--text-secondary);
+    fill: #333333;
 }
 
 .equipment-sublabel {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 9px;
     font-weight: 400;
-    fill: var(--text-tertiary);
+    fill: #666666;
 }
 
 .telecom-label {
     font-family: 'Archivo', sans-serif;
     font-size: 11px;
     font-weight: 600;
-    fill: #00acc1;
+    fill: #000000;
 }
 
 .router-small-label {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 9px;
     font-weight: 500;
-    fill: #0097a7;
+    fill: #333333;
 }
 
 .bracket-label {
     font-family: 'Archivo', sans-serif;
     font-size: 12px;
     font-weight: 500;
-    fill: var(--text-primary);
+    fill: #000000;
 }
 
 .tp-led {
@@ -1259,12 +1259,12 @@ body {
 
 .tp-equip-a.tp-online .tp-led,
 .tp-equip-b.tp-online .tp-led {
-    fill: #4caf50;
+    fill: #333333;
 }
 
 .tp-equip-a.tp-offline .tp-led,
 .tp-equip-b.tp-offline .tp-led {
-    fill: #f44336;
+    fill: #999999;
 }
 
 .router-diagram {
