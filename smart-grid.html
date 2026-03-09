@@ -636,9 +636,20 @@
             </div>
         </div>
 
+        <!-- Section divider -->
+        <hr class="section-divider">
+
         <!-- Turbine Section -->
         <div class="turbine-section">
             <h2 class="turbine-section-title"><a href="turbine.html" style="color: inherit; text-decoration: none;">TURBINA ELETTRICA / ELECTRIC TURBINE</a></h2>
+
+            <!-- Turbine link -->
+            <div class="turbine-description">
+                <a href="turbine.html" class="turbine-detail-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    Simulazione interattiva / Interactive simulation
+                </a>
+            </div>
 
             <div class="turbine-main-content">
                 <!-- Left Panel -->
@@ -679,32 +690,76 @@
                             <div class="teleprotection-item">
                                 <span class="teleprotection-label">T1 ↔ T2</span>
                                 <div class="teleprotection-icon-container" id="teleprotection-status">
-                                    <!-- Closed State Icon (Default) -->
-                                    <svg class="teleprotection-icon closed" id="teleprotection-closed" viewBox="0 0 100 100">
-                                        <!-- Circuit breaker closed -->
-                                        <rect x="10" y="35" width="80" height="30" rx="5" fill="none" stroke="#4a8a4a" stroke-width="3"/>
-                                        <line x1="30" y1="50" x2="70" y2="50" stroke="#4a8a4a" stroke-width="4"/>
-                                        <circle cx="30" cy="50" r="6" fill="#4a8a4a"/>
-                                        <circle cx="70" cy="50" r="6" fill="#4a8a4a"/>
-                                        <!-- Terminals -->
-                                        <line x1="5" y1="50" x2="25" y2="50" stroke="#4a4a4a" stroke-width="3"/>
-                                        <line x1="75" y1="50" x2="95" y2="50" stroke="#4a4a4a" stroke-width="3"/>
+
+                                    <!-- ── CLOSED STATE (Default) ─────────────────────── -->
+                                    <!-- IEC 60617-style modernised circuit breaker: arm horizontal = circuit closed -->
+                                    <svg class="teleprotection-icon closed" id="teleprotection-closed" viewBox="0 0 120 72" xmlns="http://www.w3.org/2000/svg">
+                                        <defs>
+                                            <filter id="tp-glow-closed" x="-30%" y="-30%" width="160%" height="160%">
+                                                <feGaussianBlur stdDeviation="1.8" result="blur"/>
+                                                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                                            </filter>
+                                            <linearGradient id="tp-grad-closed" x1="0%" y1="0%" x2="100%" y2="0%">
+                                                <stop offset="0%" stop-color="#16a34a"/>
+                                                <stop offset="100%" stop-color="#22c55e"/>
+                                            </linearGradient>
+                                        </defs>
+                                        <!-- Left terminal bus -->
+                                        <line x1="4" y1="36" x2="26" y2="36" stroke="#22c55e" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+                                        <!-- Right terminal bus -->
+                                        <line x1="94" y1="36" x2="116" y2="36" stroke="#22c55e" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+                                        <!-- Left contact dot -->
+                                        <circle cx="26" cy="36" r="3.5" fill="#22c55e" filter="url(#tp-glow-closed)"/>
+                                        <!-- Right contact dot -->
+                                        <circle cx="94" cy="36" r="3.5" fill="#22c55e" filter="url(#tp-glow-closed)"/>
+                                        <!-- Closed bridge — horizontal arm (IEC closed switch symbol) -->
+                                        <line x1="26" y1="36" x2="94" y2="36" stroke="url(#tp-grad-closed)" stroke-width="2.5" stroke-linecap="round" filter="url(#tp-glow-closed)" class="tp-live-line"/>
+                                        <!-- Protection relay body (rounded rect) -->
+                                        <rect x="38" y="18" width="44" height="36" rx="6" fill="rgba(22,163,74,0.07)" stroke="#22c55e" stroke-width="1.4" opacity="0.8"/>
+                                        <!-- Shield shape -->
+                                        <path d="M60 22 L68 26 L68 34 Q68 41 60 45 Q52 41 52 34 L52 26 Z"
+                                              fill="rgba(34,197,94,0.12)" stroke="#22c55e" stroke-width="1.3" stroke-linejoin="round"/>
+                                        <!-- Check mark -->
+                                        <polyline points="55,34 58.5,38 65,29"
+                                                  fill="none" stroke="#22c55e" stroke-width="2"
+                                                  stroke-linecap="round" stroke-linejoin="round"/>
+                                        <!-- Pulse ring (decorative) -->
+                                        <circle cx="60" cy="36" r="22" fill="none" stroke="#22c55e" stroke-width="0.8" opacity="0.2" class="tp-pulse-ring"/>
                                     </svg>
-                                    <!-- Open State Icon -->
-                                    <svg class="teleprotection-icon open" id="teleprotection-open" viewBox="0 0 100 100" style="display: none;">
-                                        <!-- Circuit breaker open -->
-                                        <rect x="10" y="35" width="80" height="30" rx="5" fill="none" stroke="#c84a4a" stroke-width="3"/>
-                                        <line x1="30" y1="50" x2="50" y2="35" stroke="#c84a4a" stroke-width="4"/>
-                                        <line x1="55" y1="35" x2="70" y2="50" stroke="#c84a4a" stroke-width="4"/>
-                                        <circle cx="30" cy="50" r="6" fill="#c84a4a"/>
-                                        <circle cx="70" cy="50" r="6" fill="#c84a4a"/>
-                                        <!-- Terminals -->
-                                        <line x1="5" y1="50" x2="25" y2="50" stroke="#4a4a4a" stroke-width="3"/>
-                                        <line x1="75" y1="50" x2="95" y2="50" stroke="#4a4a4a" stroke-width="3"/>
-                                        <!-- X mark to indicate fault -->
-                                        <line x1="50" y1="15" x2="60" y2="25" stroke="#c84a4a" stroke-width="2"/>
-                                        <line x1="60" y1="15" x2="50" y2="25" stroke="#c84a4a" stroke-width="2"/>
+
+                                    <!-- ── OPEN STATE ──────────────────────────────────── -->
+                                    <!-- IEC 60617-style: arm rotated upward = circuit open/tripped -->
+                                    <svg class="teleprotection-icon open" id="teleprotection-open" viewBox="0 0 120 72" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+                                        <defs>
+                                            <filter id="tp-glow-open" x="-30%" y="-30%" width="160%" height="160%">
+                                                <feGaussianBlur stdDeviation="2" result="blur"/>
+                                                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                                            </filter>
+                                        </defs>
+                                        <!-- Left terminal bus -->
+                                        <line x1="4" y1="36" x2="26" y2="36" stroke="#ef4444" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+                                        <!-- Right terminal bus -->
+                                        <line x1="94" y1="36" x2="116" y2="36" stroke="#ef4444" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+                                        <!-- Left contact dot -->
+                                        <circle cx="26" cy="36" r="3.5" fill="#ef4444" filter="url(#tp-glow-open)"/>
+                                        <!-- Right contact dot -->
+                                        <circle cx="94" cy="36" r="3.5" fill="#ef4444" filter="url(#tp-glow-open)"/>
+                                        <!-- Open arm — rotated ~40° upward from left contact (IEC open switch) -->
+                                        <line x1="26" y1="36" x2="72" y2="14" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" filter="url(#tp-glow-open)"/>
+                                        <!-- Air gap indicator (dashed) -->
+                                        <line x1="76" y1="12" x2="94" y2="36" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="4 3" stroke-linecap="round" opacity="0.35"/>
+                                        <!-- Protection relay body -->
+                                        <rect x="38" y="18" width="44" height="36" rx="6" fill="rgba(239,68,68,0.07)" stroke="#ef4444" stroke-width="1.4" opacity="0.8"/>
+                                        <!-- Warning triangle inside box -->
+                                        <path d="M60 23 L68 37 L52 37 Z"
+                                              fill="rgba(239,68,68,0.15)" stroke="#ef4444" stroke-width="1.4" stroke-linejoin="round"/>
+                                        <!-- Warning exclamation -->
+                                        <line x1="60" y1="27.5" x2="60" y2="32.5" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round"/>
+                                        <circle cx="60" cy="35" r="1.2" fill="#ef4444"/>
+                                        <!-- Fault glow -->
+                                        <circle cx="60" cy="36" r="22" fill="none" stroke="#ef4444" stroke-width="0.8" opacity="0.15"/>
                                     </svg>
+
                                 </div>
                                 <span class="teleprotection-state" id="teleprotection-state-text">CHIUSO / CLOSED</span>
                             </div>
@@ -806,6 +861,39 @@
         <div class="router-topology-section">
             <h2 class="topology-title">SMART GRID ROUTER INFRASTRUCTURE</h2>
 
+            <!-- gNMI Service Control Panel -->
+            <div class="gnmi-control-panel" id="gnmiControlPanel">
+                <div class="gnmi-control-left">
+                    <div class="gnmi-status-indicator">
+                        <span class="gnmi-dot" id="gnmiDot"></span>
+                        <span class="gnmi-status-label" id="gnmiStatusLabel">Checking...</span>
+                    </div>
+                    <span class="gnmi-service-name">gNMI Telemetry Service</span>
+                    <span class="gnmi-pid-label" id="gnmiPidLabel"></span>
+                </div>
+                <div class="gnmi-control-right">
+                    <button class="gnmi-log-btn" id="gnmiLogBtn" title="Mostra log del servizio" onclick="window.gnmiToggleLogs()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                        Log
+                    </button>
+                    <button class="gnmi-action-btn" id="gnmiActionBtn" onclick="window.gnmiToggleService()">
+                        <span id="gnmiActionIcon">⏳</span>
+                        <span id="gnmiActionLabel">Loading...</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- gNMI Log Panel (collapsibile) -->
+            <div class="gnmi-log-panel" id="gnmiLogPanel" style="display:none;">
+                <div class="gnmi-log-header">
+                    <span>Console Output — gnmi-service.js</span>
+                    <button class="gnmi-log-close" onclick="document.getElementById('gnmiLogPanel').style.display='none'">✕</button>
+                </div>
+                <div class="gnmi-log-body" id="gnmiLogBody">
+                    <span class="gnmi-log-empty">Nessun log disponibile.</span>
+                </div>
+            </div>
+
             <!-- Router Statistics Infographic -->
             <div class="router-stats-infographic" id="router-stats-infographic">
                 <div class="stats-card">
@@ -816,7 +904,7 @@
                         </svg>
                         <div class="ring-content">
                             <span class="ring-value" id="active-routers">0</span>
-                            <span class="ring-total">/<span id="total-routers">4</span></span>
+                            <span class="ring-total">/<span id="total-routers">6</span></span>
                         </div>
                     </div>
                     <div class="stats-info">
@@ -848,7 +936,7 @@
                         </svg>
                         <div class="ring-content">
                             <span class="ring-value" id="active-devices">0</span>
-                            <span class="ring-total">/<span id="total-devices">8</span></span>
+                            <span class="ring-total">/<span id="total-devices">10</span></span>
                         </div>
                     </div>
                     <div class="stats-info">
@@ -861,31 +949,65 @@
             <svg class="router-diagram" viewBox="0 0 1000 650" preserveAspectRatio="xMidYMid meet">
                 <!-- Connection Lines with Port Labels -->
                 <g class="router-connections">
-                    <!-- DC-1 to Leaf-1 (eth-1/1 ↔ eth-1/1) -->
-                    <path class="router-connection" d="M 350 150 L 250 350" data-link="dc1-leaf1" data-router="dc1" data-interface="ethernet-1/1"/>
-                    <text class="port-label dc-port" x="285" y="220" transform="rotate(-55 285 220)">e1/1</text>
-                    <text class="port-label leaf-port" x="255" y="310" transform="rotate(-55 255 310)">e1/1</text>
+                    <!-- DC-1 to Leaf-1 (e1/1 ↔ e1/1) -->
+                    <path class="router-connection" d="M 300 150 L 150 350" data-link="dc1-leaf1"/>
+                    <text class="port-label dc-port" x="240" y="220" transform="rotate(-53 240 220)">e1/1</text>
+                    <text class="port-label leaf-port" x="160" y="310" transform="rotate(-53 160 310)">e1/1</text>
 
-                    <!-- DC-1 to Leaf-2 (eth-1/2 ↔ eth-1/1) -->
-                    <path class="router-connection" d="M 350 150 L 450 350" data-link="dc1-leaf2" data-router="dc1" data-interface="ethernet-1/2"/>
-                    <text class="port-label dc-port" x="385" y="220" transform="rotate(55 385 220)">e1/2</text>
-                    <text class="port-label leaf-port" x="435" y="310" transform="rotate(55 435 310)">e1/1</text>
+                    <!-- DC-2 to Leaf-1 (e1/2 ↔ e1/5) -->
+                    <path class="router-connection" d="M 700 150 L 150 350" data-link="dc2-leaf1"/>
+                    <text class="port-label dc-port" x="620" y="190" transform="rotate(-20 620 190)">e1/2</text>
+                    <text class="port-label leaf-port" x="250" y="330" transform="rotate(-20 250 330)">e1/5</text>
 
-                    <!-- DC-2 to Leaf-2 (eth-1/1 ↔ eth-1/2) -->
-                    <path class="router-connection" d="M 650 150 L 550 350" data-link="dc2-leaf2" data-router="dc2" data-interface="ethernet-1/1"/>
-                    <text class="port-label dc-port" x="615" y="220" transform="rotate(-55 615 220)">e1/1</text>
-                    <text class="port-label leaf-port" x="555" y="310" transform="rotate(-55 555 310)">e1/2</text>
+                    <!-- DC-1 to Leaf-2 (e1/2 ↔ e1/1) -->
+                    <path class="router-connection" d="M 300 150 L 350 350" data-link="dc1-leaf2"/>
+                    <text class="port-label dc-port" x="310" y="220" transform="rotate(14 310 220)">e1/2</text>
+                    <text class="port-label leaf-port" x="340" y="310" transform="rotate(14 340 310)">e1/1</text>
 
-                    <!-- DC-2 to Leaf-1 (eth-1/2 ↔ eth-1/3) -->
-                    <path class="router-connection" d="M 650 150 L 750 350" data-link="dc2-leaf1" data-router="dc2" data-interface="ethernet-1/2"/>
-                    <text class="port-label dc-port" x="685" y="220" transform="rotate(55 685 220)">e1/2</text>
-                    <text class="port-label leaf-port" x="735" y="310" transform="rotate(55 735 310)">e1/3</text>
+                    <!-- DC-2 to Leaf-2 (e1/1 ↔ e1/2) -->
+                    <path class="router-connection" d="M 700 150 L 350 350" data-link="dc2-leaf2"/>
+                    <text class="port-label dc-port" x="620" y="200" transform="rotate(-30 620 200)">e1/1</text>
+                    <text class="port-label leaf-port" x="420" y="320" transform="rotate(-30 420 320)">e1/2</text>
 
-                    <!-- Leafs to RTUs -->
-                    <path class="router-connection rtu-connection" d="M 250 395 L 250 500" data-link="leaf1-rtu1"/>
-                    <path class="router-connection rtu-connection" d="M 450 395 L 450 500" data-link="leaf2-rtu2"/>
-                    <path class="router-connection rtu-connection" d="M 550 395 L 550 500" data-link="leaf2-rtu3"/>
-                    <path class="router-connection rtu-connection" d="M 750 395 L 750 500" data-link="leaf1-rtu4"/>
+                    <!-- DC-1 to Leaf-3 (e1/3 ↔ e1/2) -->
+                    <path class="router-connection" d="M 300 150 L 550 350" data-link="dc1-leaf3"/>
+                    <text class="port-label dc-port" x="370" y="200" transform="rotate(38 370 200)">e1/3</text>
+                    <text class="port-label leaf-port" x="490" y="310" transform="rotate(38 490 310)">e1/2</text>
+
+                    <!-- DC-2 to Leaf-3 (e1/3 ↔ e1/3) -->
+                    <path class="router-connection" d="M 700 150 L 550 350" data-link="dc2-leaf3"/>
+                    <text class="port-label dc-port" x="660" y="220" transform="rotate(-37 660 220)">e1/3</text>
+                    <text class="port-label leaf-port" x="575" y="310" transform="rotate(-37 575 310)">e1/3</text>
+
+                    <!-- DC-1 to Leaf-4 (e1/4 ↔ e1/1) -->
+                    <path class="router-connection" d="M 300 150 L 750 350" data-link="dc1-leaf4"/>
+                    <text class="port-label dc-port" x="400" y="190" transform="rotate(24 400 190)">e1/4</text>
+                    <text class="port-label leaf-port" x="660" y="320" transform="rotate(24 660 320)">e1/1</text>
+
+                    <!-- DC-2 to Leaf-4 (e1/4 ↔ e1/2) -->
+                    <path class="router-connection" d="M 700 150 L 750 350" data-link="dc2-leaf4"/>
+                    <text class="port-label dc-port" x="710" y="220" transform="rotate(14 710 220)">e1/4</text>
+                    <text class="port-label leaf-port" x="740" y="310" transform="rotate(14 740 310)">e1/2</text>
+
+                    <!-- Leaf-1 to RTU-1 (e1/3 ↔ eth1) -->
+                    <path class="router-connection rtu-connection" d="M 150 395 L 150 500" data-link="leaf1-rtu1"/>
+                    <text class="port-label" x="163" y="430" font-size="9">e1/3</text>
+                    <text class="port-label" x="163" y="490" font-size="9">eth1</text>
+
+                    <!-- Leaf-2 to RTU-2 (e1/3 ↔ eth1) -->
+                    <path class="router-connection rtu-connection" d="M 350 395 L 350 500" data-link="leaf2-rtu2"/>
+                    <text class="port-label" x="363" y="430" font-size="9">e1/3</text>
+                    <text class="port-label" x="363" y="490" font-size="9">eth1</text>
+
+                    <!-- Leaf-3 to RTU-3 (e1/1 ↔ eth1) -->
+                    <path class="router-connection rtu-connection" d="M 550 395 L 550 500" data-link="leaf3-rtu3"/>
+                    <text class="port-label" x="563" y="430" font-size="9">e1/1</text>
+                    <text class="port-label" x="563" y="490" font-size="9">eth1</text>
+
+                    <!-- Leaf-4 to RTU-4 (e1/3 ↔ eth1) -->
+                    <path class="router-connection rtu-connection" d="M 750 395 L 750 500" data-link="leaf4-rtu4"/>
+                    <text class="port-label" x="763" y="430" font-size="9">e1/3</text>
+                    <text class="port-label" x="763" y="490" font-size="9">eth1</text>
                 </g>
 
                 <!-- Security Packet Animations -->
@@ -897,7 +1019,7 @@
                         <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
                             <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
                         </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" path="M 350 150 L 250 350"/>
+                        <animateMotion dur="3s" repeatCount="indefinite" path="M 300 150 L 150 350"/>
                         <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite"/>
                     </g>
                     <!-- DC-1 to Leaf-2 -->
@@ -906,17 +1028,26 @@
                         <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
                             <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
                         </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="0.5s" path="M 350 150 L 450 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="0.5s"/>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="0.4s" path="M 300 150 L 350 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="0.4s"/>
                     </g>
-                    <!-- DC-2 to Leaf-2 -->
+                    <!-- DC-1 to Leaf-3 -->
                     <g class="secure-packet">
                         <circle r="5" fill="#4CAF50" opacity="0.9"/>
                         <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
                             <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
                         </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="1s" path="M 650 150 L 550 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1s"/>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="0.8s" path="M 300 150 L 550 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="0.8s"/>
+                    </g>
+                    <!-- DC-1 to Leaf-4 -->
+                    <g class="secure-packet">
+                        <circle r="5" fill="#4CAF50" opacity="0.9"/>
+                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
+                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
+                        </svg>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="1.2s" path="M 300 150 L 750 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1.2s"/>
                     </g>
                     <!-- DC-2 to Leaf-1 -->
                     <g class="secure-packet">
@@ -924,8 +1055,35 @@
                         <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
                             <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
                         </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="1.5s" path="M 650 150 L 750 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1.5s"/>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="1.6s" path="M 700 150 L 150 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1.6s"/>
+                    </g>
+                    <!-- DC-2 to Leaf-2 -->
+                    <g class="secure-packet">
+                        <circle r="5" fill="#4CAF50" opacity="0.9"/>
+                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
+                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
+                        </svg>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="2s" path="M 700 150 L 350 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="2s"/>
+                    </g>
+                    <!-- DC-2 to Leaf-3 -->
+                    <g class="secure-packet">
+                        <circle r="5" fill="#4CAF50" opacity="0.9"/>
+                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
+                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
+                        </svg>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="2.4s" path="M 700 150 L 550 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="2.4s"/>
+                    </g>
+                    <!-- DC-2 to Leaf-4 -->
+                    <g class="secure-packet">
+                        <circle r="5" fill="#4CAF50" opacity="0.9"/>
+                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
+                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
+                        </svg>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="2.8s" path="M 700 150 L 750 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="2.8s"/>
                     </g>
 
                     <!-- Insecure packets with open lock (shown when encryption is disabled) -->
@@ -936,7 +1094,7 @@
                             <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
                             <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
                         </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" path="M 350 150 L 250 350"/>
+                        <animateMotion dur="3s" repeatCount="indefinite" path="M 300 150 L 150 350"/>
                         <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite"/>
                     </g>
                     <!-- DC-1 to Leaf-2 -->
@@ -946,18 +1104,28 @@
                             <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
                             <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
                         </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="0.5s" path="M 350 150 L 450 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="0.5s"/>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="0.4s" path="M 300 150 L 350 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="0.4s"/>
                     </g>
-                    <!-- DC-2 to Leaf-2 -->
+                    <!-- DC-1 to Leaf-3 -->
                     <g class="insecure-packet">
                         <circle r="5" fill="#FF5252" opacity="0.9"/>
                         <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
                             <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
                             <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
                         </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="1s" path="M 650 150 L 550 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1s"/>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="0.8s" path="M 300 150 L 550 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="0.8s"/>
+                    </g>
+                    <!-- DC-1 to Leaf-4 -->
+                    <g class="insecure-packet">
+                        <circle r="5" fill="#FF5252" opacity="0.9"/>
+                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
+                            <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
+                            <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
+                        </svg>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="1.2s" path="M 300 150 L 750 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1.2s"/>
                     </g>
                     <!-- DC-2 to Leaf-1 -->
                     <g class="insecure-packet">
@@ -966,15 +1134,45 @@
                             <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
                             <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
                         </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="1.5s" path="M 650 150 L 750 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1.5s"/>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="1.6s" path="M 700 150 L 150 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1.6s"/>
+                    </g>
+                    <!-- DC-2 to Leaf-2 -->
+                    <g class="insecure-packet">
+                        <circle r="5" fill="#FF5252" opacity="0.9"/>
+                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
+                            <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
+                            <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
+                        </svg>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="2s" path="M 700 150 L 350 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="2s"/>
+                    </g>
+                    <!-- DC-2 to Leaf-3 -->
+                    <g class="insecure-packet">
+                        <circle r="5" fill="#FF5252" opacity="0.9"/>
+                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
+                            <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
+                            <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
+                        </svg>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="2.4s" path="M 700 150 L 550 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="2.4s"/>
+                    </g>
+                    <!-- DC-2 to Leaf-4 -->
+                    <g class="insecure-packet">
+                        <circle r="5" fill="#FF5252" opacity="0.9"/>
+                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
+                            <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
+                            <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
+                        </svg>
+                        <animateMotion dur="3s" repeatCount="indefinite" begin="2.8s" path="M 700 150 L 750 350"/>
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="2.8s"/>
                     </g>
                 </g>
 
                 <!-- Router Nodes -->
                 <g class="router-nodes">
                     <!-- Spine Layer: Data Centers -->
-                    <g class="router-node dc-node" data-router="dc1" transform="translate(350, 120)">
+                    <g class="router-node dc-node" data-router="dc1" transform="translate(300, 120)">
                         <rect class="router-outer" x="-40" y="-25" width="80" height="50" rx="4"/>
                         <circle class="router-led" cx="-25" cy="-12" r="2"/>
                         <circle class="router-led" cx="-15" cy="-12" r="2"/>
@@ -984,7 +1182,7 @@
                         <text class="router-ip" x="0" y="60" text-anchor="middle">172.20.20.5</text>
                     </g>
 
-                    <g class="router-node dc-node" data-router="dc2" transform="translate(650, 120)">
+                    <g class="router-node dc-node" data-router="dc2" transform="translate(700, 120)">
                         <rect class="router-outer" x="-40" y="-25" width="80" height="50" rx="4"/>
                         <circle class="router-led" cx="-25" cy="-12" r="2"/>
                         <circle class="router-led" cx="-15" cy="-12" r="2"/>
@@ -995,7 +1193,7 @@
                     </g>
 
                     <!-- Leaf Layer: Leaf Switches -->
-                    <g class="router-node leaf-node" data-router="leaf1" transform="translate(250, 370)">
+                    <g class="router-node leaf-node" data-router="leaf1" transform="translate(150, 370)">
                         <rect class="router-outer" x="-35" y="-20" width="70" height="40" rx="3"/>
                         <line x1="-25" y1="-10" x2="-25" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
                         <line x1="-10" y1="-10" x2="-10" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
@@ -1005,7 +1203,7 @@
                         <text class="router-ip" x="0" y="53" text-anchor="middle">172.20.20.2</text>
                     </g>
 
-                    <g class="router-node leaf-node" data-router="leaf2" transform="translate(450, 370)">
+                    <g class="router-node leaf-node" data-router="leaf2" transform="translate(350, 370)">
                         <rect class="router-outer" x="-35" y="-20" width="70" height="40" rx="3"/>
                         <line x1="-25" y1="-10" x2="-25" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
                         <line x1="-10" y1="-10" x2="-10" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
@@ -1015,84 +1213,92 @@
                         <text class="router-ip" x="0" y="53" text-anchor="middle">172.20.20.3</text>
                     </g>
 
-                    <!-- Placeholder positions for Leaf-2 second connection point -->
-                    <g class="router-node leaf-node leaf2-alt" data-router="leaf2" transform="translate(550, 370)">
-                        <rect class="router-outer" x="-35" y="-20" width="70" height="40" rx="3" fill="none" stroke-dasharray="4,4"/>
-                        <text class="router-label" x="0" y="38" text-anchor="middle" opacity="0.5">Leaf-2</text>
+                    <g class="router-node leaf-node" data-router="leaf3" transform="translate(550, 370)">
+                        <rect class="router-outer" x="-35" y="-20" width="70" height="40" rx="3"/>
+                        <line x1="-25" y1="-10" x2="-25" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="-10" y1="-10" x2="-10" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="5" y1="-10" x2="5" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="20" y1="-10" x2="20" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
+                        <text class="router-label" x="0" y="38" text-anchor="middle">Leaf-3</text>
+                        <text class="router-ip" x="0" y="53" text-anchor="middle">172.20.20.9</text>
                     </g>
 
-                    <!-- Placeholder for Leaf-1 second connection point (from DC-2) -->
-                    <g class="router-node leaf-node leaf1-alt" data-router="leaf1" transform="translate(750, 370)">
-                        <rect class="router-outer" x="-35" y="-20" width="70" height="40" rx="3" fill="none" stroke-dasharray="4,4"/>
-                        <text class="router-label" x="0" y="38" text-anchor="middle" opacity="0.5">Leaf-1</text>
+                    <g class="router-node leaf-node" data-router="leaf4" transform="translate(750, 370)">
+                        <rect class="router-outer" x="-35" y="-20" width="70" height="40" rx="3"/>
+                        <line x1="-25" y1="-10" x2="-25" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="-10" y1="-10" x2="-10" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="5" y1="-10" x2="5" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
+                        <line x1="20" y1="-10" x2="20" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
+                        <text class="router-label" x="0" y="38" text-anchor="middle">Leaf-4</text>
+                        <text class="router-ip" x="0" y="53" text-anchor="middle">172.20.20.10</text>
                     </g>
 
                     <!-- High Voltage Transmission Towers -->
                     <!-- Power lines connecting the towers -->
                     <g class="transmission-towers">
                         <!-- Connection lines between towers -->
-                        <line class="hv-line" x1="250" y1="610" x2="400" y2="610" stroke="#4a4a4a" stroke-width="3"/>
-                        <line class="hv-line" x1="400" y1="610" x2="550" y2="610" stroke="#4a4a4a" stroke-width="3"/>
-                        <line class="hv-line" x1="550" y1="610" x2="700" y2="610" stroke="#4a4a4a" stroke-width="3"/>
+                        <line class="hv-line" x1="150" y1="610" x2="350" y2="610" stroke="#4a4a4a" stroke-width="3"/>
+                        <line class="hv-line" x1="350" y1="610" x2="550" y2="610" stroke="#4a4a4a" stroke-width="3"/>
+                        <line class="hv-line" x1="550" y1="610" x2="750" y2="610" stroke="#4a4a4a" stroke-width="3"/>
 
                         <!-- Upper power lines (3-phase) -->
-                        <line class="hv-line" x1="250" y1="605" x2="450" y2="605" stroke="#6a6a6a" stroke-width="2"/>
-                        <line class="hv-line" x1="450" y1="605" x2="550" y2="605" stroke="#6a6a6a" stroke-width="2"/>
+                        <line class="hv-line" x1="150" y1="605" x2="350" y2="605" stroke="#6a6a6a" stroke-width="2"/>
+                        <line class="hv-line" x1="350" y1="605" x2="550" y2="605" stroke="#6a6a6a" stroke-width="2"/>
                         <line class="hv-line" x1="550" y1="605" x2="750" y2="605" stroke="#6a6a6a" stroke-width="2"/>
 
-                        <line class="hv-line" x1="250" y1="615" x2="450" y2="615" stroke="#6a6a6a" stroke-width="2"/>
-                        <line class="hv-line" x1="450" y1="615" x2="550" y2="615" stroke="#6a6a6a" stroke-width="2"/>
+                        <line class="hv-line" x1="150" y1="615" x2="350" y2="615" stroke="#6a6a6a" stroke-width="2"/>
+                        <line class="hv-line" x1="350" y1="615" x2="550" y2="615" stroke="#6a6a6a" stroke-width="2"/>
                         <line class="hv-line" x1="550" y1="615" x2="750" y2="615" stroke="#6a6a6a" stroke-width="2"/>
 
                         <!-- Energy pulse animations on power lines -->
                         <!-- Line 1 to 2 - Multiple pulses for realistic AC current simulation -->
                         <circle class="hv-pulse" r="6" fill="#ffd700" opacity="0.9">
-                            <animateMotion dur="2s" repeatCount="indefinite" path="M 250 610 L 450 610"/>
+                            <animateMotion dur="2s" repeatCount="indefinite" path="M 150 610 L 350 610"/>
                             <animate attributeName="opacity" values="0.4;1;0.4" dur="2s" repeatCount="indefinite"/>
                             <animate attributeName="r" values="5;7;5" dur="2s" repeatCount="indefinite"/>
                         </circle>
                         <circle class="hv-pulse" r="5" fill="#ffed4e" opacity="0.7">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.3s" path="M 250 605 L 450 605"/>
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.3s" path="M 150 605 L 350 605"/>
                             <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite" begin="0.3s"/>
                             <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" begin="0.3s"/>
                         </circle>
                         <circle class="hv-pulse" r="5" fill="#ffed4e" opacity="0.7">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.6s" path="M 250 615 L 450 615"/>
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.6s" path="M 150 615 L 350 615"/>
                             <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite" begin="0.6s"/>
                             <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" begin="0.6s"/>
                         </circle>
                         <!-- Additional fast pulses -->
                         <circle class="hv-pulse" r="4" fill="#fff" opacity="0.5">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="1s" path="M 250 610 L 450 610"/>
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="1s" path="M 150 610 L 350 610"/>
                             <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2s" repeatCount="indefinite" begin="1s"/>
                         </circle>
                         <circle class="hv-pulse" r="3" fill="#ffa500" opacity="0.6">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="1.5s" path="M 250 610 L 450 610"/>
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="1.5s" path="M 150 610 L 350 610"/>
                             <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2s" repeatCount="indefinite" begin="1.5s"/>
                         </circle>
 
                         <!-- Line 2 to 3 -->
                         <circle class="hv-pulse" r="6" fill="#ffd700" opacity="0.9">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.2s" path="M 450 610 L 550 610"/>
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.2s" path="M 350 610 L 550 610"/>
                             <animate attributeName="opacity" values="0.4;1;0.4" dur="2s" repeatCount="indefinite" begin="0.2s"/>
                             <animate attributeName="r" values="5;7;5" dur="2s" repeatCount="indefinite" begin="0.2s"/>
                         </circle>
                         <circle class="hv-pulse" r="5" fill="#ffed4e" opacity="0.7">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.5s" path="M 450 605 L 550 605"/>
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.5s" path="M 350 605 L 550 605"/>
                             <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite" begin="0.5s"/>
                             <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" begin="0.5s"/>
                         </circle>
                         <circle class="hv-pulse" r="5" fill="#ffed4e" opacity="0.7">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.8s" path="M 450 615 L 550 615"/>
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.8s" path="M 350 615 L 550 615"/>
                             <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite" begin="0.8s"/>
                             <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" begin="0.8s"/>
                         </circle>
                         <circle class="hv-pulse" r="4" fill="#fff" opacity="0.5">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="1.2s" path="M 450 610 L 550 610"/>
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="1.2s" path="M 350 610 L 550 610"/>
                             <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2s" repeatCount="indefinite" begin="1.2s"/>
                         </circle>
                         <circle class="hv-pulse" r="3" fill="#ffa500" opacity="0.6">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="1.7s" path="M 450 610 L 550 610"/>
+                            <animateMotion dur="2s" repeatCount="indefinite" begin="1.7s" path="M 350 610 L 550 610"/>
                             <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2s" repeatCount="indefinite" begin="1.7s"/>
                         </circle>
 
@@ -1121,112 +1327,241 @@
                             <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2s" repeatCount="indefinite" begin="1.9s"/>
                         </circle>
 
-                        <!-- Tower 1 -->
-                        <g transform="translate(250, 590)">
-                            <!-- Vertical connection from RTU to tower -->
-                            <line x1="0" y1="-70" x2="0" y2="0" stroke="#8a8a8a" stroke-width="2" stroke-dasharray="4,4"/>
-
-                            <!-- Tower base -->
-                            <polygon points="-15,50 15,50 8,0 -8,0" fill="#5a5a5a" stroke="#3a3a3a" stroke-width="1"/>
-                            <!-- Tower cross beams -->
-                            <line x1="-12" y1="15" x2="12" y2="15" stroke="#3a3a3a" stroke-width="2"/>
-                            <line x1="-10" y1="30" x2="10" y2="30" stroke="#3a3a3a" stroke-width="2"/>
-                            <!-- Insulators -->
-                            <rect x="-18" y="12" width="4" height="8" fill="#8b4513" rx="1"/>
-                            <rect x="14" y="12" width="4" height="8" fill="#8b4513" rx="1"/>
-                            <circle cx="-16" cy="23" r="2" fill="#4a90e2">
-                                <animate attributeName="opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite"/>
+                        <!-- ══ TOWER 1 — HV Lattice Pylon ══ -->
+                        <g class="hv-pylon" transform="translate(150, 590)">
+                            <!-- Control cable RTU → tower (IP/MPLS link style) -->
+                            <line x1="0" y1="-70" x2="0" y2="-2" stroke="#4a90d9" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.55"/>
+                            <!-- ── Lattice A-frame legs ── -->
+                            <line x1="-4" y1="0" x2="-14" y2="52" stroke="#5a6e82" stroke-width="1.5"/>
+                            <line x1="4"  y1="0" x2="14"  y2="52" stroke="#5a6e82" stroke-width="1.5"/>
+                            <!-- ── Internal lattice – upper section (y 0–13) ── -->
+                            <line x1="-4" y1="1"  x2="4"  y2="13" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="4"  y1="1"  x2="-4" y2="13" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="-4.5" y1="13" x2="4.5" y2="13" stroke="#5a6e82" stroke-width="1"/>
+                            <!-- ── Internal lattice – middle section (y 13–30) ── -->
+                            <line x1="-4.5" y1="13" x2="8"   y2="27" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="4.5"  y1="13" x2="-8"  y2="27" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="-8"   y1="27" x2="8"   y2="27" stroke="#5a6e82" stroke-width="1"/>
+                            <!-- ── Internal lattice – lower section (y 30–52) ── -->
+                            <line x1="-8"  y1="28" x2="13"  y2="44" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="8"   y1="28" x2="-13" y2="44" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="-13" y1="44" x2="13"  y2="44" stroke="#5a6e82" stroke-width="1"/>
+                            <!-- ── Tower apex (peak) ── -->
+                            <line x1="-4" y1="0" x2="0" y2="-7" stroke="#6a8090" stroke-width="1.5"/>
+                            <line x1="4"  y1="0" x2="0" y2="-7" stroke="#6a8090" stroke-width="1.5"/>
+                            <circle cx="0" cy="-7" r="1.8" fill="#7a90a0"/>
+                            <!-- ── Upper guard-wire arms (y=6) ── -->
+                            <line x1="-14" y1="6" x2="14" y2="6"  stroke="#5a6e82" stroke-width="1.4"/>
+                            <line x1="-4"  y1="0" x2="-14" y2="6" stroke="#4a5e72" stroke-width="0.9"/>
+                            <line x1="4"   y1="0" x2="14"  y2="6" stroke="#4a5e72" stroke-width="0.9"/>
+                            <circle cx="-14" cy="6" r="1.2" fill="#6a8090" opacity="0.8"/>
+                            <circle cx="14"  cy="6" r="1.2" fill="#6a8090" opacity="0.8"/>
+                            <!-- ── Main cross-arms (y=18, ±22px) ── -->
+                            <line x1="-22" y1="18" x2="22" y2="18" stroke="#6a8090" stroke-width="2"/>
+                            <line x1="-4"  y1="8"  x2="-22" y2="18" stroke="#5a6e82" stroke-width="1.1"/>
+                            <line x1="4"   y1="8"  x2="22"  y2="18" stroke="#5a6e82" stroke-width="1.1"/>
+                            <!-- ── Insulator chains (3 disc rings each side) ── -->
+                            <line x1="-22" y1="18" x2="-22" y2="19.5" stroke="#7a8a94" stroke-width="1"/>
+                            <ellipse cx="-22" cy="21" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <ellipse cx="-22" cy="24" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <ellipse cx="-22" cy="27" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <line x1="22" y1="18" x2="22" y2="19.5"  stroke="#7a8a94" stroke-width="1"/>
+                            <ellipse cx="22" cy="21" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <ellipse cx="22" cy="24" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <ellipse cx="22" cy="27" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <!-- ── Corona glow at conductor attachment ── -->
+                            <circle cx="-22" cy="28" r="2.5" fill="#3a7ac0">
+                                <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite"/>
                             </circle>
-                            <circle cx="16" cy="23" r="2" fill="#4a90e2">
-                                <animate attributeName="opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite" begin="1.5s"/>
+                            <circle cx="-22" cy="28" r="5" fill="none" stroke="#5aaaf0" stroke-width="0.6" opacity="0">
+                                <animate attributeName="opacity" values="0;0.4;0" dur="3s" repeatCount="indefinite"/>
+                                <animate attributeName="r"       values="3;7;3"   dur="3s" repeatCount="indefinite"/>
                             </circle>
-                            <!-- Electric arc effects -->
-                            <circle cx="-16" cy="23" r="3" fill="#87ceeb" opacity="0.3">
-                                <animate attributeName="opacity" values="0;0.5;0" dur="4s" repeatCount="indefinite"/>
-                                <animate attributeName="r" values="2;4;2" dur="4s" repeatCount="indefinite"/>
+                            <circle cx="22" cy="28" r="2.5" fill="#3a7ac0">
+                                <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1.5s"/>
                             </circle>
-                            <circle cx="16" cy="23" r="3" fill="#87ceeb" opacity="0.3">
-                                <animate attributeName="opacity" values="0;0.5;0" dur="4s" repeatCount="indefinite" begin="2s"/>
-                                <animate attributeName="r" values="2;4;2" dur="4s" repeatCount="indefinite" begin="2s"/>
+                            <circle cx="22" cy="28" r="5" fill="none" stroke="#5aaaf0" stroke-width="0.6" opacity="0">
+                                <animate attributeName="opacity" values="0;0.4;0" dur="3s" repeatCount="indefinite" begin="1.5s"/>
+                                <animate attributeName="r"       values="3;7;3"   dur="3s" repeatCount="indefinite" begin="1.5s"/>
                             </circle>
+                            <!-- ── Base footing ── -->
+                            <line x1="-14" y1="52" x2="-18" y2="57" stroke="#4a5e72" stroke-width="1.5"/>
+                            <line x1="-14" y1="52" x2="-10" y2="57" stroke="#4a5e72" stroke-width="1.5"/>
+                            <line x1="-19" y1="57" x2="-9"  y2="57" stroke="#5a6e82" stroke-width="1.8"/>
+                            <line x1="14"  y1="52" x2="18"  y2="57" stroke="#4a5e72" stroke-width="1.5"/>
+                            <line x1="14"  y1="52" x2="10"  y2="57" stroke="#4a5e72" stroke-width="1.5"/>
+                            <line x1="19"  y1="57" x2="9"   y2="57" stroke="#5a6e82" stroke-width="1.8"/>
                         </g>
 
-                        <!-- Tower 2 -->
-                        <g transform="translate(450, 590)">
-                            <line x1="0" y1="-70" x2="0" y2="0" stroke="#8a8a8a" stroke-width="2" stroke-dasharray="4,4"/>
-                            <polygon points="-15,50 15,50 8,0 -8,0" fill="#5a5a5a" stroke="#3a3a3a" stroke-width="1"/>
-                            <line x1="-12" y1="15" x2="12" y2="15" stroke="#3a3a3a" stroke-width="2"/>
-                            <line x1="-10" y1="30" x2="10" y2="30" stroke="#3a3a3a" stroke-width="2"/>
-                            <rect x="-18" y="12" width="4" height="8" fill="#8b4513" rx="1"/>
-                            <rect x="14" y="12" width="4" height="8" fill="#8b4513" rx="1"/>
-                            <circle cx="-16" cy="23" r="2" fill="#4a90e2">
-                                <animate attributeName="opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite" begin="0.5s"/>
+                        <!-- ══ TOWER 2 — HV Lattice Pylon ══ -->
+                        <g class="hv-pylon" transform="translate(350, 590)">
+                            <line x1="0" y1="-70" x2="0" y2="-2" stroke="#4a90d9" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.55"/>
+                            <line x1="-4" y1="0" x2="-14" y2="52" stroke="#5a6e82" stroke-width="1.5"/>
+                            <line x1="4"  y1="0" x2="14"  y2="52" stroke="#5a6e82" stroke-width="1.5"/>
+                            <line x1="-4" y1="1"  x2="4"  y2="13" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="4"  y1="1"  x2="-4" y2="13" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="-4.5" y1="13" x2="4.5" y2="13" stroke="#5a6e82" stroke-width="1"/>
+                            <line x1="-4.5" y1="13" x2="8"   y2="27" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="4.5"  y1="13" x2="-8"  y2="27" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="-8"   y1="27" x2="8"   y2="27" stroke="#5a6e82" stroke-width="1"/>
+                            <line x1="-8"  y1="28" x2="13"  y2="44" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="8"   y1="28" x2="-13" y2="44" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="-13" y1="44" x2="13"  y2="44" stroke="#5a6e82" stroke-width="1"/>
+                            <line x1="-4" y1="0" x2="0" y2="-7" stroke="#6a8090" stroke-width="1.5"/>
+                            <line x1="4"  y1="0" x2="0" y2="-7" stroke="#6a8090" stroke-width="1.5"/>
+                            <circle cx="0" cy="-7" r="1.8" fill="#7a90a0"/>
+                            <line x1="-14" y1="6" x2="14" y2="6"  stroke="#5a6e82" stroke-width="1.4"/>
+                            <line x1="-4"  y1="0" x2="-14" y2="6" stroke="#4a5e72" stroke-width="0.9"/>
+                            <line x1="4"   y1="0" x2="14"  y2="6" stroke="#4a5e72" stroke-width="0.9"/>
+                            <circle cx="-14" cy="6" r="1.2" fill="#6a8090" opacity="0.8"/>
+                            <circle cx="14"  cy="6" r="1.2" fill="#6a8090" opacity="0.8"/>
+                            <line x1="-22" y1="18" x2="22" y2="18" stroke="#6a8090" stroke-width="2"/>
+                            <line x1="-4"  y1="8"  x2="-22" y2="18" stroke="#5a6e82" stroke-width="1.1"/>
+                            <line x1="4"   y1="8"  x2="22"  y2="18" stroke="#5a6e82" stroke-width="1.1"/>
+                            <line x1="-22" y1="18" x2="-22" y2="19.5" stroke="#7a8a94" stroke-width="1"/>
+                            <ellipse cx="-22" cy="21" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <ellipse cx="-22" cy="24" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <ellipse cx="-22" cy="27" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <line x1="22" y1="18" x2="22" y2="19.5"  stroke="#7a8a94" stroke-width="1"/>
+                            <ellipse cx="22" cy="21" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <ellipse cx="22" cy="24" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <ellipse cx="22" cy="27" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <circle cx="-22" cy="28" r="2.5" fill="#3a7ac0">
+                                <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="0.5s"/>
                             </circle>
-                            <circle cx="16" cy="23" r="2" fill="#4a90e2">
-                                <animate attributeName="opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite" begin="2s"/>
+                            <circle cx="-22" cy="28" r="5" fill="none" stroke="#5aaaf0" stroke-width="0.6" opacity="0">
+                                <animate attributeName="opacity" values="0;0.4;0" dur="3s" repeatCount="indefinite" begin="0.5s"/>
+                                <animate attributeName="r"       values="3;7;3"   dur="3s" repeatCount="indefinite" begin="0.5s"/>
                             </circle>
-                            <circle cx="-16" cy="23" r="3" fill="#87ceeb" opacity="0.3">
-                                <animate attributeName="opacity" values="0;0.5;0" dur="4s" repeatCount="indefinite" begin="0.5s"/>
-                                <animate attributeName="r" values="2;4;2" dur="4s" repeatCount="indefinite" begin="0.5s"/>
+                            <circle cx="22" cy="28" r="2.5" fill="#3a7ac0">
+                                <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="2s"/>
                             </circle>
-                            <circle cx="16" cy="23" r="3" fill="#87ceeb" opacity="0.3">
-                                <animate attributeName="opacity" values="0;0.5;0" dur="4s" repeatCount="indefinite" begin="2.5s"/>
-                                <animate attributeName="r" values="2;4;2" dur="4s" repeatCount="indefinite" begin="2.5s"/>
+                            <circle cx="22" cy="28" r="5" fill="none" stroke="#5aaaf0" stroke-width="0.6" opacity="0">
+                                <animate attributeName="opacity" values="0;0.4;0" dur="3s" repeatCount="indefinite" begin="2s"/>
+                                <animate attributeName="r"       values="3;7;3"   dur="3s" repeatCount="indefinite" begin="2s"/>
                             </circle>
+                            <line x1="-14" y1="52" x2="-18" y2="57" stroke="#4a5e72" stroke-width="1.5"/>
+                            <line x1="-14" y1="52" x2="-10" y2="57" stroke="#4a5e72" stroke-width="1.5"/>
+                            <line x1="-19" y1="57" x2="-9"  y2="57" stroke="#5a6e82" stroke-width="1.8"/>
+                            <line x1="14"  y1="52" x2="18"  y2="57" stroke="#4a5e72" stroke-width="1.5"/>
+                            <line x1="14"  y1="52" x2="10"  y2="57" stroke="#4a5e72" stroke-width="1.5"/>
+                            <line x1="19"  y1="57" x2="9"   y2="57" stroke="#5a6e82" stroke-width="1.8"/>
                         </g>
 
-                        <!-- Tower 3 -->
-                        <g transform="translate(550, 590)">
-                            <line x1="0" y1="-70" x2="0" y2="0" stroke="#8a8a8a" stroke-width="2" stroke-dasharray="4,4"/>
-                            <polygon points="-15,50 15,50 8,0 -8,0" fill="#5a5a5a" stroke="#3a3a3a" stroke-width="1"/>
-                            <line x1="-12" y1="15" x2="12" y2="15" stroke="#3a3a3a" stroke-width="2"/>
-                            <line x1="-10" y1="30" x2="10" y2="30" stroke="#3a3a3a" stroke-width="2"/>
-                            <rect x="-18" y="12" width="4" height="8" fill="#8b4513" rx="1"/>
-                            <rect x="14" y="12" width="4" height="8" fill="#8b4513" rx="1"/>
-                            <circle cx="-16" cy="23" r="2" fill="#4a90e2">
-                                <animate attributeName="opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite" begin="1s"/>
+                        <!-- ══ TOWER 3 — HV Lattice Pylon ══ -->
+                        <g class="hv-pylon" transform="translate(550, 590)">
+                            <line x1="0" y1="-70" x2="0" y2="-2" stroke="#4a90d9" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.55"/>
+                            <line x1="-4" y1="0" x2="-14" y2="52" stroke="#5a6e82" stroke-width="1.5"/>
+                            <line x1="4"  y1="0" x2="14"  y2="52" stroke="#5a6e82" stroke-width="1.5"/>
+                            <line x1="-4" y1="1"  x2="4"  y2="13" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="4"  y1="1"  x2="-4" y2="13" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="-4.5" y1="13" x2="4.5" y2="13" stroke="#5a6e82" stroke-width="1"/>
+                            <line x1="-4.5" y1="13" x2="8"   y2="27" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="4.5"  y1="13" x2="-8"  y2="27" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="-8"   y1="27" x2="8"   y2="27" stroke="#5a6e82" stroke-width="1"/>
+                            <line x1="-8"  y1="28" x2="13"  y2="44" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="8"   y1="28" x2="-13" y2="44" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="-13" y1="44" x2="13"  y2="44" stroke="#5a6e82" stroke-width="1"/>
+                            <line x1="-4" y1="0" x2="0" y2="-7" stroke="#6a8090" stroke-width="1.5"/>
+                            <line x1="4"  y1="0" x2="0" y2="-7" stroke="#6a8090" stroke-width="1.5"/>
+                            <circle cx="0" cy="-7" r="1.8" fill="#7a90a0"/>
+                            <line x1="-14" y1="6" x2="14" y2="6"  stroke="#5a6e82" stroke-width="1.4"/>
+                            <line x1="-4"  y1="0" x2="-14" y2="6" stroke="#4a5e72" stroke-width="0.9"/>
+                            <line x1="4"   y1="0" x2="14"  y2="6" stroke="#4a5e72" stroke-width="0.9"/>
+                            <circle cx="-14" cy="6" r="1.2" fill="#6a8090" opacity="0.8"/>
+                            <circle cx="14"  cy="6" r="1.2" fill="#6a8090" opacity="0.8"/>
+                            <line x1="-22" y1="18" x2="22" y2="18" stroke="#6a8090" stroke-width="2"/>
+                            <line x1="-4"  y1="8"  x2="-22" y2="18" stroke="#5a6e82" stroke-width="1.1"/>
+                            <line x1="4"   y1="8"  x2="22"  y2="18" stroke="#5a6e82" stroke-width="1.1"/>
+                            <line x1="-22" y1="18" x2="-22" y2="19.5" stroke="#7a8a94" stroke-width="1"/>
+                            <ellipse cx="-22" cy="21" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <ellipse cx="-22" cy="24" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <ellipse cx="-22" cy="27" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <line x1="22" y1="18" x2="22" y2="19.5"  stroke="#7a8a94" stroke-width="1"/>
+                            <ellipse cx="22" cy="21" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <ellipse cx="22" cy="24" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <ellipse cx="22" cy="27" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <circle cx="-22" cy="28" r="2.5" fill="#3a7ac0">
+                                <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1s"/>
                             </circle>
-                            <circle cx="16" cy="23" r="2" fill="#4a90e2">
-                                <animate attributeName="opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite" begin="2.5s"/>
+                            <circle cx="-22" cy="28" r="5" fill="none" stroke="#5aaaf0" stroke-width="0.6" opacity="0">
+                                <animate attributeName="opacity" values="0;0.4;0" dur="3s" repeatCount="indefinite" begin="1s"/>
+                                <animate attributeName="r"       values="3;7;3"   dur="3s" repeatCount="indefinite" begin="1s"/>
                             </circle>
-                            <circle cx="-16" cy="23" r="3" fill="#87ceeb" opacity="0.3">
-                                <animate attributeName="opacity" values="0;0.5;0" dur="4s" repeatCount="indefinite" begin="1s"/>
-                                <animate attributeName="r" values="2;4;2" dur="4s" repeatCount="indefinite" begin="1s"/>
+                            <circle cx="22" cy="28" r="2.5" fill="#3a7ac0">
+                                <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="2.5s"/>
                             </circle>
-                            <circle cx="16" cy="23" r="3" fill="#87ceeb" opacity="0.3">
-                                <animate attributeName="opacity" values="0;0.5;0" dur="4s" repeatCount="indefinite" begin="3s"/>
-                                <animate attributeName="r" values="2;4;2" dur="4s" repeatCount="indefinite" begin="3s"/>
+                            <circle cx="22" cy="28" r="5" fill="none" stroke="#5aaaf0" stroke-width="0.6" opacity="0">
+                                <animate attributeName="opacity" values="0;0.4;0" dur="3s" repeatCount="indefinite" begin="2.5s"/>
+                                <animate attributeName="r"       values="3;7;3"   dur="3s" repeatCount="indefinite" begin="2.5s"/>
                             </circle>
+                            <line x1="-14" y1="52" x2="-18" y2="57" stroke="#4a5e72" stroke-width="1.5"/>
+                            <line x1="-14" y1="52" x2="-10" y2="57" stroke="#4a5e72" stroke-width="1.5"/>
+                            <line x1="-19" y1="57" x2="-9"  y2="57" stroke="#5a6e82" stroke-width="1.8"/>
+                            <line x1="14"  y1="52" x2="18"  y2="57" stroke="#4a5e72" stroke-width="1.5"/>
+                            <line x1="14"  y1="52" x2="10"  y2="57" stroke="#4a5e72" stroke-width="1.5"/>
+                            <line x1="19"  y1="57" x2="9"   y2="57" stroke="#5a6e82" stroke-width="1.8"/>
                         </g>
 
-                        <!-- Tower 4 -->
-                        <g transform="translate(750, 590)">
-                            <line x1="0" y1="-70" x2="0" y2="0" stroke="#8a8a8a" stroke-width="2" stroke-dasharray="4,4"/>
-                            <polygon points="-15,50 15,50 8,0 -8,0" fill="#5a5a5a" stroke="#3a3a3a" stroke-width="1"/>
-                            <line x1="-12" y1="15" x2="12" y2="15" stroke="#3a3a3a" stroke-width="2"/>
-                            <line x1="-10" y1="30" x2="10" y2="30" stroke="#3a3a3a" stroke-width="2"/>
-                            <rect x="-18" y="12" width="4" height="8" fill="#8b4513" rx="1"/>
-                            <rect x="14" y="12" width="4" height="8" fill="#8b4513" rx="1"/>
-                            <circle cx="-16" cy="23" r="2" fill="#4a90e2">
-                                <animate attributeName="opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite" begin="1.5s"/>
+                        <!-- ══ TOWER 4 — HV Lattice Pylon ══ -->
+                        <g class="hv-pylon" transform="translate(750, 590)">
+                            <line x1="0" y1="-70" x2="0" y2="-2" stroke="#4a90d9" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.55"/>
+                            <line x1="-4" y1="0" x2="-14" y2="52" stroke="#5a6e82" stroke-width="1.5"/>
+                            <line x1="4"  y1="0" x2="14"  y2="52" stroke="#5a6e82" stroke-width="1.5"/>
+                            <line x1="-4" y1="1"  x2="4"  y2="13" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="4"  y1="1"  x2="-4" y2="13" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="-4.5" y1="13" x2="4.5" y2="13" stroke="#5a6e82" stroke-width="1"/>
+                            <line x1="-4.5" y1="13" x2="8"   y2="27" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="4.5"  y1="13" x2="-8"  y2="27" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="-8"   y1="27" x2="8"   y2="27" stroke="#5a6e82" stroke-width="1"/>
+                            <line x1="-8"  y1="28" x2="13"  y2="44" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="8"   y1="28" x2="-13" y2="44" stroke="#445a6e" stroke-width="0.9"/>
+                            <line x1="-13" y1="44" x2="13"  y2="44" stroke="#5a6e82" stroke-width="1"/>
+                            <line x1="-4" y1="0" x2="0" y2="-7" stroke="#6a8090" stroke-width="1.5"/>
+                            <line x1="4"  y1="0" x2="0" y2="-7" stroke="#6a8090" stroke-width="1.5"/>
+                            <circle cx="0" cy="-7" r="1.8" fill="#7a90a0"/>
+                            <line x1="-14" y1="6" x2="14" y2="6"  stroke="#5a6e82" stroke-width="1.4"/>
+                            <line x1="-4"  y1="0" x2="-14" y2="6" stroke="#4a5e72" stroke-width="0.9"/>
+                            <line x1="4"   y1="0" x2="14"  y2="6" stroke="#4a5e72" stroke-width="0.9"/>
+                            <circle cx="-14" cy="6" r="1.2" fill="#6a8090" opacity="0.8"/>
+                            <circle cx="14"  cy="6" r="1.2" fill="#6a8090" opacity="0.8"/>
+                            <line x1="-22" y1="18" x2="22" y2="18" stroke="#6a8090" stroke-width="2"/>
+                            <line x1="-4"  y1="8"  x2="-22" y2="18" stroke="#5a6e82" stroke-width="1.1"/>
+                            <line x1="4"   y1="8"  x2="22"  y2="18" stroke="#5a6e82" stroke-width="1.1"/>
+                            <line x1="-22" y1="18" x2="-22" y2="19.5" stroke="#7a8a94" stroke-width="1"/>
+                            <ellipse cx="-22" cy="21" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <ellipse cx="-22" cy="24" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <ellipse cx="-22" cy="27" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <line x1="22" y1="18" x2="22" y2="19.5"  stroke="#7a8a94" stroke-width="1"/>
+                            <ellipse cx="22" cy="21" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <ellipse cx="22" cy="24" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <ellipse cx="22" cy="27" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
+                            <circle cx="-22" cy="28" r="2.5" fill="#3a7ac0">
+                                <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1.5s"/>
                             </circle>
-                            <circle cx="16" cy="23" r="2" fill="#4a90e2">
-                                <animate attributeName="opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite" begin="3s"/>
+                            <circle cx="-22" cy="28" r="5" fill="none" stroke="#5aaaf0" stroke-width="0.6" opacity="0">
+                                <animate attributeName="opacity" values="0;0.4;0" dur="3s" repeatCount="indefinite" begin="1.5s"/>
+                                <animate attributeName="r"       values="3;7;3"   dur="3s" repeatCount="indefinite" begin="1.5s"/>
                             </circle>
-                            <circle cx="-16" cy="23" r="3" fill="#87ceeb" opacity="0.3">
-                                <animate attributeName="opacity" values="0;0.5;0" dur="4s" repeatCount="indefinite" begin="1.5s"/>
-                                <animate attributeName="r" values="2;4;2" dur="4s" repeatCount="indefinite" begin="1.5s"/>
+                            <circle cx="22" cy="28" r="2.5" fill="#3a7ac0">
+                                <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="3s"/>
                             </circle>
-                            <circle cx="16" cy="23" r="3" fill="#87ceeb" opacity="0.3">
-                                <animate attributeName="opacity" values="0;0.5;0" dur="4s" repeatCount="indefinite" begin="3.5s"/>
-                                <animate attributeName="r" values="2;4;2" dur="4s" repeatCount="indefinite" begin="3.5s"/>
+                            <circle cx="22" cy="28" r="5" fill="none" stroke="#5aaaf0" stroke-width="0.6" opacity="0">
+                                <animate attributeName="opacity" values="0;0.4;0" dur="3s" repeatCount="indefinite" begin="3s"/>
+                                <animate attributeName="r"       values="3;7;3"   dur="3s" repeatCount="indefinite" begin="3s"/>
                             </circle>
+                            <line x1="-14" y1="52" x2="-18" y2="57" stroke="#4a5e72" stroke-width="1.5"/>
+                            <line x1="-14" y1="52" x2="-10" y2="57" stroke="#4a5e72" stroke-width="1.5"/>
+                            <line x1="-19" y1="57" x2="-9"  y2="57" stroke="#5a6e82" stroke-width="1.8"/>
+                            <line x1="14"  y1="52" x2="18"  y2="57" stroke="#4a5e72" stroke-width="1.5"/>
+                            <line x1="14"  y1="52" x2="10"  y2="57" stroke="#4a5e72" stroke-width="1.5"/>
+                            <line x1="19"  y1="57" x2="9"   y2="57" stroke="#5a6e82" stroke-width="1.8"/>
                         </g>
                     </g>
 
                     <!-- RTU Units -->
                     <!-- RTU Layer -->
-                    <g class="router-node rtu-node" data-router="rtu1" transform="translate(250, 520)">
+                    <g class="router-node rtu-node" data-router="rtu1" transform="translate(150, 520)">
                         <rect class="router-outer" x="-30" y="-18" width="60" height="36" rx="3"/>
                         <circle class="rtu-led" cx="-15" cy="-5" r="4"/>
                         <circle class="rtu-led" cx="0" cy="-5" r="4"/>
@@ -1236,7 +1571,7 @@
                         <text class="router-ip" x="0" y="50" text-anchor="middle">172.20.20.20</text>
                     </g>
 
-                    <g class="router-node rtu-node" data-router="rtu2" transform="translate(450, 520)">
+                    <g class="router-node rtu-node" data-router="rtu2" transform="translate(350, 520)">
                         <rect class="router-outer" x="-30" y="-18" width="60" height="36" rx="3"/>
                         <circle class="rtu-led" cx="-15" cy="-5" r="4"/>
                         <circle class="rtu-led" cx="0" cy="-5" r="4"/>
@@ -1267,6 +1602,9 @@
                     </g>
                 </g>
             </svg>
+
+            <!-- Security + Override panels side by side -->
+            <div class="control-panels-row">
 
             <!-- Security Panel -->
             <div class="security-panel">
@@ -1310,6 +1648,8 @@
                     </div>
                 </div>
             </div>
+
+            </div><!-- end .control-panels-row -->
         </div>
 
         <!-- Teleprotection System Section -->

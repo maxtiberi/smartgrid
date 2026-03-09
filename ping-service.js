@@ -1,12 +1,65 @@
 // Ping Service for Smart Grid Monitoring
 // This Node.js service provides ICMP ping functionality for the web dashboard
+// Also manages the gNMI service lifecycle (start/stop/status)
 
 const http = require('http');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const url = require('url');
+const path = require('path');
 
 const PORT = 3000;
 const ALLOWED_IPS = ['172.20.20.9', '172.20.20.2', '172.20.20.4', '172.20.20.5', '172.20.20.8'];
+
+// --- gNMI Service Manager ---
+let gnmiProcess = null;
+let gnmiLogs = [];
+const MAX_LOGS = 100;
+
+function getGnmiStatus() {
+    return {
+        running: gnmiProcess !== null && gnmiProcess.exitCode === null,
+        pid: gnmiProcess ? gnmiProcess.pid : null,
+        logs: gnmiLogs.slice(-20)
+    };
+}
+
+function startGnmi() {
+    if (gnmiProcess && gnmiProcess.exitCode === null) {
+        return { success: false, message: 'gNMI service is already running', pid: gnmiProcess.pid };
+    }
+    const gnmiPath = path.join(__dirname, 'gnmi-service.js');
+    gnmiLogs = [];
+    gnmiProcess = spawn('node', [gnmiPath], {
+        cwd: __dirname,
+        detached: false
+    });
+    gnmiProcess.stdout.on('data', (data) => {
+        const lines = data.toString().split('\n').filter(l => l.trim());
+        lines.forEach(line => gnmiLogs.push({ ts: new Date().toISOString(), msg: line }));
+        if (gnmiLogs.length > MAX_LOGS) gnmiLogs = gnmiLogs.slice(-MAX_LOGS);
+        console.log('[gNMI]', data.toString().trim());
+    });
+    gnmiProcess.stderr.on('data', (data) => {
+        const lines = data.toString().split('\n').filter(l => l.trim());
+        lines.forEach(line => gnmiLogs.push({ ts: new Date().toISOString(), msg: '[ERR] ' + line }));
+        if (gnmiLogs.length > MAX_LOGS) gnmiLogs = gnmiLogs.slice(-MAX_LOGS);
+        console.error('[gNMI ERR]', data.toString().trim());
+    });
+    gnmiProcess.on('exit', (code) => {
+        gnmiLogs.push({ ts: new Date().toISOString(), msg: `Process exited with code ${code}` });
+        console.log(`[gNMI] Process exited with code ${code}`);
+        gnmiProcess = null;
+    });
+    return { success: true, message: 'gNMI service started', pid: gnmiProcess.pid };
+}
+
+function stopGnmi() {
+    if (!gnmiProcess || gnmiProcess.exitCode !== null) {
+        return { success: false, message: 'gNMI service is not running' };
+    }
+    gnmiProcess.kill('SIGTERM');
+    return { success: true, message: 'gNMI service stop signal sent' };
+}
 
 // Function to ping an IP address
 function pingHost(ip) {
@@ -86,6 +139,23 @@ const server = http.createServer(async (req, res) => {
     else if (parsedUrl.pathname === '/health' && req.method === 'GET') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'ok', service: 'ping-service' }));
+    }
+    // gNMI status
+    else if (parsedUrl.pathname === '/gnmi/status' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(getGnmiStatus()));
+    }
+    // gNMI start
+    else if (parsedUrl.pathname === '/gnmi/start' && req.method === 'GET') {
+        const result = startGnmi();
+        res.writeHead(result.success ? 200 : 409, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+    }
+    // gNMI stop
+    else if (parsedUrl.pathname === '/gnmi/stop' && req.method === 'GET') {
+        const result = stopGnmi();
+        res.writeHead(result.success ? 200 : 409, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
     }
     // Not found
     else {

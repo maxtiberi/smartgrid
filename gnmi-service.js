@@ -13,8 +13,10 @@ const PORT = 3001;
 const ROUTERS = {
     dc1: { host: '172.20.20.5', port: 57401, name: 'DC-1', type: 'spine' },
     dc2: { host: '172.20.20.8', port: 57401, name: 'DC-2', type: 'spine' },
-    leaf1: { host: '172.20.20.2', port: 57401, name: 'Leaf-1', type: 'leaf' },
-    leaf2: { host: '172.20.20.3', port: 57401, name: 'Leaf-2', type: 'leaf' }
+    leaf1: { host: '172.20.20.4', port: 57401, name: 'Leaf-1', type: 'leaf' },
+    leaf2: { host: '172.20.20.3', port: 57401, name: 'Leaf-2', type: 'leaf' },
+    leaf3: { host: '172.20.20.6', port: 57401, name: 'Leaf-3', type: 'leaf' },
+    leaf4: { host: '172.20.20.2', port: 57401, name: 'Leaf-4', type: 'leaf' }
 };
 
 // RTU configurations (non-gNMI devices, monitored via ping)
@@ -116,6 +118,11 @@ function subscribeToRouter(routerId) {
                     path: buildPath('interface'),
                     mode: 2, // SAMPLE
                     sample_interval: 5000000000 // 5 seconds in nanoseconds
+                },
+                // Interface oper-state changes (ON_CHANGE ensures we get state for ALL interfaces)
+                {
+                    path: buildPath('interface/oper-state'),
+                    mode: 1 // ON_CHANGE
                 },
                 // Interface IP addresses
                 {
@@ -341,10 +348,14 @@ function updateInterfaceCache(cache, pathStr, value) {
     const iface = cache.interfaces[ifName];
     const now = Date.now();
 
+    // Check if this is a top-level interface path (not a sub-path like transceiver, ethernet, etc.)
+    const isTopLevel = !pathStr.includes('/transceiver') && !pathStr.includes('/ethernet[') && !pathStr.includes('/healthz');
+
     // Handle object values (SR Linux sends complete interface objects)
     if (typeof value === 'object' && value !== null) {
-        // Extract oper-state from object
-        if (value['oper-state'] !== undefined) {
+        // Extract oper-state only from top-level interface or subinterface paths
+        // (transceiver oper-state represents physical transceiver, not interface state)
+        if (value['oper-state'] !== undefined && isTopLevel) {
             iface.operState = value['oper-state'];
         }
 
@@ -418,7 +429,7 @@ function updateInterfaceCache(cache, pathStr, value) {
     }
 
     // Fallback for scalar values in specific paths
-    else if (pathStr.includes('/oper-state')) {
+    else if (pathStr.includes('/oper-state') && isTopLevel) {
         iface.operState = value || 'unknown';
     } else if (pathStr.includes('/statistics/in-octets')) {
         const timeDiff = (now - iface.lastUpdate) / 1000;
@@ -765,9 +776,17 @@ function handleGetRtus(req, res) {
 // Link definitions: which interfaces connect which routers
 const LINKS = {
     'dc1-leaf1': { router1: 'dc1', interface1: 'ethernet-1/1', router2: 'leaf1', interface2: 'ethernet-1/1' },
-    'dc1-leaf2': { router1: 'dc1', interface1: 'ethernet-1/2', router2: 'leaf2', interface2: 'ethernet-1/1' },
+    'dc2-leaf1': { router1: 'dc2', interface1: 'ethernet-1/2', router2: 'leaf1', interface2: 'ethernet-1/5' },
     'dc2-leaf2': { router1: 'dc2', interface1: 'ethernet-1/1', router2: 'leaf2', interface2: 'ethernet-1/2' },
-    'dc2-leaf1': { router1: 'dc2', interface1: 'ethernet-1/2', router2: 'leaf1', interface2: 'ethernet-1/3' }
+    'dc1-leaf2': { router1: 'dc1', interface1: 'ethernet-1/2', router2: 'leaf2', interface2: 'ethernet-1/1' },
+    'leaf1-rtu1': { router1: 'leaf1', interface1: 'ethernet-1/3', router2: 'rtu1', interface2: 'eth1' },
+    'leaf2-rtu2': { router1: 'leaf2', interface1: 'ethernet-1/3', router2: 'rtu2', interface2: 'eth1' },
+    'leaf3-rtu3': { router1: 'leaf3', interface1: 'ethernet-1/1', router2: 'rtu3', interface2: 'eth1' },
+    'dc1-leaf3': { router1: 'dc1', interface1: 'ethernet-1/3', router2: 'leaf3', interface2: 'ethernet-1/2' },
+    'dc2-leaf3': { router1: 'dc2', interface1: 'ethernet-1/3', router2: 'leaf3', interface2: 'ethernet-1/3' },
+    'dc1-leaf4': { router1: 'dc1', interface1: 'ethernet-1/4', router2: 'leaf4', interface2: 'ethernet-1/1' },
+    'dc2-leaf4': { router1: 'dc2', interface1: 'ethernet-1/4', router2: 'leaf4', interface2: 'ethernet-1/2' },
+    'leaf4-rtu4': { router1: 'leaf4', interface1: 'ethernet-1/3', router2: 'rtu4', interface2: 'eth1' }
 };
 
 // Handle link status endpoint
@@ -775,23 +794,37 @@ function handleGetLinks(req, res) {
     const linkStatus = {};
 
     for (const [linkId, link] of Object.entries(LINKS)) {
-        const cache1 = routerCache[link.router1];
-        const cache2 = routerCache[link.router2];
+        // Look up device info from ROUTERS or RTUS
+        const dev1 = ROUTERS[link.router1] || RTUS[link.router1];
+        const dev2 = ROUTERS[link.router2] || RTUS[link.router2];
 
-        // Check if both routers are connected
-        const router1Connected = cache1 && (cache1.status === 'connected' || cache1.status === 'stale');
-        const router2Connected = cache2 && (cache2.status === 'connected' || cache2.status === 'stale');
+        const cache1 = routerCache[link.router1] || rtuCache[link.router1];
+        const cache2 = routerCache[link.router2] || rtuCache[link.router2];
 
-        // Get interface states
+        // Check if both endpoints are connected/online
+        const router1Connected = cache1 && (cache1.status === 'connected' || cache1.status === 'stale' || cache1.status === 'online');
+        const router2Connected = cache2 && (cache2.status === 'connected' || cache2.status === 'stale' || cache2.status === 'online');
+
+        // Get interface states (only routers have gNMI interface data)
         let iface1State = 'unknown';
         let iface2State = 'unknown';
 
-        if (cache1 && cache1.interfaces && cache1.interfaces[link.interface1]) {
-            iface1State = cache1.interfaces[link.interface1].operState;
+        const rCache1 = routerCache[link.router1];
+        const rCache2 = routerCache[link.router2];
+
+        if (rCache1 && rCache1.interfaces && rCache1.interfaces[link.interface1]) {
+            iface1State = rCache1.interfaces[link.interface1].operState;
         }
-        if (cache2 && cache2.interfaces && cache2.interfaces[link.interface2]) {
-            iface2State = cache2.interfaces[link.interface2].operState;
+        if (rCache2 && rCache2.interfaces && rCache2.interfaces[link.interface2]) {
+            iface2State = rCache2.interfaces[link.interface2].operState;
         }
+
+        // For RTU endpoints, consider the link up if the router side is up and RTU is online
+        const isRtu1 = !!RTUS[link.router1];
+        const isRtu2 = !!RTUS[link.router2];
+
+        if (isRtu1) iface1State = router1Connected ? 'up' : 'down';
+        if (isRtu2) iface2State = router2Connected ? 'up' : 'down';
 
         // Link is UP only if both interfaces are UP
         const linkUp = iface1State === 'up' && iface2State === 'up';
@@ -800,14 +833,14 @@ function handleGetLinks(req, res) {
             status: linkUp ? 'up' : 'down',
             router1: {
                 id: link.router1,
-                name: ROUTERS[link.router1].name,
+                name: dev1 ? dev1.name : link.router1,
                 interface: link.interface1,
                 state: iface1State,
                 connected: router1Connected
             },
             router2: {
                 id: link.router2,
-                name: ROUTERS[link.router2].name,
+                name: dev2 ? dev2.name : link.router2,
                 interface: link.interface2,
                 state: iface2State,
                 connected: router2Connected

@@ -44,8 +44,10 @@ class SmartGrid {
         this.routers = {
             dc1: { name: 'DC-1', status: 'unknown', metrics: null, type: 'spine', host: '172.20.20.5' },
             dc2: { name: 'DC-2', status: 'unknown', metrics: null, type: 'spine', host: '172.20.20.8' },
-            leaf1: { name: 'Leaf-1', status: 'unknown', metrics: null, type: 'leaf', host: '172.20.20.2' },
-            leaf2: { name: 'Leaf-2', status: 'unknown', metrics: null, type: 'leaf', host: '172.20.20.3' }
+            leaf1: { name: 'Leaf-1', status: 'unknown', metrics: null, type: 'leaf', host: '172.20.20.4' },
+            leaf2: { name: 'Leaf-2', status: 'unknown', metrics: null, type: 'leaf', host: '172.20.20.3' },
+            leaf3: { name: 'Leaf-3', status: 'unknown', metrics: null, type: 'leaf', host: '172.20.20.6' },
+            leaf4: { name: 'Leaf-4', status: 'unknown', metrics: null, type: 'leaf', host: '172.20.20.2' }
         };
 
         this.rtus = {
@@ -1630,10 +1632,16 @@ class SmartGrid {
         // Check if Leaf-1 has lost both connections to DCs (isolates Substation A / RTU-1)
         const leaf1Isolated = linkStates['dc1-leaf1'] === 'down' && linkStates['dc2-leaf1'] === 'down';
 
-        // Check if Leaf-2 has lost both connections to DCs (isolates Substation B / RTU-4)
+        // Check if Leaf-2 has lost both connections to DCs (isolates Substation B / RTU-2)
         const leaf2Isolated = linkStates['dc1-leaf2'] === 'down' && linkStates['dc2-leaf2'] === 'down';
 
-        console.log(`[Teleprotection] Leaf-1 isolated: ${leaf1Isolated}, Leaf-2 isolated: ${leaf2Isolated}`);
+        // Check if Leaf-3 has lost both connections to DCs (isolates RTU-3)
+        const leaf3Isolated = linkStates['dc1-leaf3'] === 'down' && linkStates['dc2-leaf3'] === 'down';
+
+        // Check if Leaf-4 has lost both connections to DCs (isolates RTU-4)
+        const leaf4Isolated = linkStates['dc1-leaf4'] === 'down' && linkStates['dc2-leaf4'] === 'down';
+
+        console.log(`[Teleprotection] Leaf-1 isolated: ${leaf1Isolated}, Leaf-2 isolated: ${leaf2Isolated}, Leaf-3 isolated: ${leaf3Isolated}, Leaf-4 isolated: ${leaf4Isolated}`);
 
         // Get teleprotection SVG elements
         const tpDiagram = document.querySelector('.teleprotection-diagram');
@@ -1705,7 +1713,7 @@ class SmartGrid {
         const openIcon = document.getElementById('teleprotection-open');
         const stateText = document.getElementById('teleprotection-state-text');
 
-        if (leaf1Isolated || leaf2Isolated) {
+        if (leaf1Isolated || leaf2Isolated || leaf3Isolated || leaf4Isolated) {
             // Network fault affects teleprotection
             if (closedIcon && openIcon && stateText) {
                 closedIcon.style.display = 'none';
@@ -2119,4 +2127,133 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     console.log('All components initialized');
+
+    // --- gNMI Service Controller ---
+    (function initGnmiController() {
+        const PING_BASE = 'http://localhost:3000';
+        let gnmiRunning = false;
+        let statusPollInterval = null;
+
+        const dot       = document.getElementById('gnmiDot');
+        const label     = document.getElementById('gnmiStatusLabel');
+        const pidLabel  = document.getElementById('gnmiPidLabel');
+        const btn       = document.getElementById('gnmiActionBtn');
+        const btnIcon   = document.getElementById('gnmiActionIcon');
+        const btnLbl    = document.getElementById('gnmiActionLabel');
+        const logPanel  = document.getElementById('gnmiLogPanel');
+        const logBody   = document.getElementById('gnmiLogBody');
+
+        if (!dot || !btn) return; // elements not in page
+
+        function setLoadingState() {
+            dot.className = 'gnmi-dot loading';
+            label.className = 'gnmi-status-label loading';
+            label.textContent = 'In corso...';
+            btn.className = 'gnmi-action-btn loading-state';
+            btnIcon.textContent = '⏳';
+            btnLbl.textContent = 'Attendere...';
+            btn.disabled = true;
+        }
+
+        function applyStatus(data) {
+            gnmiRunning = data.running;
+            if (data.running) {
+                dot.className = 'gnmi-dot running';
+                label.className = 'gnmi-status-label running';
+                label.textContent = 'In esecuzione';
+                pidLabel.textContent = data.pid ? `PID ${data.pid}` : '';
+                btn.className = 'gnmi-action-btn stop';
+                btnIcon.textContent = '⏹';
+                btnLbl.textContent = 'Ferma Servizio';
+            } else {
+                dot.className = 'gnmi-dot stopped';
+                label.className = 'gnmi-status-label stopped';
+                label.textContent = 'Fermo';
+                pidLabel.textContent = '';
+                btn.className = 'gnmi-action-btn start';
+                btnIcon.textContent = '▶';
+                btnLbl.textContent = 'Avvia Servizio';
+            }
+            btn.disabled = false;
+            // Update log panel if open
+            if (logPanel && logPanel.style.display !== 'none') {
+                renderLogs(data.logs || []);
+            }
+        }
+
+        function renderLogs(logs) {
+            if (!logBody) return;
+            if (!logs || logs.length === 0) {
+                logBody.innerHTML = '<span class="gnmi-log-empty">Nessun log disponibile.</span>';
+                return;
+            }
+            logBody.innerHTML = logs.map(entry => {
+                const isErr = entry.msg && entry.msg.startsWith('[ERR]');
+                const ts = entry.ts ? entry.ts.substring(11, 19) : '';
+                return `<div class="gnmi-log-line">
+                    <span class="gnmi-log-ts">${ts}</span>
+                    <span class="gnmi-log-msg${isErr ? ' error' : ''}">${entry.msg || ''}</span>
+                </div>`;
+            }).join('');
+            logBody.scrollTop = logBody.scrollHeight;
+        }
+
+        async function fetchStatus() {
+            try {
+                const res = await fetch(`${PING_BASE}/gnmi/status`);
+                if (!res.ok) throw new Error('status ' + res.status);
+                const data = await res.json();
+                applyStatus(data);
+            } catch (e) {
+                // ping-service not reachable
+                dot.className = 'gnmi-dot stopped';
+                label.className = 'gnmi-status-label stopped';
+                label.textContent = 'Ping-service offline';
+                btn.className = 'gnmi-action-btn loading-state';
+                btn.disabled = true;
+                btnIcon.textContent = '⚠';
+                btnLbl.textContent = 'Servizio N/D';
+                pidLabel.textContent = '';
+            }
+        }
+
+        window.gnmiToggleService = async function() {
+            setLoadingState();
+            const endpoint = gnmiRunning ? '/gnmi/stop' : '/gnmi/start';
+            try {
+                const res = await fetch(`${PING_BASE}${endpoint}`);
+                const data = await res.json();
+                console.log('[gNMI Control]', data.message);
+                // Poll until state changes (max 5s)
+                let attempts = 0;
+                const poll = setInterval(async () => {
+                    await fetchStatus();
+                    attempts++;
+                    if (attempts >= 10) clearInterval(poll);
+                }, 500);
+            } catch (e) {
+                console.error('[gNMI Control] Error:', e);
+                await fetchStatus();
+            }
+        };
+
+        window.gnmiToggleLogs = async function() {
+            if (!logPanel) return;
+            const isHidden = logPanel.style.display === 'none';
+            logPanel.style.display = isHidden ? 'block' : 'none';
+            if (isHidden) {
+                try {
+                    const res = await fetch(`${PING_BASE}/gnmi/status`);
+                    const data = await res.json();
+                    renderLogs(data.logs || []);
+                } catch (e) {
+                    renderLogs([]);
+                }
+            }
+        };
+
+        // Initial status + poll every 8s
+        fetchStatus();
+        statusPollInterval = setInterval(fetchStatus, 8000);
+    })();
 });

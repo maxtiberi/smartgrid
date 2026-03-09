@@ -3,8 +3,8 @@
 .turbine-section {
     margin-bottom: 4rem;
     padding: 2rem;
-    background: var(--bg-elevated);
-    border-radius: 8px;
+    background: transparent;
+    border-radius: 0;
 }
 
 .turbine-section-title {
@@ -14,6 +14,37 @@
     color: var(--text-primary);
     margin-bottom: 2rem;
     text-align: center;
+}
+
+/* Turbine Link Block */
+.turbine-description {
+    display: flex;
+    justify-content: center;
+    margin: 0 auto 2.5rem auto;
+}
+
+.turbine-detail-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--text-secondary);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+    align-self: center;
+    flex-shrink: 0;
+}
+
+.turbine-detail-link:hover {
+    color: var(--text-primary);
+    border-color: var(--text-primary);
+    background: rgba(255,255,255,0.05);
 }
 
 .turbine-main-content {
