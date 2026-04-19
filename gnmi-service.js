@@ -142,7 +142,18 @@ function subscribeToRouter(routerId) {
                     mode: 2, // SAMPLE
                     sample_interval: GNMI_SAMPLE_INTERVAL_NS
                 },
-                // Interface oper-state changes (ON_CHANGE ensures we get state for ALL interfaces)
+                // Interface oper-state — SAMPLE delivers the current state for every
+                // interface at connection time (and every 5 s thereafter).
+                // ON_CHANGE alone is not enough: SR Linux only fires ON_CHANGE when the
+                // state *transitions*, so interfaces already "up" at subscription time
+                // would never send an update and operState would stay 'unknown'.
+                {
+                    path: buildPath('interface/oper-state'),
+                    mode: 2, // SAMPLE — periodic refresh guarantees initial state
+                    sample_interval: GNMI_SAMPLE_INTERVAL_NS
+                },
+                // ON_CHANGE on top of SAMPLE gives real-time reaction to state changes
+                // (link flap, admin-down, etc.) without waiting for the next SAMPLE tick.
                 {
                     path: buildPath('interface/oper-state'),
                     mode: 1 // ON_CHANGE
