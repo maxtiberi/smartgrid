@@ -375,8 +375,23 @@ function updateInterfaceCache(cache, pathStr, value) {
     const iface = cache.interfaces[ifName];
     const now = Date.now();
 
-    // Check if this is a top-level interface path (not a sub-path like transceiver, ethernet, etc.)
-    const isTopLevel = !pathStr.includes('/transceiver') && !pathStr.includes('/ethernet[') && !pathStr.includes('/healthz');
+    // isTopLevel = true only when the path ends at the interface element itself
+    // (e.g. /interface[name=X] or /interface[name=X]/oper-state).
+    //
+    // SR Linux virtual lab sends SEPARATE oper-state updates for every sub-container:
+    //   /interface[name=ethernet-1/2]/oper-state          → "up"   ← correct interface state
+    //   /interface[name=ethernet-1/2]/ethernet/oper-state → "down" ← physical-layer (no HW transceiver)
+    //   /interface[name=ethernet-1/2]/transceiver/oper-state → "down" ← optical transceiver
+    //
+    // The old check (!includes('/ethernet[')) only matched list elements (ethernet[key=...]),
+    // NOT the ethernet container (/ethernet/…), so it let the physical-layer "down" overwrite
+    // the real interface state — causing e.g. DC2 ethernet-1/2 to show as "down" when it is "up".
+    //
+    // Fix: compute what comes AFTER the interface[name=X] element in the path.
+    // Only accept oper-state updates when that remainder is '' (whole interface object)
+    // or '/oper-state' (direct scalar leaf). Anything deeper is a sub-container.
+    const afterIface = pathStr.replace(/^.*?interface\[[^\]]+\]/, '');
+    const isTopLevel = afterIface === '' || afterIface === '/oper-state';
 
     // Handle object values (SR Linux sends complete interface objects)
     if (typeof value === 'object' && value !== null) {
