@@ -1,0 +1,144 @@
+name: new_lab
+prefix: ""
+mgmt:
+  network: custom_mgmt
+  ipv4-subnet: 172.20.20.0/24
+  external-access: true
+topology:
+  nodes:
+
+    ### Data Center Declaration ####
+    DC-1:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux:24.10.1
+      binds:
+        - grpc_mib.yaml:/etc/opt/srlinux/snmp/scripts/grpc_mib.yaml
+        - grpc_mib.py:/etc/opt/srlinux/snmp/scripts/grpc_mib.py
+        - snmp_files_config.yaml:/etc/opt/srlinux/snmp/snmp_files_config.yaml
+      ports:
+        - 2223:22
+      mgmt-ipv4: 172.20.20.5
+      labels:
+        graph-posX: "755"
+        graph-posY: "245"
+        graph-groupLabelPos: bottom-center
+
+    DC-2:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux:24.10.1
+      mgmt-ipv4: 172.20.20.8
+      binds:
+        - grpc_mib.yaml:/etc/opt/srlinux/snmp/scripts/grpc_mib.yaml
+        - grpc_mib.py:/etc/opt/srlinux/snmp/scripts/grpc_mib.py
+        - snmp_files_config.yaml:/etc/opt/srlinux/snmp/snmp_files_config.yaml
+      ports:
+        - 2224:22
+      labels:
+        graph-posX: "665"
+        graph-posY: "265"
+        graph-groupLabelPos: bottom-center
+
+    ### END DATA CENTER DECLARATION ####
+
+
+    #### START LEAF #####
+
+    leaf-1:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux:24.10.1
+      binds:
+        - grpc_mib.yaml:/etc/opt/srlinux/snmp/scripts/grpc_mib.yaml
+        - grpc_mib.py:/etc/opt/srlinux/snmp/scripts/grpc_mib.py
+        - snmp_files_config.yaml:/etc/opt/srlinux/snmp/snmp_files_config.yaml
+      ports:
+        - 2225:22
+      labels:
+        graph-posX: "655"
+        graph-posY: "345"
+        graph-groupLabelPos: bottom-center
+
+    leaf-2:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux:24.10.1
+      binds:
+        - grpc_mib.yaml:/etc/opt/srlinux/snmp/scripts/grpc_mib.yaml
+        - grpc_mib.py:/etc/opt/srlinux/snmp/scripts/grpc_mib.py
+        - snmp_files_config.yaml:/etc/opt/srlinux/snmp/snmp_files_config.yaml
+      ports:
+        - 2226:22
+      labels:
+        graph-posX: "825"
+        graph-posY: "345"
+        graph-groupLabelPos: bottom-center
+    RTU-1:
+      kind: linux
+      image: ghcr.io/hellt/network-multitool
+      mgmt-ipv4: 172.20.20.20
+      exec:
+        - ip link set address 00:c1:ab:00:00:01 dev eth1
+        - ip link set address 00:c1:ab:00:10:01 dev eth2
+        - ip addr add 192.168.100.1/24 dev eth1
+        - ip addr add 192.168.110.1/24 dev eth1
+
+      labels:
+        graph-posX: "655"
+        graph-posY: "435"
+        graph-groupLabelPos: bottom-center
+    RTU-2:
+      kind: linux
+      image: ghcr.io/hellt/network-multitool
+      mgmt-ipv4: 172.20.20.21
+      exec:
+        - ip link set address 00:c1:ab:00:01:02 dev eth1 - ip link set address
+          00:c1:ab:00:11:02 dev eth2
+        - ip addr add 192.168.100.2/24 dev eth1
+        - ip addr add 192.168.101.2/24 dev eth1
+        - bash
+      labels:
+        graph-posX: "855"
+        graph-posY: "435"
+        graph-groupLabelPos: bottom-center
+    RTU-3:
+      kind: linux
+      image: ghcr.io/hellt/network-multitool
+      mgmt-ipv4: 172.20.20.22
+      exec:
+        - ip link set address 00:c1:ab:00:01:03 dev eth1
+        - ip link set address 00:c1:ab:00:11:03 dev eth2
+        - ip addr add 192.168.100.3/24 dev eth1
+        - ip addr add 192.168.110.3/24 dev eth1
+        - bash
+      labels:
+        grap/h-posX: "775"
+        graph-posY: "425"
+        graph-groupLabelPos: bottom-center
+        graph-posX: "735"
+
+    RTU-4:
+      kind: linux
+      image: ghcr.io/hellt/network-multitool
+      mgmt-ipv4: 172.20.20.23
+    leaf-3:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
+    leaf-4:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
+
+  links:
+
+    - endpoints: [ "leaf-1:e1-1", "DC-1:e1-1" ]
+    - endpoints: [ "leaf-1:e1-5", "DC-2:e1-2" ]
+    - endpoints: [ "leaf-2:e1-2", "DC-2:e1-1" ]
+    - endpoints: [ "leaf-2:e1-1", "DC-1:e1-2" ]
+    - endpoints: [ "RTU-1:eth1", "leaf-1:e1-3" ]
+    - endpoints: [ "RTU-2:eth1", "leaf-2:e1-3" ]
+    - endpoints: [ "leaf-3:e1-1", "RTU-3:eth1" ]
+    - endpoints: [ "leaf-3:e1-2", "DC-1:e1-3" ]
+    - endpoints: [ "leaf-3:e1-3", "DC-2:e1-3" ]
+    - endpoints: [ "leaf-4:e1-1", "DC-1:e1-4" ]
+    - endpoints: [ "leaf-4:e1-2", "DC-2:e1-4" ]
+    - endpoints: [ "leaf-4:e1-3", "RTU-4:eth1" ]
+
