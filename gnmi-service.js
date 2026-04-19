@@ -29,6 +29,10 @@ const rtuCache = {};
 // In-memory cache for router telemetry
 const routerCache = {};
 
+// Per-router trace of recent oper-state gNMI path+value pairs (bounded, debug only).
+const operStateTrace = {}; // { routerId: [{path, value, ts}] }
+const TRACE_MAX = 120;
+
 // Retry counters
 const retryCount = {};
 
@@ -279,6 +283,7 @@ function processGnmiUpdate(routerId, response) {
     // Initialize cache if needed
     if (!routerCache[routerId]) {
         routerCache[routerId] = {
+            _routerId: routerId,
             status: 'connected',
             lastUpdate: null,
             interfaces: {},
@@ -392,6 +397,18 @@ function updateInterfaceCache(cache, pathStr, value) {
     // or '/oper-state' (direct scalar leaf). Anything deeper is a sub-container.
     const afterIface = pathStr.replace(/^.*?interface\[[^\]]+\]/, '');
     const isTopLevel = afterIface === '' || afterIface === '/oper-state';
+
+    // Trace helper — record every oper-state-related path for debugging.
+    if (pathStr.includes('oper-state')) {
+        if (!operStateTrace[cache._routerId]) operStateTrace[cache._routerId] = [];
+        operStateTrace[cache._routerId].push({
+            ts: new Date().toISOString(), path: pathStr,
+            value: typeof value === 'object' ? value?.['oper-state'] ?? '(object)' : value,
+            isTopLevel
+        });
+        if (operStateTrace[cache._routerId].length > TRACE_MAX)
+            operStateTrace[cache._routerId].shift();
+    }
 
     // Handle object values (SR Linux sends complete interface objects)
     if (typeof value === 'object' && value !== null) {
@@ -1309,6 +1326,33 @@ const server = http.createServer((req, res) => {
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ faults: faultOverrides }));
         });
+    } else if (pathname === '/api/debug/trace' && req.method === 'GET') {
+        // Diagnostic: show last N oper-state gNMI paths received per router.
+        // Usage: GET /api/debug/trace?id=leaf1
+        const id = parsedUrl.searchParams.get('id');
+        const out = id ? { [id]: operStateTrace[id] || [] } : operStateTrace;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(out, null, 2));
+    } else if (pathname === '/api/debug/cache' && req.method === 'GET') {
+        // Diagnostic: expose raw interface operState for all routers.
+        // Usage: GET /api/debug/cache          → all routers
+        //        GET /api/debug/cache?id=leaf1  → single router
+        const id = parsedUrl.searchParams.get('id');
+        const out = {};
+        const ids = id ? [id] : Object.keys(routerCache);
+        for (const rid of ids) {
+            const c = routerCache[rid];
+            if (!c) { out[rid] = null; continue; }
+            out[rid] = {
+                status: c.status,
+                lastUpdate: c.lastUpdate,
+                interfaces: Object.fromEntries(
+                    Object.entries(c.interfaces || {}).map(([k, v]) => [k, v.operState])
+                )
+            };
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(out, null, 2));
     } else if (pathname === '/health') {
         handleHealth(req, res);
     } else {

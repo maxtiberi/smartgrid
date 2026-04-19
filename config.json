@@ -16,10 +16,10 @@
   "routers": {
     "dc1":   { "host": "172.20.20.5", "name": "DC-1",   "type": "spine" },
     "dc2":   { "host": "172.20.20.8", "name": "DC-2",   "type": "spine" },
-    "leaf1": { "host": "172.20.20.4", "name": "Leaf-1", "type": "leaf"  },
-    "leaf2": { "host": "172.20.20.3", "name": "Leaf-2", "type": "leaf"  },
+    "leaf1": { "host": "172.20.20.2", "name": "Leaf-1", "type": "leaf"  },
+    "leaf2": { "host": "172.20.20.4", "name": "Leaf-2", "type": "leaf"  },
     "leaf3": { "host": "172.20.20.6", "name": "Leaf-3", "type": "leaf"  },
-    "leaf4": { "host": "172.20.20.2", "name": "Leaf-4", "type": "leaf"  }
+    "leaf4": { "host": "172.20.20.3", "name": "Leaf-4", "type": "leaf"  }
   },
 
   "rtus": {
