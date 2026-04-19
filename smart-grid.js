@@ -1534,225 +1534,333 @@ class SmartGrid {
         this.renderPanel(routerId, router, null);
     }
 
-    renderPanel(routerId, router, metrics) {
-        // Remove existing panel
-        if (this.activePanel) {
-            this.activePanel.remove();
+    // ── helpers ─────────────────────────────────────────────────────────────
+    _bgpStateClass(state) {
+        switch ((state || '').toLowerCase()) {
+            case 'established': return 'bgp-established';
+            case 'active':      return 'bgp-active';
+            case 'connect':     return 'bgp-connect';
+            case 'opensent':
+            case 'openconfirm': return 'bgp-open';
+            case 'idle':
+            default:            return 'bgp-idle';
         }
+    }
+    _bgpStateIcon(state) {
+        switch ((state || '').toLowerCase()) {
+            case 'established': return '●';
+            case 'active':      return '◑';
+            case 'connect':     return '◔';
+            case 'opensent':
+            case 'openconfirm': return '◕';
+            case 'idle':
+            default:            return '○';
+        }
+    }
+    _ifStateClass(state) {
+        return state === 'up' ? 'if-up' : 'if-down';
+    }
+    _gaugeArc(pct, color) {
+        // 180° arc (half-circle), r=40 centered at 50,50
+        const r = 40, cx = 50, cy = 54;
+        const angle = Math.min(pct, 100) / 100 * Math.PI;
+        const x = cx + r * Math.cos(Math.PI - angle);
+        const y = cy - r * Math.sin(Math.PI - angle);
+        const large = angle > Math.PI / 2 ? 1 : 0;
+        return `M${cx - r},${cy} A${r},${r} 0 ${large} 1 ${x.toFixed(2)},${y.toFixed(2)}`;
+    }
+    _arcGauge(pct, label, colorClass) {
+        const d = this._gaugeArc(pct, colorClass);
+        return `
+        <div class="arc-gauge-wrap ${colorClass}">
+          <svg viewBox="0 0 100 60" class="arc-gauge-svg">
+            <path d="M10,54 A40,40 0 0 1 90,54" fill="none" stroke="#2a2a2a" stroke-width="10" stroke-linecap="round"/>
+            <path d="${d}" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round"/>
+          </svg>
+          <div class="arc-gauge-value">${pct.toFixed(1)}<span class="arc-unit">%</span></div>
+          <div class="arc-gauge-label">${label}</div>
+        </div>`;
+    }
+
+    // ── main render ─────────────────────────────────────────────────────────
+    renderPanel(routerId, router, metrics) {
+        if (this.activePanel) this.activePanel.remove();
 
         const panel = document.createElement('div');
         panel.className = 'router-panel';
 
-        let content = `
-            <div class="panel-overlay"></div>
-            <div class="panel-content">
-                <div class="panel-header">
-                    <h2>${router.name} Details</h2>
-                    <span class="status-badge status-${router.status}">${router.status}</span>
-                    <button class="panel-close">&times;</button>
+        const isLoading = !metrics;
+        const isDC = router.type === 'spine';
+        const statusDot = router.status === 'connected' ? '🟢' :
+                          router.status === 'disconnected' ? '🔴' : '🟡';
+        const typeLabel = router.type === 'spine' ? 'SPINE' : 'LEAF';
+
+        // ── header ──────────────────────────────────────────────────────────
+        let html = `
+        <div class="panel-overlay"></div>
+        <div class="panel-content rp2">
+          <div class="rp2-header">
+            <div class="rp2-header-left">
+              <div class="rp2-router-icon">${router.type === 'spine' ? '◈' : '◇'}</div>
+              <div>
+                <div class="rp2-title">${router.name}</div>
+                <div class="rp2-subtitle">
+                  <span class="rp2-type-badge rp2-type-${router.type}">${typeLabel}</span>
+                  <span class="rp2-host">${router.host || ''}</span>
                 </div>
-        `;
+              </div>
+            </div>
+            <div class="rp2-header-right">
+              <span class="rp2-conn-badge rp2-conn-${router.status}">${statusDot} ${router.status}</span>
+              ${router.lastUpdate ? `<span class="rp2-lastseen">updated ${new Date(router.lastUpdate).toLocaleTimeString()}</span>` : ''}
+              <button class="panel-close" aria-label="Chiudi">&times;</button>
+            </div>
+          </div>`;
 
-        if (!metrics) {
-            content += '<div class="panel-body"><p class="loading-text">Loading metrics...</p></div>';
-        } else {
-            content += '<div class="panel-body">';
-
-            // System Performance Section
-            const cpuUsage = metrics.system.cpu?.total || 0;
-            const memUsage = metrics.system.memory?.utilization || 0;
-            const system0IP = metrics.system.system0IP || 'N/A';
-            const cpuClass = cpuUsage > 80 ? 'critical' : cpuUsage > 60 ? 'warning' : 'normal';
-            const memClass = memUsage > 80 ? 'critical' : memUsage > 60 ? 'warning' : 'normal';
-
-            // Check TPT status for DC1 only (based on BGP routes received)
-            let tptStatusHtml = '';
-            if (routerId === 'dc1') {
-                // Count total routes received from all BGP neighbors
-                let totalRoutesReceived = 0;
-                if (metrics.bgp.neighbors) {
-                    metrics.bgp.neighbors.forEach(n => {
-                        totalRoutesReceived += n.routesReceived || 0;
-                    });
-                }
-
-                // If DC1 receives at least 2 BGP routes, circuit is closed
-                const circuitClosed = totalRoutesReceived >= 2;
-                const tptStatus = circuitClosed ? 'Chiuso / Closed' : 'Aperto / Open';
-                const tptClass = circuitClosed ? 'status-closed' : 'status-open';
-                tptStatusHtml = `
-                    <div class="metric-card">
-                        <div class="metric-label">TPT Status</div>
-                        <div class="metric-value-display ${tptClass}">${tptStatus}</div>
-                        <div class="metric-unit">${totalRoutesReceived} route${totalRoutesReceived !== 1 ? 's' : ''} received</div>
-                    </div>
-                `;
-            }
-
-            content += `
-                <section class="metrics-section">
-                    <h3>System Performance</h3>
-                    <div class="metrics-grid">
-                        <div class="metric-card">
-                            <div class="metric-label">System0 IP Address</div>
-                            <div class="metric-value-display">${system0IP}</div>
-                        </div>
-                        ${tptStatusHtml}
-                        <div class="metric-card">
-                            <div class="metric-label">CPU Usage</div>
-                            <div class="metric-gauge ${cpuClass}">
-                                <div class="gauge-fill" style="width: ${cpuUsage}%"></div>
-                                <div class="gauge-value">${cpuUsage.toFixed(1)}%</div>
-                            </div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-label">Memory Usage</div>
-                            <div class="metric-gauge ${memClass}">
-                                <div class="gauge-fill" style="width: ${memUsage}%"></div>
-                                <div class="gauge-value">${memUsage.toFixed(1)}%</div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            `;
-
-            // Interface Statistics Section
-            content += `
-                <section class="metrics-section">
-                    <h3>Interface Statistics</h3>
-            `;
-
-            if (metrics.interfaces.length === 0) {
-                content += '<p class="no-data">No interface data available</p>';
-            } else {
-                content += `
-                    <table class="metrics-table">
-                        <thead>
-                            <tr>
-                                <th>Interface</th>
-                                <th>Status</th>
-                                <th>IPv4 Addresses</th>
-                                <th>In Rate</th>
-                                <th>Out Rate</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
-
-                // Filter to show only active interfaces (operState === 'up')
-                const activeInterfaces = metrics.interfaces.filter(iface => iface.operState === 'up');
-
-                activeInterfaces.forEach(iface => {
-                    const statusClass = 'status-up';
-                    const inRate = this.formatRate(iface.inRate || 0);
-                    const outRate = this.formatRate(iface.outRate || 0);
-
-                    // Format IP addresses
-                    let ipAddresses = 'N/A';
-                    if (iface.ipAddresses && iface.ipAddresses.length > 0) {
-                        ipAddresses = iface.ipAddresses.join('<br>');
-                    }
-
-                    content += `
-                        <tr>
-                            <td>${iface.name}</td>
-                            <td><span class="status-indicator ${statusClass}">${iface.operState}</span></td>
-                            <td>${ipAddresses}</td>
-                            <td>${inRate}</td>
-                            <td>${outRate}</td>
-                        </tr>
-                    `;
-                });
-
-                content += `
-                        </tbody>
-                    </table>
-                `;
-            }
-
-            content += '</section>';
-
-            // BGP Statistics Section
-            content += `
-                <section class="metrics-section">
-                    <h3>BGP Statistics</h3>
-            `;
-
-            if (metrics.bgp.totalPeers === 0) {
-                content += '<p class="no-data">No BGP peers configured</p>';
-            } else {
-                content += `
-                    <div class="bgp-summary">
-                        <div class="bgp-stat">
-                            <span class="stat-label">Total Peers:</span>
-                            <span class="stat-value">${metrics.bgp.totalPeers}</span>
-                        </div>
-                        <div class="bgp-stat">
-                            <span class="stat-label">Active Peers:</span>
-                            <span class="stat-value">${metrics.bgp.activePeers}</span>
-                        </div>
-                    </div>
-                    <table class="metrics-table">
-                        <thead>
-                            <tr>
-                                <th>Peer Address</th>
-                                <th>Session State</th>
-                                <th>Routes Received</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
-
-                metrics.bgp.neighbors.forEach(neighbor => {
-                    const stateClass = neighbor.sessionState === 'established' ? 'status-up' : 'status-down';
-
-                    content += `
-                        <tr>
-                            <td>${neighbor.peerAddress}</td>
-                            <td><span class="status-indicator ${stateClass}">${neighbor.sessionState}</span></td>
-                            <td>${neighbor.routesReceived || 0}</td>
-                        </tr>
-                    `;
-                });
-
-                content += `
-                        </tbody>
-                    </table>
-                `;
-            }
-
-            content += '</section>';
-            content += '</div>'; // panel-body
+        if (isLoading) {
+            html += `
+          <div class="rp2-loading">
+            <div class="rp2-spinner"></div>
+            <span>Caricamento metriche…</span>
+          </div>
+        </div>`;
+            panel.innerHTML = html;
+            document.body.appendChild(panel);
+            this.activePanel = panel;
+            this._bindPanelClose(panel);
+            return;
         }
 
-        content += '</div>'; // panel-content
+        // ── computed values ──────────────────────────────────────────────────
+        const cpu  = metrics.system.cpu?.total || 0;
+        const mem  = metrics.system.memory?.utilization || 0;
+        const sysIP = metrics.system.system0IP || '—';
+        const cpuClass = cpu > 80 ? 'arc-critical' : cpu > 60 ? 'arc-warning' : 'arc-normal';
+        const memClass = mem > 80 ? 'arc-critical' : mem > 60 ? 'arc-warning' : 'arc-normal';
 
-        panel.innerHTML = content;
+        const allIfaces = metrics.interfaces || [];
+        const ifUp   = allIfaces.filter(i => i.operState === 'up').length;
+        const ifDown = allIfaces.length - ifUp;
+
+        const bgpTotal  = metrics.bgp?.totalPeers  || 0;
+        const bgpActive = metrics.bgp?.activePeers || 0;
+        const neighbors = metrics.bgp?.neighbors   || [];
+        const maxRoutes = Math.max(...neighbors.map(n => n.routesReceived || 0), 1);
+
+        // Teleprotection FSM from backend snapshot (if available)
+        const fsm = this.teleprotection?.fsm;
+        const fsmState = fsm?.state || (this.teleprotection?.closed ? 'ARMED' : 'TRIP');
+        const fsmStateClass = fsmState === 'ARMED' ? 'fsm-armed' : fsmState === 'PICKUP' ? 'fsm-pickup' : 'fsm-trip';
+        const fsmLabel  = fsmState === 'ARMED' ? '✓ ARMED — tutto OK' :
+                          fsmState === 'PICKUP' ? '⚠ PICKUP — guasto rilevato' : '✕ TRIP — breaker aperto';
+
+        // ── tabs ─────────────────────────────────────────────────────────────
+        const tabs = ['overview','interfaces','bgp'];
+        if (isDC) tabs.push('teleprotection');
+
+        html += `
+          <div class="rp2-tabs">
+            ${tabs.map((t, i) => `<button class="rp2-tab${i===0?' active':''}" data-tab="${t}">${
+              t === 'overview' ? '📊 Panoramica' :
+              t === 'interfaces' ? `🔌 Interfacce <span class="tab-badge">${allIfaces.length}</span>` :
+              t === 'bgp' ? `🌐 BGP <span class="tab-badge ${bgpActive===bgpTotal&&bgpTotal>0?'badge-ok':'badge-warn'}">${bgpActive}/${bgpTotal}</span>` :
+              '🛡 Teleprotezione'
+            }</button>`).join('')}
+          </div>`;
+
+        // ══ TAB: OVERVIEW ════════════════════════════════════════════════════
+        html += `<div class="rp2-tab-body tab-overview active">
+          <div class="rp2-overview-grid">
+            <div class="rp2-kpi-card">
+              <div class="kpi-label">System0 IP</div>
+              <div class="kpi-mono">${sysIP}</div>
+            </div>
+            <div class="rp2-kpi-card">
+              <div class="kpi-label">Interfacce attive</div>
+              <div class="kpi-large kpi-${ifDown>0?'warn':'ok'}">${ifUp}<span class="kpi-denom">/${allIfaces.length}</span></div>
+            </div>
+            <div class="rp2-kpi-card">
+              <div class="kpi-label">BGP Peers attivi</div>
+              <div class="kpi-large kpi-${bgpActive<bgpTotal?'warn':'ok'}">${bgpActive}<span class="kpi-denom">/${bgpTotal}</span></div>
+            </div>
+          </div>
+          <div class="rp2-gauge-row">
+            ${this._arcGauge(cpu, 'CPU', cpuClass)}
+            ${this._arcGauge(mem, 'Memoria', memClass)}
+          </div>
+        </div>`;
+
+        // ══ TAB: INTERFACES ══════════════════════════════════════════════════
+        html += `<div class="rp2-tab-body tab-interfaces">`;
+        if (allIfaces.length === 0) {
+            html += `<p class="rp2-empty">Nessuna interfaccia disponibile.</p>`;
+        } else {
+            // Sort: up first, then by name
+            const sorted = [...allIfaces].sort((a, b) => {
+                if (a.operState === b.operState) return a.name.localeCompare(b.name);
+                return a.operState === 'up' ? -1 : 1;
+            });
+            html += `<div class="rp2-iface-list">`;
+            sorted.forEach(iface => {
+                const st = iface.operState;
+                const ip = iface.ipAddresses?.length ? iface.ipAddresses[0] : '—';
+                const inR  = this.formatRate(iface.inRate  || 0);
+                const outR = this.formatRate(iface.outRate || 0);
+                const maxR = Math.max(iface.inRate||0, iface.outRate||0, 1);
+                const inPct  = Math.min((iface.inRate  || 0) / maxR * 100, 100);
+                const outPct = Math.min((iface.outRate || 0) / maxR * 100, 100);
+                html += `
+                <div class="rp2-iface-row ${this._ifStateClass(st)}">
+                  <div class="iface-led ${st === 'up' ? 'led-up' : 'led-down'}"></div>
+                  <div class="iface-name">${iface.name}</div>
+                  <div class="iface-state">
+                    <span class="iface-badge ${st === 'up' ? 'ibadge-up' : 'ibadge-down'}">${st.toUpperCase()}</span>
+                  </div>
+                  <div class="iface-ip">${ip}</div>
+                  <div class="iface-traffic">
+                    <div class="traffic-bar-row">
+                      <span class="traffic-dir">▼</span>
+                      <div class="traffic-bar"><div class="tbar-fill tbar-in" style="width:${inPct}%"></div></div>
+                      <span class="traffic-val">${inR}</span>
+                    </div>
+                    <div class="traffic-bar-row">
+                      <span class="traffic-dir">▲</span>
+                      <div class="traffic-bar"><div class="tbar-fill tbar-out" style="width:${outPct}%"></div></div>
+                      <span class="traffic-val">${outR}</span>
+                    </div>
+                  </div>
+                </div>`;
+            });
+            html += `</div>`;
+        }
+        html += `</div>`;
+
+        // ══ TAB: BGP ═════════════════════════════════════════════════════════
+        html += `<div class="rp2-tab-body tab-bgp">`;
+        if (bgpTotal === 0) {
+            html += `<p class="rp2-empty">Nessun peer BGP configurato.</p>`;
+        } else {
+            const bgpPct = bgpTotal > 0 ? (bgpActive / bgpTotal) * 100 : 0;
+            const bgpCircum = 2 * Math.PI * 28;
+            const bgpDash = (bgpPct / 100) * bgpCircum;
+            html += `
+            <div class="rp2-bgp-header">
+              <div class="bgp-donut-wrap">
+                <svg viewBox="0 0 70 70" class="bgp-donut">
+                  <circle cx="35" cy="35" r="28" fill="none" stroke="#2a2a2a" stroke-width="8"/>
+                  <circle cx="35" cy="35" r="28" fill="none"
+                    stroke="${bgpActive === bgpTotal ? 'var(--accent-success)' : 'var(--accent-warning)'}"
+                    stroke-width="8" stroke-linecap="round"
+                    stroke-dasharray="${bgpDash.toFixed(1)} ${bgpCircum.toFixed(1)}"
+                    transform="rotate(-90 35 35)"/>
+                  <text x="35" y="39" text-anchor="middle" class="donut-text">${bgpActive}/${bgpTotal}</text>
+                </svg>
+                <div class="bgp-donut-label">Peers<br>attivi</div>
+              </div>
+              <div class="bgp-legend">
+                <div class="bgp-legend-item"><span class="bgp-dot bgp-established"></span>Established</div>
+                <div class="bgp-legend-item"><span class="bgp-dot bgp-active"></span>Active</div>
+                <div class="bgp-legend-item"><span class="bgp-dot bgp-connect"></span>Connect</div>
+                <div class="bgp-legend-item"><span class="bgp-dot bgp-idle"></span>Idle</div>
+              </div>
+            </div>
+            <div class="rp2-peer-grid">`;
+
+            neighbors.forEach(n => {
+                const sc  = this._bgpStateClass(n.sessionState);
+                const ico = this._bgpStateIcon(n.sessionState);
+                const routes = n.routesReceived || 0;
+                const routePct = Math.round(routes / maxRoutes * 100);
+                html += `
+              <div class="rp2-peer-card ${sc}">
+                <div class="peer-state-icon">${ico}</div>
+                <div class="peer-info">
+                  <div class="peer-addr">${n.peerAddress || '—'}</div>
+                  <div class="peer-state-badge ${sc}">${(n.sessionState || 'unknown').toUpperCase()}</div>
+                </div>
+                <div class="peer-routes">
+                  <div class="peer-routes-label">Routes ricevute</div>
+                  <div class="peer-routes-bar">
+                    <div class="peer-routes-fill ${sc}" style="width:${routePct}%"></div>
+                  </div>
+                  <div class="peer-routes-val">${routes}</div>
+                </div>
+              </div>`;
+            });
+
+            html += `</div>`;
+        }
+        html += `</div>`;
+
+        // ══ TAB: TELEPROTECTION (DC only) ════════════════════════════════════
+        if (isDC) {
+            const isolated = fsm?.isolatedLeaves || [];
+            const breakerClosed = fsmState !== 'TRIP';
+            html += `
+            <div class="rp2-tab-body tab-teleprotection">
+              <div class="tpt-panel">
+                <div class="tpt-fsm-badge ${fsmStateClass}">
+                  <div class="tpt-fsm-state">${fsmState}</div>
+                  <div class="tpt-fsm-label">${fsmLabel}</div>
+                  ${fsm?.reason ? `<div class="tpt-fsm-reason">${fsm.reason}</div>` : ''}
+                </div>
+                <div class="tpt-breaker-wrap">
+                  <div class="tpt-breaker-label">Circuit Breaker</div>
+                  <div class="tpt-breaker ${breakerClosed ? 'breaker-closed' : 'breaker-open'}">
+                    <div class="breaker-arm"></div>
+                    <div class="breaker-state">${breakerClosed ? 'CHIUSO' : 'APERTO'}</div>
+                  </div>
+                </div>
+                <div class="tpt-leaves">
+                  <div class="tpt-leaves-label">Stato Leaf</div>
+                  ${['leaf1','leaf2','leaf3','leaf4'].map(l => {
+                    const iso = isolated.includes(l);
+                    return `<div class="tpt-leaf ${iso?'leaf-isolated':'leaf-ok'}">
+                      <span>${iso?'✕':'✓'}</span> ${l.toUpperCase()}
+                    </div>`;
+                  }).join('')}
+                </div>
+              </div>
+              <div class="tpt-edu-note">
+                <b>Come funziona:</b> la teleprotezione differenziale usa il canale di comunicazione
+                (DC-1 ↔ DC-2) per confrontare le correnti ai due estremi della linea HV. Se un Leaf
+                perde <em>entrambi</em> i link verso i DC spine, il circuito è isolato e il breaker scatta
+                (stato TRIP). Con un solo link attivo la protezione rimane armata (ARMED).
+              </div>
+            </div>`;
+        }
+
+        html += `</div>`; // panel-content
+
+        panel.innerHTML = html;
         document.body.appendChild(panel);
         this.activePanel = panel;
 
-        // Add close handlers
-        const closeBtn = panel.querySelector('.panel-close');
-        const overlay = panel.querySelector('.panel-overlay');
+        // ── tab switching ────────────────────────────────────────────────────
+        panel.querySelectorAll('.rp2-tab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                panel.querySelectorAll('.rp2-tab').forEach(b => b.classList.remove('active'));
+                panel.querySelectorAll('.rp2-tab-body').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const target = panel.querySelector(`.tab-${btn.dataset.tab}`);
+                if (target) target.classList.add('active');
+            });
+        });
 
+        this._bindPanelClose(panel);
+    }
+
+    _bindPanelClose(panel) {
         const closePanel = () => {
             if (this.activePanel) {
                 this.activePanel.remove();
                 this.activePanel = null;
             }
         };
-
-        closeBtn.addEventListener('click', closePanel);
-        overlay.addEventListener('click', closePanel);
-
-        // Close on ESC key
-        const escHandler = (e) => {
-            if (e.key === 'Escape') {
-                closePanel();
-                document.removeEventListener('keydown', escHandler);
-            }
-        };
-        document.addEventListener('keydown', escHandler);
+        panel.querySelector('.panel-close')?.addEventListener('click', closePanel);
+        panel.querySelector('.panel-overlay')?.addEventListener('click', closePanel);
+        const esc = (e) => { if (e.key === 'Escape') { closePanel(); document.removeEventListener('keydown', esc); } };
+        document.addEventListener('keydown', esc);
     }
 
     formatRate(bitsPerSecond) {
