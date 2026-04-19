@@ -375,31 +375,28 @@ function updateInterfaceCache(cache, pathStr, value) {
     const iface = cache.interfaces[ifName];
     const now = Date.now();
 
-    // isTopLevel = true only when the path ends at the interface element itself
-    // (e.g. /interface[name=X] or /interface[name=X]/oper-state).
+    // ── Interface oper-state policy ─────────────────────────────────────────
+    // Only the EXACT scalar leaf path is authoritative for interface status:
+    //   /interface[name=ethernet-1/2]/oper-state  → "up" / "down"
     //
-    // SR Linux virtual lab sends SEPARATE oper-state updates for every sub-container:
-    //   /interface[name=ethernet-1/2]/oper-state          → "up"   ← correct interface state
-    //   /interface[name=ethernet-1/2]/ethernet/oper-state → "down" ← physical-layer (no HW transceiver)
-    //   /interface[name=ethernet-1/2]/transceiver/oper-state → "down" ← optical transceiver
-    //
-    // The old check (!includes('/ethernet[')) only matched list elements (ethernet[key=...]),
-    // NOT the ethernet container (/ethernet/…), so it let the physical-layer "down" overwrite
-    // the real interface state — causing e.g. DC2 ethernet-1/2 to show as "down" when it is "up".
-    //
-    // Fix: compute what comes AFTER the interface[name=X] element in the path.
-    // Only accept oper-state updates when that remainder is '' (whole interface object)
-    // or '/oper-state' (direct scalar leaf). Anything deeper is a sub-container.
+    // SR Linux virtual lab also sends oper-state updates for sub-containers
+    // (physical-layer, transceiver, healthz…) that are always "down" in VMs.
+    // Reading oper-state from the whole interface JSON object (SAMPLE path
+    // /interface[name=X]) or from sub-container leaves introduces false "down"
+    // readings.  The ON_CHANGE subscription on interface/oper-state delivers
+    // the correct value; we use that and nothing else.
     const afterIface = pathStr.replace(/^.*?interface\[[^\]]+\]/, '');
-    const isTopLevel = afterIface === '' || afterIface === '/oper-state';
+    const isOperStateLeaf = afterIface === '/oper-state';
 
-    // Handle object values (SR Linux sends complete interface objects)
+    // ── Scalar leaf: /interface[name=X]/oper-state ───────────────────────────
+    if (isOperStateLeaf && typeof value === 'string') {
+        iface.operState = value || 'unknown';
+    }
+
+    // Handle object values (SR Linux sends complete interface objects via SAMPLE)
     if (typeof value === 'object' && value !== null) {
-        // Extract oper-state only from top-level interface or subinterface paths
-        // (transceiver oper-state represents physical transceiver, not interface state)
-        if (value['oper-state'] !== undefined && isTopLevel) {
-            iface.operState = value['oper-state'];
-        }
+        // oper-state is intentionally NOT extracted from the object —
+        // only the direct scalar leaf (above) is the authoritative source.
 
         // Handle statistics - SR Linux sends these directly in value when path ends with /statistics[]
         if (value['in-octets'] !== undefined || value['out-octets'] !== undefined) {
@@ -470,10 +467,8 @@ function updateInterfaceCache(cache, pathStr, value) {
         }
     }
 
-    // Fallback for scalar values in specific paths
-    else if (pathStr.includes('/oper-state') && isTopLevel) {
-        iface.operState = value || 'unknown';
-    } else if (pathStr.includes('/statistics/in-octets')) {
+    // Scalar statistics leaves (not oper-state — that is handled at the top)
+    if (pathStr.includes('/statistics/in-octets')) {
         const timeDiff = (now - iface.lastUpdate) / 1000;
         if (timeDiff > 0 && iface.lastInOctets > 0) {
             iface.inRate = ((value - iface.lastInOctets) / timeDiff) * 8;
