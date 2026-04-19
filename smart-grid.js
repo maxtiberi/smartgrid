@@ -58,6 +58,8 @@ class SmartGrid {
         };
 
         this.gnmiServiceUrl = 'http://localhost:3001';
+        this.pingServiceUrl = 'http://localhost:3000';
+        this.config = null; // Hydrated from /api/config after init().
         this.activeTooltip = null;
         this.activePanel = null;
 
@@ -125,6 +127,73 @@ class SmartGrid {
         const overrideToggle = document.getElementById('manual-override-toggle');
         if (overrideToggle) {
             overrideToggle.addEventListener('change', () => this.toggleManualOverride());
+        }
+
+        // Fault injection panel
+        this.initFaultInjectionUI();
+
+        // Fetch centralized config and overlay hardcoded defaults.
+        // If the backend is down we keep the baked-in fallback — app still boots.
+        this.loadConfig();
+    }
+
+    initFaultInjectionUI() {
+        const kindSel = document.getElementById('fault-kind');
+        const idSel   = document.getElementById('fault-id');
+        if (!kindSel || !idSel) return;
+
+        const repopulate = () => {
+            const kind = kindSel.value;
+            let ids = [];
+            if (kind === 'router') ids = Object.keys(this.routers);
+            else if (kind === 'rtu') ids = Object.keys(this.rtus);
+            else if (kind === 'link') ids = Object.keys(this.config?.links || {});
+            idSel.innerHTML = ids.map(id => `<option value="${id}">${id}</option>`).join('');
+        };
+        kindSel.addEventListener('change', repopulate);
+        // Repopulate after config arrives (link list becomes known).
+        setTimeout(repopulate, 500);
+        setTimeout(repopulate, 2000);
+        repopulate();
+
+        document.getElementById('fault-down-btn')?.addEventListener('click', () => {
+            const kind = kindSel.value;
+            const id = idSel.value;
+            const state = kind === 'rtu' ? 'offline' : 'down';
+            this.injectFault(kind, id, state);
+        });
+        document.getElementById('fault-up-btn')?.addEventListener('click', () => {
+            const kind = kindSel.value;
+            const id = idSel.value;
+            const state = kind === 'rtu' ? 'online' : 'up';
+            this.injectFault(kind, id, state);
+        });
+        document.getElementById('fault-clear-btn')?.addEventListener('click', () => this.clearFaults());
+    }
+
+    async loadConfig() {
+        try {
+            const res = await fetch(`${this.gnmiServiceUrl}/api/config`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const cfg = await res.json();
+            this.config = cfg;
+
+            // Overlay router hosts from config (leaf IPs change after lab redeploy).
+            for (const [id, r] of Object.entries(cfg.routers || {})) {
+                if (this.routers[id]) this.routers[id].host = r.host;
+            }
+            for (const [id, r] of Object.entries(cfg.rtus || {})) {
+                if (this.rtus[id]) this.rtus[id].host = r.host;
+            }
+            if (cfg.grid?.cityDemandMW) this.city.demand = cfg.grid.cityDemandMW;
+            // Keep transmission-unit IP slots aligned with RTU IPs (used for ping-based monitoring).
+            const rtuHosts = Object.values(cfg.rtus || {}).map(r => r.host);
+            ['transmission1','transmission2','transmission3','transmission4'].forEach((k, i) => {
+                if (this.transmissionUnits[k] && rtuHosts[i]) this.transmissionUnits[k].ip = rtuHosts[i];
+            });
+            console.log('[SmartGrid] Config loaded from /api/config');
+        } catch (err) {
+            console.warn('[SmartGrid] /api/config unavailable, using built-in defaults:', err.message);
         }
     }
 
@@ -874,15 +943,141 @@ class SmartGrid {
     }
 
     startRouterMonitoring() {
-        // Check all routers immediately
+        // Prefer Server-Sent Events for real-time updates; fall back to polling.
+        this.startEventStream();
+
+        // Initial fetch so UI has data even before first SSE snapshot arrives.
         this.checkAllRouters();
         this.checkAllLinks();
 
-        // Poll every 10 seconds
+        // Safety-net poll at 30s (was 10s) — SSE is authoritative when connected.
         setInterval(() => {
-            this.checkAllRouters();
-            this.checkAllLinks();
-        }, 10000);
+            if (!this._sseConnected) {
+                this.checkAllRouters();
+                this.checkAllLinks();
+            }
+        }, 30000);
+    }
+
+    startEventStream() {
+        try {
+            const es = new EventSource(`${this.gnmiServiceUrl}/api/events`);
+            this._sseConnected = false;
+
+            es.addEventListener('snapshot', (e) => {
+                this._sseConnected = true;
+                try { this.applySnapshot(JSON.parse(e.data)); } catch (err) { console.warn('snapshot parse', err); }
+            });
+            es.addEventListener('event', (e) => {
+                try { this.appendTimelineEvent(JSON.parse(e.data)); } catch (err) {}
+            });
+            es.onerror = () => {
+                this._sseConnected = false;
+                // EventSource auto-reconnects; no manual retry needed.
+            };
+            this._eventSource = es;
+        } catch (err) {
+            console.warn('[SmartGrid] SSE unavailable, using polling fallback:', err.message);
+        }
+    }
+
+    applySnapshot(snap) {
+        if (this.manualOverride) return;
+        // Routers
+        if (snap.routers) {
+            for (const [id, r] of Object.entries(snap.routers)) {
+                if (this.routers[id]) {
+                    this.routers[id].status = r.status;
+                    this.routers[id].lastUpdate = r.lastUpdate;
+                    this.updateRouterVisualization(id, r);
+                }
+            }
+        }
+        // RTUs
+        if (snap.rtus) {
+            for (const [id, r] of Object.entries(snap.rtus)) {
+                if (this.rtus[id]) {
+                    this.rtus[id].status = r.status;
+                    this.updateRtuVisualization?.(id, r);
+                }
+            }
+        }
+        // Links — reuse existing rendering path.
+        if (snap.links) this.renderLinkStates?.(snap.links) || this._applyLinkStates(snap.links);
+        // Teleprotection FSM state
+        if (snap.teleprotection) this.applyTeleprotectionFsm(snap.teleprotection);
+        this.updateInfographicStats();
+    }
+
+    _applyLinkStates(links) {
+        // Fallback renderer: toggle .link-up/.link-down on [data-link] elements.
+        Object.entries(links).forEach(([linkId, info]) => {
+            document.querySelectorAll(`[data-link="${linkId}"]`).forEach(el => {
+                el.classList.toggle('link-up', info.status === 'up');
+                el.classList.toggle('link-down', info.status !== 'up');
+                el.classList.toggle('link-faulted', !!info.faulted);
+            });
+        });
+        // Defer breaker/teleprotection derivation to backend FSM (applyTeleprotectionFsm).
+    }
+
+    applyTeleprotectionFsm(tp) {
+        // Mirror backend FSM into existing visual indicators. Visual rule:
+        // ARMED → closed/green; PICKUP → warning; TRIP → open/red.
+        const breakerState = tp.state === 'TRIP' ? 'open' : 'closed';
+        this.teleprotection.closed = breakerState === 'closed';
+        this.teleprotection.fsm = tp;
+        // Reuse existing rendering if available.
+        if (typeof this.updateTeleprotectionVisual === 'function') {
+            this.updateTeleprotectionVisual(breakerState, tp);
+        } else {
+            document.querySelectorAll('[data-teleprotection-state]').forEach(el => {
+                el.setAttribute('data-teleprotection-state', tp.state.toLowerCase());
+            });
+        }
+    }
+
+    appendTimelineEvent(entry) {
+        const list = document.getElementById('event-timeline-list');
+        if (!list) return;
+        const li = document.createElement('li');
+        li.className = `timeline-entry kind-${entry.kind}`;
+        const ts = new Date(entry.ts).toLocaleTimeString();
+        let desc = '';
+        switch (entry.kind) {
+            case 'teleprotection': desc = `Teleprotezione: ${entry.from} → ${entry.to} (${entry.reason})`; break;
+            case 'router-status':  desc = `Router ${entry.id}: ${entry.from} → ${entry.to}`; break;
+            case 'rtu-status':     desc = `RTU ${entry.id}: ${entry.from} → ${entry.to}`; break;
+            case 'fault-inject':   desc = `Fault inject: ${entry.kind || ''} ${entry.id} = ${entry.state}`; break;
+            case 'fault-clear':    desc = 'Fault overrides cleared'; break;
+            default: desc = entry.kind;
+        }
+        li.innerHTML = `<span class="ts">${ts}</span> <span class="desc">${desc}</span>`;
+        list.insertBefore(li, list.firstChild);
+        // Cap visible list to 50 entries.
+        while (list.children.length > 50) list.removeChild(list.lastChild);
+    }
+
+    async injectFault(kind, id, state) {
+        try {
+            const res = await fetch(`${this.gnmiServiceUrl}/api/fault`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ kind, id, state })
+            });
+            if (!res.ok) console.warn('[SmartGrid] fault inject failed', await res.text());
+        } catch (err) {
+            console.warn('[SmartGrid] fault inject error', err);
+        }
+    }
+
+    async clearFaults() {
+        try {
+            await fetch(`${this.gnmiServiceUrl}/api/fault`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clear: true })
+            });
+        } catch (err) { console.warn(err); }
     }
 
     async checkAllRouters() {

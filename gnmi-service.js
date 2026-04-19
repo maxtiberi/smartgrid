@@ -4,42 +4,65 @@
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const { exec } = require('child_process');
 
-const PORT = 3001;
+// Load centralized config (single source of truth for topology and credentials).
+const CONFIG_PATH = path.join(__dirname, 'config.json');
+const CONFIG = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
 
-// Router configurations
-// Port 57401 is the insecure (non-TLS) gNMI port in SR Linux v24
-const ROUTERS = {
-    dc1: { host: '172.20.20.5', port: 57401, name: 'DC-1', type: 'spine' },
-    dc2: { host: '172.20.20.8', port: 57401, name: 'DC-2', type: 'spine' },
-    leaf1: { host: '172.20.20.4', port: 57401, name: 'Leaf-1', type: 'leaf' },
-    leaf2: { host: '172.20.20.3', port: 57401, name: 'Leaf-2', type: 'leaf' },
-    leaf3: { host: '172.20.20.6', port: 57401, name: 'Leaf-3', type: 'leaf' },
-    leaf4: { host: '172.20.20.2', port: 57401, name: 'Leaf-4', type: 'leaf' }
-};
+const PORT = CONFIG.services.gnmiService.port;
+const GNMI_PORT = CONFIG.gnmi.port;
+const GNMI_SAMPLE_INTERVAL_NS = CONFIG.gnmi.sampleIntervalNs;
+const GNMI_CREDENTIALS = CONFIG.gnmi.credentials;
 
-// RTU configurations (non-gNMI devices, monitored via ping)
-const RTUS = {
-    rtu1: { host: '172.20.20.20', name: 'RTU-1', type: 'rtu' },
-    rtu2: { host: '172.20.20.21', name: 'RTU-2', type: 'rtu' },
-    rtu3: { host: '172.20.20.22', name: 'RTU-3', type: 'rtu' },
-    rtu4: { host: '172.20.20.23', name: 'RTU-4', type: 'rtu' }
-};
+// Expand routers / RTUs with the shared gNMI port so existing code keeps working.
+const ROUTERS = Object.fromEntries(
+    Object.entries(CONFIG.routers).map(([id, r]) => [id, { ...r, port: GNMI_PORT }])
+);
+const RTUS = { ...CONFIG.rtus };
 
 // RTU status cache
 const rtuCache = {};
-
-const GNMI_CREDENTIALS = {
-    username: 'admin',
-    password: 'NokiaSrl1!'
-};
 
 // In-memory cache for router telemetry
 const routerCache = {};
 
 // Retry counters
 const retryCount = {};
+
+// Fault-injection overrides: { routers: {id: 'down'}, rtus: {id: 'offline'}, links: {id: 'down'} }
+// Set via POST /api/fault; cleared via POST /api/fault with { clear: true }.
+const faultOverrides = { routers: {}, rtus: {}, links: {} };
+
+// Teleprotection finite-state machine.
+// States: ARMED (all healthy), PICKUP (degraded but not tripped), TRIP (breaker open).
+const teleprotection = {
+    state: 'ARMED',
+    reason: 'all-clear',
+    isolatedLeaves: [],
+    lastTransition: new Date().toISOString()
+};
+
+// Append-only event log (bounded) for UI timeline.
+const eventLog = [];
+const EVENT_LOG_MAX = 500;
+function logEvent(kind, payload) {
+    const entry = { ts: new Date().toISOString(), kind, ...payload };
+    eventLog.push(entry);
+    if (eventLog.length > EVENT_LOG_MAX) eventLog.shift();
+    broadcast('event', entry);
+}
+
+// Server-Sent Events infrastructure — lets the browser drop 10s polling.
+const sseClients = new Set();
+function broadcast(type, data) {
+    const payload = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
+    for (const client of sseClients) {
+        try { client.write(payload); } catch (_) { sseClients.delete(client); }
+    }
+}
 
 // Load gNMI proto
 const PROTO_PATH = __dirname + '/proto/gnmi/gnmi.proto';
@@ -117,7 +140,7 @@ function subscribeToRouter(routerId) {
                 {
                     path: buildPath('interface'),
                     mode: 2, // SAMPLE
-                    sample_interval: 5000000000 // 5 seconds in nanoseconds
+                    sample_interval: GNMI_SAMPLE_INTERVAL_NS
                 },
                 // Interface oper-state changes (ON_CHANGE ensures we get state for ALL interfaces)
                 {
@@ -128,43 +151,43 @@ function subscribeToRouter(routerId) {
                 {
                     path: buildPath('interface/subinterface/ipv4/address'),
                     mode: 2, // SAMPLE
-                    sample_interval: 5000000000
+                    sample_interval: GNMI_SAMPLE_INTERVAL_NS
                 },
                 // System0 interface specifically for router IP
                 {
                     path: buildPath('interface[name=system0]/subinterface[index=0]/ipv4/address'),
                     mode: 2, // SAMPLE
-                    sample_interval: 5000000000
+                    sample_interval: GNMI_SAMPLE_INTERVAL_NS
                 },
                 // Mgmt0 interface for router management IP (alternative to system0)
                 {
                     path: buildPath('interface[name=mgmt0]/subinterface[index=0]/ipv4/address'),
                     mode: 2, // SAMPLE
-                    sample_interval: 5000000000
+                    sample_interval: GNMI_SAMPLE_INTERVAL_NS
                 },
                 // Network instance interfaces (to get IPs from network-instance)
                 {
                     path: buildPath('network-instance[name=default]/interface'),
                     mode: 2, // SAMPLE
-                    sample_interval: 5000000000
+                    sample_interval: GNMI_SAMPLE_INTERVAL_NS
                 },
                 // System performance
                 {
                     path: buildPath('platform/control'),
                     mode: 2, // SAMPLE
-                    sample_interval: 5000000000
+                    sample_interval: GNMI_SAMPLE_INTERVAL_NS
                 },
                 // Network instance default - BGP statistics
                 {
                     path: buildPath('network-instance[name=default]/protocols/bgp/statistics'),
                     mode: 2, // SAMPLE
-                    sample_interval: 5000000000
+                    sample_interval: GNMI_SAMPLE_INTERVAL_NS
                 },
                 // Network instance default - BGP neighbors
                 {
                     path: buildPath('network-instance[name=default]/protocols/bgp/neighbor'),
                     mode: 2, // SAMPLE
-                    sample_interval: 5000000000
+                    sample_interval: GNMI_SAMPLE_INTERVAL_NS
                 }
             ]
         }
@@ -266,9 +289,13 @@ function processGnmiUpdate(routerId, response) {
     }
 
     const cache = routerCache[routerId];
+    const prevStatus = cache.status;
     cache.lastUpdate = new Date().toISOString();
     cache.status = 'connected';
     retryCount[routerId] = 0; // Reset retry counter on success
+    if (prevStatus && prevStatus !== 'connected') {
+        logEvent('router-status', { id: routerId, from: prevStatus, to: 'connected' });
+    }
 
     // Process update
     if (response.update && response.update.update) {
@@ -773,83 +800,135 @@ function handleGetRtus(req, res) {
     res.end(JSON.stringify({ rtus: summary }));
 }
 
-// Link definitions: which interfaces connect which routers
-const LINKS = {
-    'dc1-leaf1': { router1: 'dc1', interface1: 'ethernet-1/1', router2: 'leaf1', interface2: 'ethernet-1/1' },
-    'dc2-leaf1': { router1: 'dc2', interface1: 'ethernet-1/2', router2: 'leaf1', interface2: 'ethernet-1/5' },
-    'dc2-leaf2': { router1: 'dc2', interface1: 'ethernet-1/1', router2: 'leaf2', interface2: 'ethernet-1/2' },
-    'dc1-leaf2': { router1: 'dc1', interface1: 'ethernet-1/2', router2: 'leaf2', interface2: 'ethernet-1/1' },
-    'leaf1-rtu1': { router1: 'leaf1', interface1: 'ethernet-1/3', router2: 'rtu1', interface2: 'eth1' },
-    'leaf2-rtu2': { router1: 'leaf2', interface1: 'ethernet-1/3', router2: 'rtu2', interface2: 'eth1' },
-    'leaf3-rtu3': { router1: 'leaf3', interface1: 'ethernet-1/1', router2: 'rtu3', interface2: 'eth1' },
-    'dc1-leaf3': { router1: 'dc1', interface1: 'ethernet-1/3', router2: 'leaf3', interface2: 'ethernet-1/2' },
-    'dc2-leaf3': { router1: 'dc2', interface1: 'ethernet-1/3', router2: 'leaf3', interface2: 'ethernet-1/3' },
-    'dc1-leaf4': { router1: 'dc1', interface1: 'ethernet-1/4', router2: 'leaf4', interface2: 'ethernet-1/1' },
-    'dc2-leaf4': { router1: 'dc2', interface1: 'ethernet-1/4', router2: 'leaf4', interface2: 'ethernet-1/2' },
-    'leaf4-rtu4': { router1: 'leaf4', interface1: 'ethernet-1/3', router2: 'rtu4', interface2: 'eth1' }
-};
+// Link definitions loaded from config.json (single source of truth).
+const LINKS = CONFIG.links;
 
-// Handle link status endpoint
-function handleGetLinks(req, res) {
+// Pure computation — reused by REST handler, SSE snapshot, and teleprotection FSM.
+function computeLinks() {
     const linkStatus = {};
 
     for (const [linkId, link] of Object.entries(LINKS)) {
-        // Look up device info from ROUTERS or RTUS
         const dev1 = ROUTERS[link.router1] || RTUS[link.router1];
         const dev2 = ROUTERS[link.router2] || RTUS[link.router2];
 
         const cache1 = routerCache[link.router1] || rtuCache[link.router1];
         const cache2 = routerCache[link.router2] || rtuCache[link.router2];
 
-        // Check if both endpoints are connected/online
-        const router1Connected = cache1 && (cache1.status === 'connected' || cache1.status === 'stale' || cache1.status === 'online');
-        const router2Connected = cache2 && (cache2.status === 'connected' || cache2.status === 'stale' || cache2.status === 'online');
+        // Fault-injection override beats cache state.
+        const router1Connected = faultOverrides.routers[link.router1] === 'down' || faultOverrides.rtus[link.router1] === 'offline'
+            ? false
+            : cache1 && (cache1.status === 'connected' || cache1.status === 'stale' || cache1.status === 'online');
+        const router2Connected = faultOverrides.routers[link.router2] === 'down' || faultOverrides.rtus[link.router2] === 'offline'
+            ? false
+            : cache2 && (cache2.status === 'connected' || cache2.status === 'stale' || cache2.status === 'online');
 
-        // Get interface states (only routers have gNMI interface data)
         let iface1State = 'unknown';
         let iface2State = 'unknown';
-
         const rCache1 = routerCache[link.router1];
         const rCache2 = routerCache[link.router2];
+        if (rCache1 && rCache1.interfaces && rCache1.interfaces[link.interface1]) iface1State = rCache1.interfaces[link.interface1].operState;
+        if (rCache2 && rCache2.interfaces && rCache2.interfaces[link.interface2]) iface2State = rCache2.interfaces[link.interface2].operState;
 
-        if (rCache1 && rCache1.interfaces && rCache1.interfaces[link.interface1]) {
-            iface1State = rCache1.interfaces[link.interface1].operState;
-        }
-        if (rCache2 && rCache2.interfaces && rCache2.interfaces[link.interface2]) {
-            iface2State = rCache2.interfaces[link.interface2].operState;
-        }
-
-        // For RTU endpoints, consider the link up if the router side is up and RTU is online
         const isRtu1 = !!RTUS[link.router1];
         const isRtu2 = !!RTUS[link.router2];
-
         if (isRtu1) iface1State = router1Connected ? 'up' : 'down';
         if (isRtu2) iface2State = router2Connected ? 'up' : 'down';
 
-        // Link is UP only if both interfaces are UP
-        const linkUp = iface1State === 'up' && iface2State === 'up';
+        let linkUp = iface1State === 'up' && iface2State === 'up';
+        // Explicit link fault injection always wins.
+        if (faultOverrides.links[linkId] === 'down') linkUp = false;
 
         linkStatus[linkId] = {
             status: linkUp ? 'up' : 'down',
-            router1: {
-                id: link.router1,
-                name: dev1 ? dev1.name : link.router1,
-                interface: link.interface1,
-                state: iface1State,
-                connected: router1Connected
-            },
-            router2: {
-                id: link.router2,
-                name: dev2 ? dev2.name : link.router2,
-                interface: link.interface2,
-                state: iface2State,
-                connected: router2Connected
-            }
+            faulted: faultOverrides.links[linkId] === 'down',
+            router1: { id: link.router1, name: dev1 ? dev1.name : link.router1, interface: link.interface1, state: iface1State, connected: router1Connected },
+            router2: { id: link.router2, name: dev2 ? dev2.name : link.router2, interface: link.interface2, state: iface2State, connected: router2Connected }
         };
     }
+    return linkStatus;
+}
 
+function handleGetLinks(req, res) {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ links: linkStatus }));
+    res.end(JSON.stringify({ links: computeLinks() }));
+}
+
+// Teleprotection FSM — leaf is isolated when both its DC uplinks are down.
+// ARMED (all clear) → PICKUP (one leaf fully isolated, awaiting confirmation) → TRIP (sustained).
+// This simplified model mirrors real teleprotection: PICKUP is a transient detection,
+// TRIP is the committed action after the condition persists (here: 2 consecutive evaluations).
+let _pickupCount = 0;
+function evaluateTeleprotection() {
+    const links = computeLinks();
+    const isolated = [];
+    for (const leaf of ['leaf1', 'leaf2', 'leaf3', 'leaf4']) {
+        const dc1Down = links[`dc1-${leaf}`]?.status !== 'up';
+        const dc2Down = links[`dc2-${leaf}`]?.status !== 'up';
+        if (dc1Down && dc2Down) isolated.push(leaf);
+    }
+
+    const prev = teleprotection.state;
+    let next = prev;
+    let reason = teleprotection.reason;
+
+    if (isolated.length === 0) {
+        next = 'ARMED';
+        reason = 'all-clear';
+        _pickupCount = 0;
+    } else if (prev === 'ARMED') {
+        next = 'PICKUP';
+        reason = `leaves isolated: ${isolated.join(',')}`;
+        _pickupCount = 1;
+    } else if (prev === 'PICKUP') {
+        _pickupCount += 1;
+        if (_pickupCount >= 2) { next = 'TRIP'; reason = `sustained isolation: ${isolated.join(',')}`; }
+    } else if (prev === 'TRIP') {
+        reason = `sustained isolation: ${isolated.join(',')}`;
+    }
+
+    teleprotection.isolatedLeaves = isolated;
+    if (next !== prev) {
+        teleprotection.state = next;
+        teleprotection.reason = reason;
+        teleprotection.lastTransition = new Date().toISOString();
+        logEvent('teleprotection', { from: prev, to: next, reason, isolatedLeaves: isolated });
+    } else {
+        teleprotection.reason = reason;
+    }
+}
+
+function buildSnapshot() {
+    const routers = {};
+    for (const id in ROUTERS) {
+        const c = routerCache[id];
+        const forced = faultOverrides.routers[id];
+        routers[id] = {
+            name: ROUTERS[id].name,
+            type: ROUTERS[id].type,
+            host: ROUTERS[id].host,
+            status: forced === 'down' ? 'disconnected' : (c ? c.status : 'unknown'),
+            faulted: forced === 'down',
+            lastUpdate: c ? c.lastUpdate : null
+        };
+    }
+    const rtus = {};
+    for (const id in RTUS) {
+        const c = rtuCache[id];
+        const forced = faultOverrides.rtus[id];
+        rtus[id] = {
+            name: RTUS[id].name,
+            host: RTUS[id].host,
+            status: forced === 'offline' ? 'offline' : (c ? c.status : 'unknown'),
+            faulted: forced === 'offline',
+            lastCheck: c ? c.lastCheck : null
+        };
+    }
+    return { routers, rtus, links: computeLinks(), teleprotection, faults: faultOverrides, ts: new Date().toISOString() };
+}
+
+function broadcastSnapshot() {
+    evaluateTeleprotection();
+    broadcast('snapshot', buildSnapshot());
 }
 
 // Handle global statistics
@@ -902,18 +981,26 @@ function handleGetStats(req, res) {
 function monitorRtus() {
     for (const rtuId in RTUS) {
         const rtu = RTUS[rtuId];
+        const prevStatus = rtuCache[rtuId]?.status;
         pingHost(rtu.host).then(result => {
+            const newStatus = result.alive ? 'online' : 'offline';
             rtuCache[rtuId] = {
-                status: result.alive ? 'online' : 'offline',
+                status: newStatus,
                 lastCheck: new Date().toISOString(),
                 latency: result.latency || null
             };
+            if (prevStatus && prevStatus !== newStatus) {
+                logEvent('rtu-status', { id: rtuId, from: prevStatus, to: newStatus });
+            }
         }).catch(error => {
             rtuCache[rtuId] = {
                 status: 'error',
                 lastCheck: new Date().toISOString(),
                 error: error.message
             };
+            if (prevStatus && prevStatus !== 'error') {
+                logEvent('rtu-status', { id: rtuId, from: prevStatus, to: 'error' });
+            }
         });
     }
 }
@@ -1150,6 +1237,63 @@ const server = http.createServer((req, res) => {
         handleGetStats(req, res);
     } else if (pathname === '/api/links' && req.method === 'GET') {
         handleGetLinks(req, res);
+    } else if (pathname === '/api/config' && req.method === 'GET') {
+        // Expose the same config.json the frontend should use — omit credentials.
+        const { credentials, ...gnmiPublic } = CONFIG.gnmi;
+        const publicConfig = { ...CONFIG, gnmi: gnmiPublic };
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(publicConfig));
+    } else if (pathname === '/api/teleprotection' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(teleprotection));
+    } else if (pathname === '/api/events' && req.method === 'GET') {
+        // Server-Sent Events stream — replaces 10s REST polling.
+        res.writeHead(200, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Access-Control-Allow-Origin': '*'
+        });
+        res.write(`event: snapshot\ndata: ${JSON.stringify(buildSnapshot())}\n\n`);
+        sseClients.add(res);
+        req.on('close', () => sseClients.delete(res));
+    } else if (pathname === '/api/eventlog' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ events: eventLog }));
+    } else if (pathname === '/api/fault' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk; if (body.length > 8192) req.destroy(); });
+        req.on('end', () => {
+            let parsed;
+            try { parsed = JSON.parse(body || '{}'); } catch (e) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'invalid JSON' }));
+                return;
+            }
+            if (parsed.clear) {
+                faultOverrides.routers = {}; faultOverrides.rtus = {}; faultOverrides.links = {};
+                logEvent('fault-clear', {});
+            } else {
+                // Shape: { kind: 'router'|'rtu'|'link', id: string, state: 'down'|'offline'|'up'|'online' }
+                const { kind, id, state } = parsed;
+                const healthy = state === 'up' || state === 'online';
+                if (kind === 'router' && ROUTERS[id]) {
+                    if (healthy) delete faultOverrides.routers[id]; else faultOverrides.routers[id] = 'down';
+                } else if (kind === 'rtu' && RTUS[id]) {
+                    if (healthy) delete faultOverrides.rtus[id]; else faultOverrides.rtus[id] = 'offline';
+                } else if (kind === 'link' && LINKS[id]) {
+                    if (healthy) delete faultOverrides.links[id]; else faultOverrides.links[id] = 'down';
+                } else {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'unknown kind or id' }));
+                    return;
+                }
+                logEvent('fault-inject', { kind, id, state });
+            }
+            broadcastSnapshot();
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ faults: faultOverrides }));
+        });
     } else if (pathname === '/health') {
         handleHealth(req, res);
     } else {
@@ -1157,6 +1301,14 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ error: 'Not found' }));
     }
 });
+
+// Periodic safety-net broadcast — pushes snapshot to all SSE clients every 2s
+// so UI stays fresh even when individual gNMI updates don't trigger changes.
+// Also drives the teleprotection FSM re-evaluation.
+setInterval(() => {
+    if (sseClients.size > 0) broadcastSnapshot();
+    else evaluateTeleprotection();
+}, 2000);
 
 // Start server
 server.listen(PORT, () => {
@@ -1170,6 +1322,11 @@ server.listen(PORT, () => {
     console.log(`  GET /api/stats                    - Global device statistics`);
     console.log(`  GET /api/links                    - Router link status`);
     console.log(`  GET /api/ping?ip=<IP>             - Ping an IP address`);
+    console.log(`  GET /api/config                   - Topology & service config`);
+    console.log(`  GET /api/teleprotection           - Teleprotection FSM state`);
+    console.log(`  GET /api/events                   - SSE snapshot/event stream`);
+    console.log(`  GET /api/eventlog                 - Recent event log`);
+    console.log(`  POST /api/fault                   - Inject/clear fault overrides`);
     console.log(`  GET /health                       - Service health\n`);
 
     console.log(`Configured Routers (gNMI):`);

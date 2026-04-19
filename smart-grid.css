@@ -2742,3 +2742,119 @@ body {
     opacity: 1;
 }
 
+
+/* ── TPT Simulator Link (in Teleprotection System section) ── */
+.tpt-sim-link {
+    color: #222 !important;
+    border-color: #444 !important;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+}
+
+.tpt-sim-link:hover {
+    color: #000 !important;
+    border-color: #000 !important;
+    background: rgba(0,0,0,0.05) !important;
+}
+
+.tpt-sim-link svg {
+    stroke: currentColor;
+}
+
+/* ========== Fault injection + event timeline ========== */
+.fault-timeline-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 20px 0;
+    padding: 16px;
+    background: #f8f7f5;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+}
+.fault-timeline-panel .ft-header {
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #333;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 6px;
+}
+.fault-injection .ft-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.fault-injection label {
+    display: inline-flex;
+    flex-direction: column;
+    font-size: 11px;
+    color: #666;
+}
+.fault-injection select {
+    padding: 4px 6px;
+    border: 1px solid #c0c0c0;
+    border-radius: 4px;
+    background: #fff;
+    font-size: 12px;
+    min-width: 110px;
+}
+.fault-injection button {
+    padding: 6px 10px;
+    font-size: 12px;
+    border: 1px solid #c0c0c0;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.fault-injection button:hover { background: #eee; }
+.fault-injection #fault-down-btn { border-color: #dc3545; color: #dc3545; }
+.fault-injection #fault-down-btn:hover { background: #fde6e8; }
+.fault-injection #fault-up-btn { border-color: #28a745; color: #28a745; }
+.fault-injection #fault-up-btn:hover { background: #e6f7ea; }
+.fault-injection .ft-hint {
+    font-size: 11px;
+    color: #777;
+    font-style: italic;
+    margin-top: 4px;
+}
+.event-timeline .timeline-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 11px;
+}
+.event-timeline .timeline-entry {
+    padding: 4px 6px;
+    border-bottom: 1px dashed #eee;
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+}
+.event-timeline .timeline-entry .ts {
+    color: #888;
+    flex-shrink: 0;
+    min-width: 62px;
+}
+.event-timeline .timeline-entry.kind-teleprotection .desc { color: #c00; font-weight: 600; }
+.event-timeline .timeline-entry.kind-router-status .desc,
+.event-timeline .timeline-entry.kind-rtu-status .desc { color: #555; }
+.event-timeline .timeline-entry.kind-fault-inject .desc { color: #a60; }
+.event-timeline .timeline-entry.kind-fault-clear .desc { color: #080; }
+
+/* Faulted visual marker on links/nodes (se backend segnala override) */
+.link-faulted {
+    stroke-dasharray: 4 3 !important;
+    opacity: 0.7;
+}
+@media (max-width: 900px) {
+    .fault-timeline-panel { grid-template-columns: 1fr; }
+}

@@ -894,6 +894,33 @@
                 </div>
             </div>
 
+            <!-- Fault injection + event timeline (didattico) -->
+            <div class="fault-timeline-panel">
+                <div class="fault-injection">
+                    <div class="ft-header">Iniettore guasti / Fault injection</div>
+                    <div class="ft-row">
+                        <label>Tipo
+                            <select id="fault-kind">
+                                <option value="router">Router</option>
+                                <option value="rtu">RTU</option>
+                                <option value="link">Link</option>
+                            </select>
+                        </label>
+                        <label>ID
+                            <select id="fault-id"></select>
+                        </label>
+                        <button id="fault-down-btn" type="button">Guasto (down)</button>
+                        <button id="fault-up-btn" type="button">Ripristina (up)</button>
+                        <button id="fault-clear-btn" type="button" title="Rimuove tutti gli override">Clear all</button>
+                    </div>
+                    <div class="ft-hint">Simula un guasto cliccando "Guasto": la teleprotezione reagisce secondo l'FSM del backend (ARMED → PICKUP → TRIP).</div>
+                </div>
+                <div class="event-timeline">
+                    <div class="ft-header">Timeline eventi</div>
+                    <ul id="event-timeline-list" class="timeline-list"></ul>
+                </div>
+            </div>
+
             <!-- Router Statistics Infographic -->
             <div class="router-stats-infographic" id="router-stats-infographic">
                 <div class="stats-card">
@@ -1858,6 +1885,17 @@
                     <text x="500" y="270" text-anchor="middle" class="bracket-label">Teleprotection system</text>
                 </g>
             </svg>
+
+            <!-- TPT Simulator link -->
+            <div class="turbine-description">
+                <a href="tpt-simulator.html" class="turbine-detail-link tpt-sim-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                    Simulatore TPT interattivo / Interactive TPT Simulator
+                </a>
+            </div>
+
         </div>
     </div>
 

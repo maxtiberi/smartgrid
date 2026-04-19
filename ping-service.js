@@ -3,12 +3,20 @@
 // Also manages the gNMI service lifecycle (start/stop/status)
 
 const http = require('http');
+const fs = require('fs');
 const { exec, spawn } = require('child_process');
 const url = require('url');
 const path = require('path');
 
-const PORT = 3000;
-const ALLOWED_IPS = ['172.20.20.9', '172.20.20.2', '172.20.20.4', '172.20.20.5', '172.20.20.8'];
+// Load centralized config (single source of truth).
+const CONFIG = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+
+const PORT = CONFIG.services.pingService.port;
+// Allow pings to every configured router and RTU — no more hand-maintained IP list.
+const ALLOWED_IPS = [
+    ...Object.values(CONFIG.routers).map(r => r.host),
+    ...Object.values(CONFIG.rtus).map(r => r.host)
+];
 
 // --- gNMI Service Manager ---
 let gnmiProcess = null;
@@ -169,5 +177,6 @@ server.listen(PORT, () => {
     console.log(`Ping service running on http://localhost:${PORT}`);
     console.log(`Monitoring IPs: ${ALLOWED_IPS.join(', ')}`);
     console.log(`\nExample usage:`);
-    console.log(`  curl http://localhost:${PORT}/ping?ip=172.20.20.4`);
+    const exampleIp = ALLOWED_IPS[0];
+    console.log(`  curl http://localhost:${PORT}/ping?ip=${exampleIp}`);
 });
