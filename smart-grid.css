@@ -296,6 +296,196 @@ body {
     font-weight: 600;
 }
 
+/* ------------------------------------------------------------------
+   Topology zones (Generation / Distribution / Transmission / Consumption)
+------------------------------------------------------------------ */
+.topology-zones .zone-bg {
+    stroke: var(--text-primary);
+    stroke-opacity: 0.05;
+    stroke-width: 1;
+}
+
+.topology-zones .zone-separator {
+    stroke: var(--text-primary);
+    stroke-width: 1;
+    stroke-dasharray: 2 4;
+    opacity: 0.18;
+}
+
+.topology-zones .zone-label {
+    font-family: 'IBM Plex Mono', 'Archivo', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    fill: var(--text-primary);
+    opacity: 0.72;
+    text-transform: uppercase;
+}
+
+.topology-zones .zone-sublabel {
+    font-family: 'Archivo', sans-serif;
+    font-size: 9px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    fill: var(--text-tertiary);
+    opacity: 0.7;
+}
+
+/* ------------------------------------------------------------------
+   Topology annotations (voltage / capacity / demand badges)
+------------------------------------------------------------------ */
+.topology-annotations .capacity-badge rect {
+    fill: var(--bg-elevated);
+    stroke: var(--text-primary);
+    stroke-opacity: 0.35;
+    stroke-width: 1;
+}
+
+.topology-annotations .capacity-badge text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    fill: var(--text-primary);
+}
+
+.topology-annotations .voltage-badge rect {
+    fill: #1a1a1a;
+    fill-opacity: 0.82;
+    stroke: #1a1a1a;
+    stroke-width: 0.5;
+}
+
+.topology-annotations .voltage-badge text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    fill: #f5f3ef;
+}
+
+.topology-annotations .voltage-badge.voltage-mv rect {
+    fill: var(--text-secondary);
+    fill-opacity: 0.9;
+}
+
+/* LV (low-voltage) badge — lighter still, indicates the consumer-side voltage */
+.topology-annotations .voltage-badge.voltage-lv rect {
+    fill: var(--text-tertiary);
+    fill-opacity: 0.85;
+}
+
+/* ------------------------------------------------------------------
+   Secondary substations (S1–S4): MV/LV step-down cabines
+------------------------------------------------------------------ */
+.secondary-substation .sec-sub-node {
+    fill: var(--bg-elevated);
+    stroke: var(--text-secondary);
+    stroke-width: 1.2;
+    opacity: 0.8;
+    transition: all 0.4s;
+}
+
+.secondary-substation.active .sec-sub-node,
+.transmission-node.active ~ .secondary-substation .sec-sub-node {
+    /* Inherit network-primary glow when distribution line is active */
+    stroke: var(--network-primary);
+    opacity: 1;
+    filter: drop-shadow(0 0 4px var(--network-glow));
+}
+
+.secondary-substation .sec-sub-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    fill: var(--text-secondary);
+}
+
+/* ------------------------------------------------------------------
+   DER (Distributed Energy Resource): rooftop PV + BESS battery
+------------------------------------------------------------------ */
+.der-node .der-outer {
+    fill: var(--bg-elevated);
+    stroke: var(--text-secondary);
+    stroke-width: 1.2;
+    opacity: 0.85;
+    stroke-dasharray: 4 2;        /* dashed = bidirectional / non-firm asset */
+    transition: all 0.4s;
+}
+
+.der-node:hover .der-outer {
+    opacity: 1;
+    stroke: var(--accent-success);
+}
+
+.der-node .der-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    fill: var(--text-primary);
+}
+
+.der-node .der-sublabel {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8.5px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    fill: var(--text-tertiary);
+}
+
+/* DER bidirectional connection — dashed since flow direction depends on
+   PV production vs. BESS state of charge */
+.connection.der-connection {
+    stroke: var(--text-secondary);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 3;
+    opacity: 0.55;
+    fill: none;
+    transition: all 0.4s;
+}
+
+.connection.der-connection.active {
+    opacity: 0.9;
+    stroke: var(--accent-success);
+}
+
+/* DER particles — green-ish for export, neutral for import */
+.particle-der {
+    opacity: 0.7;
+    transition: opacity 0.3s;
+}
+.particle-der-export {
+    fill: var(--accent-success);
+    filter: drop-shadow(0 0 3px rgba(74, 106, 90, 0.55));
+}
+.particle-der-import {
+    fill: var(--text-secondary);
+    opacity: 0.5;
+}
+
+.topology-annotations .demand-badge rect {
+    fill: var(--bg-elevated);
+    stroke: var(--accent-success);
+    stroke-opacity: 0.55;
+    stroke-width: 1.2;
+}
+
+.topology-annotations .demand-badge text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    fill: var(--text-primary);
+}
+
+/* When the grid is fully online, the demand-badge gets a quiet accent */
+.topology-diagram.grid-online .demand-badge rect {
+    stroke: var(--accent-success);
+    stroke-opacity: 0.9;
+    filter: drop-shadow(0 0 4px rgba(74, 106, 90, 0.35));
+}
+
+
 /* Wind turbine animation in topology */
 .node-group[data-node="wind"].active .topo-blades {
     animation: topoWindSpin 2s linear infinite;
@@ -364,6 +554,100 @@ body {
     font-size: 2.5rem;
     font-weight: 500;
     color: var(--text-primary);
+}
+
+/* ---- gNMI Service toggle button (header) ---- */
+.gnmi-control {
+    /* keep flex column from .stat-item, but align controls vertically with sibling stat values */
+    justify-content: flex-start;
+}
+
+.gnmi-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.9rem 0.5rem 0.7rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--text-primary);
+    border-radius: 999px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.18s ease, transform 0.15s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    user-select: none;
+    /* sit at the bottom of the .stat-item column so it lines up
+       with the stat-value baseline of its siblings */
+    margin-top: auto;
+}
+
+.gnmi-toggle-btn:hover:not(:disabled) {
+    background: var(--bg-card);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 0 0 var(--text-primary);
+}
+
+.gnmi-toggle-btn:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+.gnmi-toggle-btn:disabled {
+    opacity: 0.55;
+    cursor: progress;
+}
+
+.gnmi-led {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #999;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+    transition: background 0.25s ease, box-shadow 0.25s ease;
+    flex-shrink: 0;
+}
+
+/* States: data-state on .gnmi-control reflects backend status */
+.gnmi-control[data-state="running"] .gnmi-led {
+    background: #4caf50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.18), 0 0 6px rgba(76, 175, 80, 0.55);
+    animation: gnmiPulse 2.4s ease-in-out infinite;
+}
+.gnmi-control[data-state="stopped"] .gnmi-led {
+    background: var(--accent-danger);
+    box-shadow: 0 0 0 2px rgba(138, 74, 74, 0.18);
+}
+.gnmi-control[data-state="external"] .gnmi-led {
+    background: var(--accent-warning);
+    box-shadow: 0 0 0 2px rgba(138, 122, 74, 0.2), 0 0 5px rgba(138, 122, 74, 0.45);
+}
+.gnmi-control[data-state="unknown"] .gnmi-led,
+.gnmi-control[data-state="error"]   .gnmi-led {
+    background: #aaa;
+    animation: gnmiBlink 1s ease-in-out infinite;
+}
+
+@keyframes gnmiPulse {
+    0%, 100% { opacity: 1;   }
+    50%      { opacity: 0.55; }
+}
+@keyframes gnmiBlink {
+    0%, 100% { opacity: 0.4; }
+    50%      { opacity: 1; }
+}
+
+/* External-process hint: show "(external)" tag when started outside the dashboard */
+.gnmi-control[data-state="external"] .gnmi-toggle-btn::after {
+    content: "ext";
+    margin-left: 0.45rem;
+    font-size: 0.65rem;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: var(--accent-warning);
+    color: var(--bg-elevated);
+    letter-spacing: 0.08em;
 }
 
 .main-grid {
@@ -1265,6 +1549,256 @@ body {
 .tp-equip-a.tp-offline .tp-led,
 .tp-equip-b.tp-offline .tp-led {
     fill: #999999;
+}
+
+/* ==================================================================
+   Teleprotection System — infographic redesign
+   Industrial grayscale palette + single red accent for comms
+   ================================================================== */
+
+.teleprotection-diagram {
+    min-height: 360px;
+}
+
+/* ---- Top meta row (standards badge + legend) ---- */
+.tp-standard-badge rect {
+    fill: #1a1a1a;
+    fill-opacity: 0.85;
+}
+.tp-standard-badge text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    fill: #f5f3ef;
+}
+
+.tp-legend .tp-legend-power {
+    stroke: #2a2a2a;
+    stroke-width: 2;
+}
+.tp-legend .tp-legend-comm {
+    stroke: #8a4a4a;
+    stroke-width: 1.8;
+    stroke-dasharray: 4 2.5;
+}
+.tp-legend .tp-legend-text {
+    font-family: 'Archivo', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    fill: var(--text-primary);
+}
+
+/* ---- HV line and towers ---- */
+.tp-hv-label-bg {
+    /* Knockout panel matching page background — keeps label readable
+       even when the towers/conductors pass behind it. */
+    fill: var(--bg-dark);
+    stroke: var(--text-primary);
+    stroke-opacity: 0.18;
+    stroke-width: 0.8;
+}
+.tp-hv-label {
+    font-family: 'Archivo', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    fill: var(--text-primary);
+}
+
+.tp-hv-conductor {
+    stroke: #3a3a3a;
+    stroke-width: 1.4;
+}
+.tp-hv-conductor.tp-hv-main {
+    stroke: #1a1a1a;
+    stroke-width: 2.2;
+}
+
+.tp-hv-pulse {
+    fill: #2a2a2a;
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.3));
+}
+
+/* ---- Power drop lines, transformers, bus ---- */
+.tp-dropline {
+    stroke: #2a2a2a;
+    stroke-width: 2;
+    stroke-linecap: square;
+}
+
+.tp-voltage-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    fill: var(--text-secondary);
+}
+
+.tp-bus-bar {
+    fill: #1a1a1a;
+}
+
+.tp-bus-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    fill: var(--text-primary);
+}
+
+/* ---- Fabric panel container ---- */
+.tp-panel-frame {
+    stroke: var(--text-primary);
+    stroke-opacity: 0.18;
+    stroke-width: 1;
+}
+.tp-panel-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    fill: var(--text-primary);
+    opacity: 0.6;
+    text-transform: uppercase;
+}
+
+/* ---- Equipment card base ---- */
+.tp-card {
+    fill: var(--bg-elevated);
+    stroke: #2a2a2a;
+    stroke-width: 1.3;
+}
+.tp-card.tp-rack {
+    fill: #e0ddd6;
+}
+.tp-display {
+    fill: #2a2a2a;
+    stroke: #1a1a1a;
+    stroke-width: 0.8;
+}
+.tp-rack-text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    fill: #e8e6e1;
+}
+
+.tp-bolt {
+    fill: #8a7a4a;
+    stroke: #6a5a3a;
+    stroke-width: 0.4;
+}
+
+/* ---- Equipment labels ---- */
+.tp-eqp-label {
+    font-family: 'Archivo', sans-serif;
+    font-size: 10.5px;
+    font-weight: 600;
+    fill: var(--text-primary);
+}
+.tp-eqp-sublabel {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    fill: var(--text-tertiary);
+}
+
+/* ---- Telecom frame + routers ---- */
+.tp-telecom-frame {
+    fill: var(--bg-elevated);
+    stroke: #2a2a2a;
+    stroke-width: 1.6;
+}
+.tp-telecom-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    fill: var(--text-secondary);
+    text-transform: uppercase;
+}
+.tp-router {
+    fill: #d0cec9;
+    stroke: #2a2a2a;
+    stroke-width: 1;
+}
+.tp-router-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    fill: var(--text-primary);
+}
+.tp-inter-router {
+    stroke: #2a2a2a;
+    stroke-width: 1.2;
+    stroke-dasharray: 3 2;
+    opacity: 0.6;
+}
+
+/* ---- Power connector lines between substation ↔ RTU ---- */
+.tp-power-line {
+    stroke: #2a2a2a;
+    stroke-width: 2;
+}
+
+/* ---- Communication layer (red dashed) ---- */
+.tp-comm-line {
+    stroke: #8a4a4a;
+    stroke-width: 1.6;
+    stroke-dasharray: 5 2.5;
+    stroke-linejoin: round;
+    fill: none;
+}
+.tp-comm-pulse {
+    fill: #8a4a4a;
+    filter: drop-shadow(0 0 3px rgba(138, 74, 74, 0.55));
+}
+.tp-comm-pulse.tp-comm-return {
+    fill: #b06a6a;
+    opacity: 0.75;
+}
+
+/* ---- Protocol badges ---- */
+.tp-protocol-badge rect {
+    fill: var(--bg-elevated);
+    stroke: var(--text-primary);
+    stroke-opacity: 0.4;
+    stroke-width: 1;
+}
+.tp-protocol-badge text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    fill: var(--text-primary);
+}
+
+/* LED transition only — JS owns the fill via setAttribute (see smart-grid.js).
+   Deliberately NOT setting a CSS fill here because CSS fill beats the SVG
+   presentation attribute that JS writes. Default colour is on the <circle>. */
+
+/* Fault state: card border flashes red, display goes red, LEDs pulse opacity */
+.tp-equip-a.tp-fault .tp-card,
+.tp-equip-b.tp-fault .tp-card {
+    stroke: #8a4a4a;
+    stroke-width: 1.8;
+    filter: drop-shadow(0 0 4px rgba(138, 74, 74, 0.45));
+}
+.tp-equip-a.tp-fault .tp-display,
+.tp-equip-b.tp-fault .tp-display {
+    fill: #8a4a4a;
+}
+.tp-equip-a.tp-fault .tp-led,
+.tp-equip-b.tp-fault .tp-led {
+    animation: tpFaultPulse 0.9s ease-in-out infinite;
+}
+@keyframes tpFaultPulse {
+    0%, 100% { opacity: 0.35; }
+    50%      { opacity: 1; }
 }
 
 .router-diagram {

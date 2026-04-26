@@ -2431,57 +2431,96 @@ document.addEventListener('DOMContentLoaded', () => {
 
     console.log('All components initialized');
 
-    // --- gNMI Service Controller ---
+    // --- gNMI Service Controller ---------------------------------------
+    // Single controller that drives BOTH UIs simultaneously:
+    //   1) Header pill button (#gnmi-control / #gnmi-toggle-btn)        — quick toggle
+    //   2) Detailed control panel below the topology (#gnmiActionBtn …) — with PID + log viewer
+    // Both reflect the same backend state from ping-service:3000.
+    // ping-service probes port 3001 directly so we also detect EXTERNAL
+    // gNMI instances started outside the dashboard (e.g. via start-gnmi.sh).
     (function initGnmiController() {
-        const PING_BASE = 'http://localhost:3000';
-        let gnmiRunning = false;
-        let statusPollInterval = null;
+        const PING_BASE       = 'http://localhost:3000';
+        const POLL_MS         = 5000;
+        const FAST_POLL_MS    = 600;
+        const FAST_POLL_LIMIT = 12;
 
-        const dot       = document.getElementById('gnmiDot');
-        const label     = document.getElementById('gnmiStatusLabel');
-        const pidLabel  = document.getElementById('gnmiPidLabel');
-        const btn       = document.getElementById('gnmiActionBtn');
-        const btnIcon   = document.getElementById('gnmiActionIcon');
-        const btnLbl    = document.getElementById('gnmiActionLabel');
-        const logPanel  = document.getElementById('gnmiLogPanel');
-        const logBody   = document.getElementById('gnmiLogBody');
+        // --- UI #1: detailed panel (existing) -----------------------------
+        const dot      = document.getElementById('gnmiDot');
+        const lbl      = document.getElementById('gnmiStatusLabel');
+        const pidLbl   = document.getElementById('gnmiPidLabel');
+        const actBtn   = document.getElementById('gnmiActionBtn');
+        const actIcon  = document.getElementById('gnmiActionIcon');
+        const actLbl   = document.getElementById('gnmiActionLabel');
+        const logPanel = document.getElementById('gnmiLogPanel');
+        const logBody  = document.getElementById('gnmiLogBody');
 
-        if (!dot || !btn) return; // elements not in page
+        // --- UI #2: header pill button (new) ------------------------------
+        const pillRoot = document.getElementById('gnmi-control');
+        const pillBtn  = document.getElementById('gnmi-toggle-btn');
+        const pillTxt  = document.getElementById('gnmi-state-text');
 
-        function setLoadingState() {
-            dot.className = 'gnmi-dot loading';
-            label.className = 'gnmi-status-label loading';
-            label.textContent = 'In corso...';
-            btn.className = 'gnmi-action-btn loading-state';
-            btnIcon.textContent = '⏳';
-            btnLbl.textContent = 'Attendere...';
-            btn.disabled = true;
+        if (!actBtn && !pillBtn) return; // nothing to drive on this page
+
+        let currentState = 'unknown';   // running | stopped | external | unknown | error
+        let lastPid = null;
+        let busy = false;
+
+        // ---- Renderers ---------------------------------------------------
+        function renderPill(state, label, title) {
+            if (!pillRoot) return;
+            pillRoot.dataset.state = state;
+            if (pillTxt) pillTxt.textContent = label;
+            if (pillBtn) pillBtn.disabled = (state === 'unknown' || state === 'error' || busy);
+            if (title)   pillRoot.title = title;
         }
 
-        function applyStatus(data) {
-            gnmiRunning = data.running;
+        function renderPanel(data) {
+            if (!dot) return;
             if (data.running) {
-                dot.className = 'gnmi-dot running';
-                label.className = 'gnmi-status-label running';
-                label.textContent = 'In esecuzione';
-                pidLabel.textContent = data.pid ? `PID ${data.pid}` : '';
-                btn.className = 'gnmi-action-btn stop';
-                btnIcon.textContent = '⏹';
-                btnLbl.textContent = 'Ferma Servizio';
+                dot.className   = 'gnmi-dot running';
+                lbl.className   = 'gnmi-status-label running';
+                lbl.textContent = data.external ? 'In esecuzione (esterno)' : 'In esecuzione';
+                pidLbl.textContent = data.pid ? `PID ${data.pid}` : (data.external ? 'extern' : '');
+                actBtn.className = 'gnmi-action-btn stop';
+                actIcon.textContent = '⏹';
+                actLbl.textContent  = 'Ferma Servizio';
             } else {
-                dot.className = 'gnmi-dot stopped';
-                label.className = 'gnmi-status-label stopped';
-                label.textContent = 'Fermo';
-                pidLabel.textContent = '';
-                btn.className = 'gnmi-action-btn start';
-                btnIcon.textContent = '▶';
-                btnLbl.textContent = 'Avvia Servizio';
+                dot.className   = 'gnmi-dot stopped';
+                lbl.className   = 'gnmi-status-label stopped';
+                lbl.textContent = 'Fermo';
+                pidLbl.textContent = '';
+                actBtn.className = 'gnmi-action-btn start';
+                actIcon.textContent = '▶';
+                actLbl.textContent  = 'Avvia Servizio';
             }
-            btn.disabled = false;
-            // Update log panel if open
+            actBtn.disabled = busy;
+            // refresh logs if panel is open
             if (logPanel && logPanel.style.display !== 'none') {
                 renderLogs(data.logs || []);
             }
+        }
+
+        function setPanelLoading() {
+            if (!dot) return;
+            dot.className   = 'gnmi-dot loading';
+            lbl.className   = 'gnmi-status-label loading';
+            lbl.textContent = 'In corso...';
+            actBtn.className = 'gnmi-action-btn loading-state';
+            actIcon.textContent = '⏳';
+            actLbl.textContent  = 'Attendere...';
+            actBtn.disabled = true;
+        }
+
+        function setPanelError(msg) {
+            if (!dot) return;
+            dot.className   = 'gnmi-dot stopped';
+            lbl.className   = 'gnmi-status-label stopped';
+            lbl.textContent = msg;
+            pidLbl.textContent = '';
+            actBtn.className = 'gnmi-action-btn loading-state';
+            actBtn.disabled = true;
+            actIcon.textContent = '⚠';
+            actLbl.textContent  = 'Servizio N/D';
         }
 
         function renderLogs(logs) {
@@ -2501,62 +2540,93 @@ document.addEventListener('DOMContentLoaded', () => {
             logBody.scrollTop = logBody.scrollHeight;
         }
 
+        // ---- State sync (single source of truth) -------------------------
+        function applyStatus(data) {
+            // data: { running, managed, external, pid, port, logs }
+            lastPid = data.pid;
+            if (data.external) {
+                currentState = 'external';
+                renderPill('external', 'Stop (external)',
+                    `External gNMI listening on port ${data.port}. Click to stop it.`);
+            } else if (data.running) {
+                currentState = 'running';
+                renderPill('running', `Stop${data.pid ? ' · pid ' + data.pid : ''}`,
+                    'gNMI service running (managed by dashboard)');
+            } else {
+                currentState = 'stopped';
+                renderPill('stopped', 'Start', 'gNMI service is stopped — click to start');
+            }
+            renderPanel(data);
+        }
+
         async function fetchStatus() {
             try {
-                const res = await fetch(`${PING_BASE}/gnmi/status`);
-                if (!res.ok) throw new Error('status ' + res.status);
-                const data = await res.json();
-                applyStatus(data);
+                const res = await fetch(`${PING_BASE}/gnmi/status`, { cache: 'no-store' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                applyStatus(await res.json());
             } catch (e) {
-                // ping-service not reachable
-                dot.className = 'gnmi-dot stopped';
-                label.className = 'gnmi-status-label stopped';
-                label.textContent = 'Ping-service offline';
-                btn.className = 'gnmi-action-btn loading-state';
-                btn.disabled = true;
-                btnIcon.textContent = '⚠';
-                btnLbl.textContent = 'Servizio N/D';
-                pidLabel.textContent = '';
+                currentState = 'error';
+                renderPill('error', 'ping-svc offline',
+                    'Cannot reach ping-service on port 3000');
+                setPanelError('Ping-service offline');
             }
         }
 
-        window.gnmiToggleService = async function() {
-            setLoadingState();
-            const endpoint = gnmiRunning ? '/gnmi/stop' : '/gnmi/start';
+        async function toggle() {
+            if (busy) return;
+            busy = true;
+            const goingToStart = currentState === 'stopped';
+            setPanelLoading();
+            renderPill(currentState, goingToStart ? 'starting…' : 'stopping…');
+            const endpoint = goingToStart ? '/gnmi/start' : '/gnmi/stop';
             try {
-                const res = await fetch(`${PING_BASE}${endpoint}`);
+                const res  = await fetch(`${PING_BASE}${endpoint}`, { cache: 'no-store' });
                 const data = await res.json();
-                console.log('[gNMI Control]', data.message);
-                // Poll until state changes (max 5s)
-                let attempts = 0;
-                const poll = setInterval(async () => {
-                    await fetchStatus();
-                    attempts++;
-                    if (attempts >= 10) clearInterval(poll);
-                }, 500);
+                console.log('[gNMI Control]', data.message || data);
+                if (!res.ok && data.message && pillRoot) pillRoot.title = data.message;
             } catch (e) {
-                console.error('[gNMI Control] Error:', e);
-                await fetchStatus();
+                console.error('[gNMI Control] toggle error:', e);
             }
-        };
+            // Chase the new state with a fast burst, then resume slow polling.
+            let attempts = 0;
+            const fast = setInterval(async () => {
+                await fetchStatus();
+                attempts++;
+                if (attempts >= FAST_POLL_LIMIT) {
+                    clearInterval(fast);
+                    busy = false;
+                    if (currentState !== 'error') {
+                        if (actBtn)  actBtn.disabled  = false;
+                        if (pillBtn) pillBtn.disabled = false;
+                    }
+                }
+            }, FAST_POLL_MS);
+        }
 
+        // ---- Public toggle handlers (called by both UIs) ---------------
+        // The detailed panel uses these via inline `onclick="window.gnmi…()"`.
+        window.gnmiToggleService = toggle;
         window.gnmiToggleLogs = async function() {
             if (!logPanel) return;
             const isHidden = logPanel.style.display === 'none';
             logPanel.style.display = isHidden ? 'block' : 'none';
             if (isHidden) {
                 try {
-                    const res = await fetch(`${PING_BASE}/gnmi/status`);
-                    const data = await res.json();
-                    renderLogs(data.logs || []);
-                } catch (e) {
-                    renderLogs([]);
-                }
+                    const res = await fetch(`${PING_BASE}/gnmi/status`, { cache: 'no-store' });
+                    renderLogs((await res.json()).logs || []);
+                } catch { renderLogs([]); }
             }
         };
 
-        // Initial status + poll every 8s
+        // Header pill: same handler
+        if (pillBtn) pillBtn.addEventListener('click', toggle);
+
+        // Initial fetch + background poll
         fetchStatus();
-        statusPollInterval = setInterval(fetchStatus, 8000);
+        setInterval(fetchStatus, POLL_MS);
+
+        // Console helpers
+        window.gnmiRefresh = fetchStatus;
+        window.gnmiToggle  = toggle;
     })();
 });
