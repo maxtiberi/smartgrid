@@ -2,6 +2,23 @@ node_modules/
 .claude/
 backup/
 github-pages-demo/
+archive/
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Backup files
+*.bak
+*.bak2
+*.orig
+
+# Logs
+*.log
+npm-debug.log*
 
 # TLS certificates
 *.crt

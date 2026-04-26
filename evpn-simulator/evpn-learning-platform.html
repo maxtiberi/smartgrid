@@ -1,0 +1,1910 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EVPN Learning Platform — Nokia SROS</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #21262d;
+  --border: #30363d;
+  --nokia-blue: #0099CC;
+  --nokia-dark: #006699;
+  --green: #00C878;
+  --orange: #FF8C00;
+  --red: #FF4444;
+  --yellow: #FFD700;
+  --text: #e6edf3;
+  --text-dim: #8b949e;
+  --text-code: #79c0ff;
+  --radius: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+/* ─── NAV ─── */
+#app-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+#app-header .logo {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--nokia-blue);
+  letter-spacing: .5px;
+  padding: 14px 20px 14px 0;
+  border-right: 1px solid var(--border);
+  margin-right: 8px;
+  white-space: nowrap;
+}
+.nav-tabs { display: flex; gap: 0; overflow-x: auto; }
+.nav-tab {
+  padding: 14px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-dim);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all .2s;
+  user-select: none;
+}
+.nav-tab:hover { color: var(--text); }
+.nav-tab.active { color: var(--nokia-blue); border-bottom-color: var(--nokia-blue); }
+
+/* ─── SECTIONS ─── */
+.section { display: none; padding: 28px 32px; max-width: 1200px; margin: 0 auto; }
+.section.active { display: block; }
+.section-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.section-sub { color: var(--text-dim); font-size: 14px; margin-bottom: 28px; }
+
+/* ─── CARDS ─── */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 28px; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.card-icon { font-size: 28px; margin-bottom: 10px; }
+.card h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--nokia-blue); }
+.card p { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+.card.highlight { border-color: var(--nokia-blue); }
+
+/* ─── INFO BOX ─── */
+.infobox {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--nokia-blue);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-dim);
+}
+.infobox strong { color: var(--text); }
+.infobox.green { border-left-color: var(--green); }
+.infobox.orange { border-left-color: var(--orange); }
+.infobox.red { border-left-color: var(--red); }
+
+/* ─── TWO COL ─── */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+@media(max-width:800px){ .two-col { grid-template-columns: 1fr; } }
+
+/* ─── TOPOLOGY ─── */
+#topo-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+#topo-svg { width: 100%; display: block; }
+#topo-info {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  font-size: 13px;
+  min-height: 80px;
+}
+#topo-info h4 { font-size: 14px; color: var(--nokia-blue); margin-bottom: 8px; }
+#topo-info table { width: 100%; border-collapse: collapse; }
+#topo-info td { padding: 3px 8px; color: var(--text-dim); }
+#topo-info td:first-child { color: var(--text); font-weight: 500; width: 130px; }
+
+/* ─── ANIMATION SECTION ─── */
+#anim-wrap {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+}
+@media(max-width:900px){ #anim-wrap { grid-template-columns: 1fr; } }
+#anim-svg-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+#anim-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.anim-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: all .2s;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.anim-btn:hover { border-color: var(--nokia-blue); color: var(--nokia-blue); }
+.anim-btn.active { border-color: var(--nokia-blue); background: rgba(0,153,204,.1); color: var(--nokia-blue); }
+.anim-btn .btn-icon { font-size: 18px; flex-shrink: 0; }
+.anim-btn .btn-text { }
+.anim-btn .btn-title { font-weight: 600; font-size: 13px; }
+.anim-btn .btn-desc { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+#anim-log {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  font-size: 12px;
+  font-family: 'Consolas', monospace;
+  height: 160px;
+  overflow-y: auto;
+  color: var(--text-dim);
+}
+#anim-log .log-entry { padding: 2px 0; }
+#anim-log .log-entry span { color: var(--nokia-blue); }
+#anim-log .log-entry.green span { color: var(--green); }
+#anim-log .log-entry.orange span { color: var(--orange); }
+#anim-log .log-entry.red span { color: var(--red); }
+
+/* ─── CODE BLOCKS ─── */
+.code-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 0; overflow-x: auto; }
+.code-tab {
+  padding: 8px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text-dim);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  user-select: none;
+  transition: all .2s;
+}
+.code-tab:hover { color: var(--text); }
+.code-tab.active { color: var(--nokia-blue); border-bottom-color: var(--nokia-blue); }
+.code-panel { display: none; }
+.code-panel.active { display: block; }
+pre.sros {
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 16px 20px;
+  font-size: 12px;
+  font-family: 'Consolas','Courier New', monospace;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre;
+}
+.kw { color: #ff7b72; }
+.cm { color: #6e7681; font-style: italic; }
+.val { color: #79c0ff; }
+.str { color: #a5d6ff; }
+.sec { color: #d2a8ff; }
+.ip  { color: #56d364; }
+
+/* ─── FAULT SIM ─── */
+#fault-wrap {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 20px;
+}
+@media(max-width:900px){ #fault-wrap { grid-template-columns: 1fr; } }
+#fault-svg-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+#fault-panel { display: flex; flex-direction: column; gap: 12px; }
+.fault-link-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 9px 12px;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all .2s;
+  user-select: none;
+}
+.fault-link-btn:hover { border-color: var(--red); }
+.fault-link-btn.failed { border-color: var(--red); background: rgba(255,68,68,.1); color: var(--red); }
+.fault-link-btn .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green); flex-shrink: 0;
+  transition: background .3s;
+}
+.fault-link-btn.failed .dot { background: var(--red); }
+#fault-log {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  font-size: 12px;
+  font-family: 'Consolas', monospace;
+  height: 180px;
+  overflow-y: auto;
+  color: var(--text-dim);
+}
+#fault-reset-btn {
+  background: var(--nokia-blue);
+  border: none;
+  border-radius: var(--radius);
+  padding: 10px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+#fault-reset-btn:hover { opacity: .85; }
+
+/* ─── QUIZ ─── */
+.quiz-q {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.quiz-q .q-text { font-size: 14px; font-weight: 600; margin-bottom: 14px; line-height: 1.5; }
+.quiz-q .q-num { color: var(--nokia-blue); font-size: 12px; margin-bottom: 6px; }
+.quiz-options { display: flex; flex-direction: column; gap: 8px; }
+.quiz-opt {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all .2s;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.quiz-opt:hover:not(.disabled) { border-color: var(--nokia-blue); }
+.quiz-opt.correct { border-color: var(--green); background: rgba(0,200,120,.1); color: var(--green); }
+.quiz-opt.wrong { border-color: var(--red); background: rgba(255,68,68,.1); color: var(--red); }
+.quiz-opt.disabled { cursor: default; }
+.quiz-opt .opt-key { font-weight: 700; min-width: 18px; }
+.quiz-explanation {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  display: none;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border-radius: 6px;
+  border-left: 3px solid var(--nokia-blue);
+}
+.quiz-explanation.show { display: block; }
+#quiz-score-bar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  font-size: 13px;
+}
+#quiz-score-bar .score-num { font-size: 28px; font-weight: 700; color: var(--nokia-blue); }
+.progress-bar { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--nokia-blue); transition: width .4s; }
+#quiz-submit {
+  background: var(--nokia-blue);
+  border: none;
+  border-radius: var(--radius);
+  padding: 12px 24px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: opacity .2s;
+}
+#quiz-submit:hover { opacity: .85; }
+#quiz-result { display:none; text-align: center; padding: 40px; }
+#quiz-result .result-score { font-size: 48px; font-weight: 700; color: var(--nokia-blue); }
+#quiz-result .result-msg { font-size: 18px; margin: 12px 0; }
+#quiz-retry { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 20px; color: var(--text); font-size: 14px; cursor: pointer; margin-top: 16px; }
+
+/* ─── ARCH DIAGRAM ─── */
+.arch-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+.arch-table th {
+  background: var(--surface2);
+  padding: 8px 12px;
+  text-align: left;
+  color: var(--nokia-blue);
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+}
+.arch-table td {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  vertical-align: top;
+}
+.arch-table tr:hover td { background: var(--surface2); }
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.badge-blue { background: rgba(0,153,204,.2); color: var(--nokia-blue); border: 1px solid rgba(0,153,204,.4); }
+.badge-green { background: rgba(0,200,120,.2); color: var(--green); border: 1px solid rgba(0,200,120,.4); }
+.badge-orange { background: rgba(255,140,0,.2); color: var(--orange); border: 1px solid rgba(255,140,0,.4); }
+
+/* ─── ROUTE TYPE CARDS ─── */
+.rt-cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 12px; margin: 20px 0; }
+.rt-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--nokia-blue);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.rt-card.rt2 { border-top-color: var(--green); }
+.rt-card.rt3 { border-top-color: var(--orange); }
+.rt-card.rt5 { border-top-color: #a371f7; }
+.rt-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+.rt-card .rt-type { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; font-family: monospace; }
+.rt-card p { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+
+/* ─── TOPOLOGY LEGEND ─── */
+.topo-legend {
+  display: flex;
+  gap: 20px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 8px 4px;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+.legend-line { width: 20px; height: 3px; border-radius: 2px; }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+/* ─── VXLAN PACKET DIAGRAM ─── */
+.pkt-diagram { display: flex; gap: 0; margin: 16px 0; font-size: 11px; }
+.pkt-field {
+  padding: 6px 10px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-right: none;
+  white-space: nowrap;
+}
+.pkt-field:last-child { border-right: 1px solid var(--border); }
+.pkt-field .pkt-label { color: var(--text-dim); font-size: 10px; margin-bottom: 2px; }
+.pkt-field .pkt-val { font-family: monospace; font-size: 12px; }
+.pkt-outer { background: rgba(0,153,204,.12); }
+.pkt-inner { background: rgba(0,200,120,.12); }
+.pkt-vxlan { background: rgba(255,140,0,.12); }
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════ HEADER ═══ -->
+<div id="app-header">
+  <div class="logo">⬡ EVPN / Nokia SROS</div>
+  <div class="nav-tabs">
+    <div class="nav-tab active" data-sec="intro">🏠 Introduzione</div>
+    <div class="nav-tab" data-sec="arch">📐 Architettura</div>
+    <div class="nav-tab" data-sec="topo">🗺 Topologia</div>
+    <div class="nav-tab" data-sec="anim">🎬 Animazioni</div>
+    <div class="nav-tab" data-sec="config">⚙ Configurazione</div>
+    <div class="nav-tab" data-sec="fault">⚠ Fault Simulation</div>
+    <div class="nav-tab" data-sec="quiz">📝 Quiz</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ INTRO ═══ -->
+<div class="section active" id="sec-intro">
+  <div class="section-title">Ethernet VPN (EVPN)</div>
+  <div class="section-sub">Piattaforma didattica basata su Nokia SR OS — RFC 7432 / RFC 8365</div>
+
+  <div class="cards">
+    <div class="card highlight">
+      <div class="card-icon">📡</div>
+      <h3>Cos'è EVPN?</h3>
+      <p>EVPN (Ethernet VPN) è una tecnologia di rete definita nell'RFC 7432 che utilizza <strong>MP-BGP</strong> come piano di controllo per veicolare informazioni di raggiungibilità MAC/IP tra i nodi di rete, eliminando il flooding tradizionale del Ethernet.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔄</div>
+      <h3>Perché EVPN?</h3>
+      <p>Le soluzioni legacy (VPLS) apprendevano i MAC via data-plane flooding. EVPN porta il controllo nel <strong>piano BGP</strong>: apprendimento deterministico, ARP suppression, multi-homing attivo-attivo, mobilità VM, integrazione L2+L3.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🏗</div>
+      <h3>Nokia SR OS</h3>
+      <p>Nokia Service Router OS implementa EVPN su due piani dati: <strong>MPLS</strong> (per i service provider WAN) e <strong>VXLAN</strong> (per i data center). Questo corso usa VXLAN come underlay, tipico degli ambienti DC moderni.</p>
+    </div>
+  </div>
+
+  <div class="infobox">
+    <strong>Standard di riferimento</strong><br>
+    RFC 7432 — BGP MPLS-Based Ethernet VPN &nbsp;·&nbsp;
+    RFC 8365 — A Network Virtualization Overlay Solution Using EVPN &nbsp;·&nbsp;
+    RFC 9135 — Integrated Routing and Bridging in EVPN &nbsp;·&nbsp;
+    Nokia SROS Release 23.x
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="infobox green">
+        <strong>Vantaggi principali</strong><br>
+        ✔ Apprendimento MAC via control-plane (niente flooding inutile)<br>
+        ✔ ARP/ND Suppression — riduzione del traffico BUM<br>
+        ✔ Multi-homing attivo-attivo (All-Active ESI)<br>
+        ✔ Mobilità host e VM tracking<br>
+        ✔ Integrazione L2 + L3 (IRB — Integrated Routing &amp; Bridging)<br>
+        ✔ Scalabilità: milioni di MAC in tabelle BGP
+      </div>
+    </div>
+    <div>
+      <div class="infobox orange">
+        <strong>Componenti fondamentali</strong><br>
+        ► <strong>VTEP</strong> (VXLAN Tunnel EndPoint) — i nodi Leaf / PE<br>
+        ► <strong>VNI</strong> (VXLAN Network Identifier) — identifica il segmento L2<br>
+        ► <strong>EVI</strong> (EVPN Instance) — istanza EVPN per ogni servizio<br>
+        ► <strong>RD/RT</strong> — Route Distinguisher e Route Target BGP<br>
+        ► <strong>ESI</strong> (Ethernet Segment Identifier) — per il multi-homing<br>
+        ► <strong>RR</strong> (Route Reflector) — riflessione route BGP EVPN
+      </div>
+    </div>
+  </div>
+
+  <div class="infobox">
+    <strong>Come usare questa piattaforma</strong> — Naviga tra le sezioni usando i tab in alto.
+    La sezione <em>Topologia</em> mostra la rete a 6 nodi; clicca sui nodi per i dettagli.
+    Le <em>Animazioni</em> mostrano il funzionamento BGP EVPN step-by-step.
+    La <em>Configurazione</em> riporta i comandi Nokia SR OS completi per ogni nodo.
+    La <em>Fault Simulation</em> permette di simulare guasti e osservare la riconvergenza.
+    Infine il <em>Quiz</em> testa la comprensione con 10 domande.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ ARCH ═══ -->
+<div class="section" id="sec-arch">
+  <div class="section-title">Architettura EVPN</div>
+  <div class="section-sub">Piano di controllo BGP + Piano dati VXLAN</div>
+
+  <div class="two-col">
+    <div>
+      <div class="infobox">
+        <strong>Piano di Controllo — MP-BGP EVPN</strong><br><br>
+        EVPN usa le <em>MP-BGP NLRI</em> (Network Layer Reachability Information) di tipo AFI=25 / SAFI=70 per distribuire informazioni di raggiungibilità. I <strong>Route Reflector</strong> (i nodi Spine) raccolgono e ridistribuiscono le route senza che i Leaf debbano avere sessioni iBGP full-mesh.
+      </div>
+      <div class="infobox green">
+        <strong>Tipi di Route EVPN (Route Types)</strong><br><br>
+        Ogni <em>Route Type</em> trasporta informazioni specifiche tramite BGP UPDATE.
+      </div>
+      <div class="rt-cards">
+        <div class="rt-card">
+          <h4>Type 1 — Ethernet Auto-Discovery</h4>
+          <div class="rt-type">RT-1 / EAD Route</div>
+          <p>Pubblicata per ogni Ethernet Segment (ESI). Usata per il Multi-Homing e per il fast-failover (aliasing/mass-withdraw).</p>
+        </div>
+        <div class="rt-card rt2">
+          <h4>Type 2 — MAC/IP Advertisement</h4>
+          <div class="rt-type">RT-2 / MAC-IP Route</div>
+          <p>Trasporta indirizzo MAC e opzionalmente IP di un host. Sostituisce il flooding per l'apprendimento MAC. Abilita ARP Suppression.</p>
+        </div>
+        <div class="rt-card rt3">
+          <h4>Type 3 — Inclusive Multicast</h4>
+          <div class="rt-type">RT-3 / IMET Route</div>
+          <p>Pubblicata da ogni VTEP al boot per annunciare la capacità di gestire traffico BUM (Broadcast/Unknown/Multicast) via Ingress Replication.</p>
+        </div>
+        <div class="rt-card rt5">
+          <h4>Type 5 — IP Prefix Route</h4>
+          <div class="rt-type">RT-5 / IP Prefix</div>
+          <p>Distribuisce prefissi IP (L3) attraverso l'EVPN instance. Usata per l'integrazione L3 con i VRF (Integrated Routing &amp; Bridging).</p>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="infobox orange">
+        <strong>Piano Dati — VXLAN (RFC 7348)</strong><br><br>
+        Il traffico Ethernet originale del tenant viene <em>incapsulato</em> in UDP/IP con un header VXLAN che contiene il VNI (24 bit). Il trasporto avviene sull'underlay IP tra i VTEP (i nodi Leaf).
+      </div>
+      <div class="pkt-diagram">
+        <div class="pkt-field pkt-outer"><div class="pkt-label">Outer Ethernet</div><div class="pkt-val">DA/SA MAC</div></div>
+        <div class="pkt-field pkt-outer"><div class="pkt-label">Outer IP</div><div class="pkt-val">VTEP src→dst</div></div>
+        <div class="pkt-field pkt-outer"><div class="pkt-label">UDP</div><div class="pkt-val">dport 4789</div></div>
+        <div class="pkt-field pkt-vxlan"><div class="pkt-label">VXLAN</div><div class="pkt-val">VNI=1000</div></div>
+        <div class="pkt-field pkt-inner"><div class="pkt-label">Inner Eth</div><div class="pkt-val">Tenant</div></div>
+        <div class="pkt-field pkt-inner"><div class="pkt-label">Payload</div><div class="pkt-val">L3+Data</div></div>
+      </div>
+      <div class="infobox" style="margin-top:12px;">
+        <strong>Flusso BUM (Broadcast/Unknown/Multicast)</strong><br>
+        In assenza di una voce MAC nel FDB, il primo frame verso un host sconosciuto viene replicato dal VTEP di ingresso verso tutti gli altri VTEP della stessa EVI (Ingress Replication). Dopo che la RT-2 è ricevuta tramite BGP, il traffico diventa <em>unicast diretto</em> tra i due VTEP.
+      </div>
+      <div class="infobox" style="margin-top:12px;">
+        <strong>ARP Suppression</strong><br>
+        Ogni VTEP mantiene una cache ARP locale alimentata dalle RT-2 ricevute via BGP. Quando un host fa un ARP request, il VTEP locale risponde direttamente senza inviare la richiesta sulla rete — eliminando il flooding ARP broadcast in tutta l'EVI.
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title" style="font-size:16px; margin: 20px 0 12px;">Confronto: VPLS Tradizionale vs EVPN</div>
+  <table class="arch-table">
+    <tr><th>Caratteristica</th><th>VPLS Tradizionale</th><th>EVPN (RFC 7432)</th></tr>
+    <tr><td>Apprendimento MAC</td><td>Data-plane flooding</td><td><span class="badge badge-green">Control-plane BGP</span></td></tr>
+    <tr><td>ARP handling</td><td>Broadcast flooding</td><td><span class="badge badge-green">ARP Suppression locale</span></td></tr>
+    <tr><td>Multi-homing</td><td>Active-standby (STP)</td><td><span class="badge badge-green">Active-active (ESI)</span></td></tr>
+    <tr><td>Mobilità VM</td><td>Lenta, manuale</td><td><span class="badge badge-green">Automatica (seq. number)</span></td></tr>
+    <tr><td>Integrazione L3</td><td>Separata (VPRN)</td><td><span class="badge badge-green">IRB integrato</span></td></tr>
+    <tr><td>Scalabilità</td><td>Limitata (flooding)</td><td><span class="badge badge-green">Milioni di MAC (BGP)</span></td></tr>
+    <tr><td>Split-horizon</td><td>Manuale</td><td><span class="badge badge-green">Automatico via ESI label</span></td></tr>
+    <tr><td>Piano dati</td><td>MPLS</td><td><span class="badge badge-blue">MPLS o VXLAN</span></td></tr>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════════════════ TOPO ═══ -->
+<div class="section" id="sec-topo">
+  <div class="section-title">Topologia di Rete — 6 Nodi</div>
+  <div class="section-sub">Architettura Leaf-Spine con 2 Route Reflector e 4 VTEP — clicca su nodi e link per i dettagli</div>
+
+  <div id="topo-wrap">
+    <svg id="topo-svg" viewBox="0 0 700 420" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+  <div class="topo-legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#0099CC"></div> Spine / Route Reflector</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#00C878"></div> Leaf / VTEP</div>
+    <div class="legend-item"><div class="legend-line" style="background:#0099CC"></div> Link Spine-Spine</div>
+    <div class="legend-item"><div class="legend-line" style="background:#00C878"></div> Link Spine-Leaf (underlay)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#FF4444; width:8px; height:8px"></div> Link fallito</div>
+  </div>
+  <div id="topo-info" style="margin-top:12px;">
+    <div style="color:var(--text-dim); font-size:13px;">👆 Clicca su un nodo o un link per visualizzarne i dettagli</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ ANIM ═══ -->
+<div class="section" id="sec-anim">
+  <div class="section-title">Animazioni — Flusso EVPN</div>
+  <div class="section-sub">Visualizza step-by-step come funziona il control-plane BGP EVPN e il data-plane VXLAN</div>
+
+  <div id="anim-wrap">
+    <div>
+      <div id="anim-svg-container">
+        <svg id="anim-svg" viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div style="margin-top:10px;">
+        <div id="anim-log"></div>
+      </div>
+    </div>
+    <div id="anim-controls">
+      <div style="font-size:12px; color:var(--text-dim); padding: 4px 0;">Seleziona uno scenario:</div>
+      <div class="anim-btn" data-anim="bgp-up" onclick="startAnim('bgp-up')">
+        <div class="btn-icon">🔗</div>
+        <div class="btn-text">
+          <div class="btn-title">1. BGP Session Setup</div>
+          <div class="btn-desc">Stabilimento sessioni iBGP tra Leaf e Route Reflector (Spine)</div>
+        </div>
+      </div>
+      <div class="anim-btn" data-anim="rt3" onclick="startAnim('rt3')">
+        <div class="btn-icon">📢</div>
+        <div class="btn-text">
+          <div class="btn-title">2. RT-3 IMET Advertisement</div>
+          <div class="btn-desc">I VTEP annunciano la propria presenza (Inclusive Multicast)</div>
+        </div>
+      </div>
+      <div class="anim-btn" data-anim="rt2" onclick="startAnim('rt2')">
+        <div class="btn-icon">📋</div>
+        <div class="btn-text">
+          <div class="btn-title">3. RT-2 MAC/IP Advertisement</div>
+          <div class="btn-desc">Leaf1 apprende il MAC di CE1 e lo pubblica via BGP</div>
+        </div>
+      </div>
+      <div class="anim-btn" data-anim="bum" onclick="startAnim('bum')">
+        <div class="btn-icon">📡</div>
+        <div class="btn-text">
+          <div class="btn-title">4. BUM Traffic (Ingress Replication)</div>
+          <div class="btn-desc">Traffico broadcast/unknown replicato a tutti i VTEP</div>
+        </div>
+      </div>
+      <div class="anim-btn" data-anim="unicast" onclick="startAnim('unicast')">
+        <div class="btn-icon">🚀</div>
+        <div class="btn-text">
+          <div class="btn-title">5. Known Unicast via VXLAN</div>
+          <div class="btn-desc">Traffico diretto Leaf1→Leaf3 dopo apprendimento MAC</div>
+        </div>
+      </div>
+      <div class="anim-btn" data-anim="arp" onclick="startAnim('arp')">
+        <div class="btn-icon">🛡</div>
+        <div class="btn-text">
+          <div class="btn-title">6. ARP Suppression</div>
+          <div class="btn-desc">Il VTEP risponde localmente all'ARP senza flooding</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ CONFIG ═══ -->
+<div class="section" id="sec-config">
+  <div class="section-title">Configurazione Nokia SR OS</div>
+  <div class="section-sub">Comandi CLI completi per ogni nodo della topologia (SR OS Release 23.x — Classic CLI)</div>
+
+  <div class="infobox">
+    <strong>Topologia:</strong> AS 65000 · Underlay OSPF · Overlay iBGP EVPN · VNI 1000 · EVI 1000 · Tenant "TENANT-A"
+  </div>
+
+  <div class="code-tabs" id="cfg-tabs">
+    <div class="code-tab active" data-cfg="spine1" onclick="showCfg('spine1')">Spine1 (RR1)</div>
+    <div class="code-tab" data-cfg="spine2" onclick="showCfg('spine2')">Spine2 (RR2)</div>
+    <div class="code-tab" data-cfg="leaf1" onclick="showCfg('leaf1')">Leaf1 (VTEP1)</div>
+    <div class="code-tab" data-cfg="leaf2" onclick="showCfg('leaf2')">Leaf2 (VTEP2)</div>
+    <div class="code-tab" data-cfg="leaf3" onclick="showCfg('leaf3')">Leaf3 (VTEP3)</div>
+    <div class="code-tab" data-cfg="leaf4" onclick="showCfg('leaf4')">Leaf4 (VTEP4)</div>
+  </div>
+  <div id="cfg-panels"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ FAULT ═══ -->
+<div class="section" id="sec-fault">
+  <div class="section-title">Fault Simulation</div>
+  <div class="section-sub">Simula guasti su link e nodi: osserva la riconvergenza BGP e il rerouting del traffico</div>
+
+  <div id="fault-wrap">
+    <div>
+      <div id="fault-svg-container">
+        <svg id="fault-svg" viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div style="margin-top:10px;">
+        <div id="fault-log"></div>
+      </div>
+    </div>
+    <div id="fault-panel">
+      <div style="font-size:12px; color:var(--text-dim);">Clicca su un link per simulare un fault:</div>
+      <div id="fault-btn-list"></div>
+      <button id="fault-reset-btn" onclick="resetFault()">↺ Ripristina Topologia</button>
+      <div class="infobox" style="margin-top:4px; font-size:12px;">
+        <strong>Ridondanza</strong><br>
+        Ogni Leaf ha connessioni a <em>entrambi</em> gli Spine. Un singolo fault non interrompe la connettività. Il traffico converge in ~1s (BFD + BGP) sull'altro percorso.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ QUIZ ═══ -->
+<div class="section" id="sec-quiz">
+  <div class="section-title">Quiz di Verifica</div>
+  <div class="section-sub">10 domande per verificare la comprensione del protocollo EVPN e Nokia SR OS</div>
+
+  <div id="quiz-score-bar">
+    <div>
+      <div style="font-size:12px; color:var(--text-dim);">Punteggio</div>
+      <div class="score-num"><span id="q-correct">0</span> / <span id="q-total">10</span></div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="q-progress" style="width:0%"></div></div>
+    <div style="font-size:12px; color:var(--text-dim);" id="q-answered">0 risposte date</div>
+  </div>
+
+  <div id="quiz-container"></div>
+  <div id="quiz-result">
+    <div class="result-score" id="res-score"></div>
+    <div class="result-msg" id="res-msg"></div>
+    <button class="quiz-retry" id="quiz-retry" onclick="resetQuiz()">↺ Ricomincia il Quiz</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ JS ═══ -->
+<script>
+// ─── DATA ───────────────────────────────────────────────────────
+const NODES = {
+  spine1: { x:175, y:95,  name:'Spine1', sub:'Route Reflector 1', lo:'10.0.0.1', color:'#0099CC', type:'spine' },
+  spine2: { x:525, y:95,  name:'Spine2', sub:'Route Reflector 2', lo:'10.0.0.2', color:'#0099CC', type:'spine' },
+  leaf1:  { x:75,  y:310, name:'Leaf1',  sub:'VTEP / PE-1',       lo:'10.0.0.3', color:'#00C878', type:'leaf'  },
+  leaf2:  { x:230, y:310, name:'Leaf2',  sub:'VTEP / PE-2',       lo:'10.0.0.4', color:'#00C878', type:'leaf'  },
+  leaf3:  { x:470, y:310, name:'Leaf3',  sub:'VTEP / PE-3',       lo:'10.0.0.5', color:'#00C878', type:'leaf'  },
+  leaf4:  { x:625, y:310, name:'Leaf4',  sub:'VTEP / PE-4',       lo:'10.0.0.6', color:'#00C878', type:'leaf'  },
+};
+
+const LINKS = [
+  { id:'l-s1s2', a:'spine1', b:'spine2', type:'spine' },
+  { id:'l-s1l1', a:'spine1', b:'leaf1',  type:'leaf'  },
+  { id:'l-s1l2', a:'spine1', b:'leaf2',  type:'leaf'  },
+  { id:'l-s1l3', a:'spine1', b:'leaf3',  type:'leaf'  },
+  { id:'l-s1l4', a:'spine1', b:'leaf4',  type:'leaf'  },
+  { id:'l-s2l1', a:'spine2', b:'leaf1',  type:'leaf'  },
+  { id:'l-s2l2', a:'spine2', b:'leaf2',  type:'leaf'  },
+  { id:'l-s2l3', a:'spine2', b:'leaf3',  type:'leaf'  },
+  { id:'l-s2l4', a:'spine2', b:'leaf4',  type:'leaf'  },
+];
+
+const NODE_INFO = {
+  spine1: {
+    'Ruolo':'Route Reflector (iBGP)',
+    'Loopback':'10.0.0.1/32',
+    'ASN':'65000',
+    'BGP Cluster':'10.0.0.1',
+    'Underlay':'OSPF Area 0',
+    'Clients BGP':'Leaf1,Leaf2,Leaf3,Leaf4',
+    'Platform':'Nokia 7750 SR-7'
+  },
+  spine2: {
+    'Ruolo':'Route Reflector (iBGP)',
+    'Loopback':'10.0.0.2/32',
+    'ASN':'65000',
+    'BGP Cluster':'10.0.0.2',
+    'Underlay':'OSPF Area 0',
+    'Clients BGP':'Leaf1,Leaf2,Leaf3,Leaf4',
+    'Platform':'Nokia 7750 SR-7'
+  },
+  leaf1:  {
+    'Ruolo':'VTEP / Provider Edge',
+    'Loopback':'10.0.0.3/32',
+    'ASN':'65000',
+    'VXLAN Source IP':'10.0.0.3',
+    'EVI':'1000 (VNI 1000)',
+    'RD':'10.0.0.3:1000',
+    'RT':'target:65000:1000',
+    'CE Collegati':'CE-A (192.168.10.11)',
+    'Platform':'Nokia 7220 IXR-D3'
+  },
+  leaf2:  {
+    'Ruolo':'VTEP / Provider Edge',
+    'Loopback':'10.0.0.4/32',
+    'ASN':'65000',
+    'VXLAN Source IP':'10.0.0.4',
+    'EVI':'1000 (VNI 1000)',
+    'RD':'10.0.0.4:1000',
+    'RT':'target:65000:1000',
+    'CE Collegati':'CE-B (192.168.10.12)',
+    'Platform':'Nokia 7220 IXR-D3'
+  },
+  leaf3:  {
+    'Ruolo':'VTEP / Provider Edge',
+    'Loopback':'10.0.0.5/32',
+    'ASN':'65000',
+    'VXLAN Source IP':'10.0.0.5',
+    'EVI':'1000 (VNI 1000)',
+    'RD':'10.0.0.5:1000',
+    'RT':'target:65000:1000',
+    'CE Collegati':'CE-C (192.168.10.13)',
+    'Platform':'Nokia 7220 IXR-D3'
+  },
+  leaf4:  {
+    'Ruolo':'VTEP / Provider Edge',
+    'Loopback':'10.0.0.6/32',
+    'ASN':'65000',
+    'VXLAN Source IP':'10.0.0.6',
+    'EVI':'1000 (VNI 1000)',
+    'RD':'10.0.0.6:1000',
+    'RT':'target:65000:1000',
+    'CE Collegati':'CE-D (192.168.10.14)',
+    'Platform':'Nokia 7220 IXR-D3'
+  }
+};
+
+// ─── NAV ────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    const sec = t.dataset.sec;
+    document.getElementById('sec-' + sec).classList.add('active');
+    if(sec === 'topo')  renderTopo('topo-svg', false, false);
+    if(sec === 'anim')  initAnimSvg();
+    if(sec === 'fault') initFaultSvg();
+    if(sec === 'config') buildConfigs();
+    if(sec === 'quiz')  initQuiz();
+  });
+});
+
+// ─── SVG HELPERS ────────────────────────────────────────────────
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(SVG_NS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(parent) parent.appendChild(e);
+  return e;
+}
+
+// ─── TOPOLOGY RENDERER ──────────────────────────────────────────
+function renderTopo(svgId, miniMode, returnSvg) {
+  const svg = document.getElementById(svgId);
+  if(!svg) return;
+  svg.innerHTML = '';
+
+  // Background
+  el('rect', { x:0,y:0,width:700,height:miniMode?380:420, fill:'#161b22' }, svg);
+
+  // Labels overlay
+  const lbl1 = el('text',{x:350,y:22,'text-anchor':'middle',fill:'#8b949e','font-size':'11','font-family':'monospace'},svg);
+  lbl1.textContent = 'AS 65000 · OSPF Underlay · iBGP EVPN Overlay · VXLAN VNI 1000';
+
+  // Draw links
+  LINKS.forEach(lk => {
+    const a = NODES[lk.a], b = NODES[lk.b];
+    const lineEl = el('line', {
+      id: svgId+'-'+lk.id,
+      x1:a.x, y1:a.y, x2:b.x, y2:b.y,
+      stroke: lk.type==='spine' ? '#0099CC' : '#00C878',
+      'stroke-width': lk.type==='spine' ? '2.5' : '2',
+      'stroke-opacity': '0.6',
+      'stroke-dasharray': lk.type==='spine' ? '6,3' : 'none',
+      style:'cursor:pointer; transition:stroke .3s, stroke-opacity .3s'
+    }, svg);
+    if(!miniMode) {
+      lineEl.addEventListener('click', ()=>showLinkInfo(lk));
+      lineEl.addEventListener('mouseover', ()=>lineEl.setAttribute('stroke-opacity','1'));
+      lineEl.addEventListener('mouseout', ()=>lineEl.setAttribute('stroke-opacity','0.6'));
+    }
+  });
+
+  // Draw nodes
+  Object.entries(NODES).forEach(([id, nd]) => {
+    const g = el('g', {
+      id: svgId+'-node-'+id,
+      transform:`translate(${nd.x},${nd.y})`,
+      style: miniMode ? '' : 'cursor:pointer'
+    }, svg);
+
+    const r = nd.type==='spine' ? 30 : 26;
+    el('circle', { r:r+4, fill:'rgba(0,0,0,0)', stroke:nd.color, 'stroke-width':'1', 'stroke-opacity':'0.3' }, g);
+    el('circle', { r:r, fill:'#21262d', stroke:nd.color, 'stroke-width':'2' }, g);
+
+    // Icon
+    const icon = el('text', { x:0, y:5, 'text-anchor':'middle', 'font-size': nd.type==='spine'?'16':'14', fill:nd.color }, g);
+    icon.textContent = nd.type==='spine' ? '▣' : '◈';
+
+    // Name
+    const nameEl = el('text', { x:0, y:r+16, 'text-anchor':'middle', 'font-size':'12', fill:'#e6edf3', 'font-weight':'600', 'font-family':'monospace' }, g);
+    nameEl.textContent = nd.name;
+
+    // Sub
+    const subEl = el('text', { x:0, y:r+28, 'text-anchor':'middle', 'font-size':'9', fill:'#8b949e' }, g);
+    subEl.textContent = nd.lo;
+
+    if(!miniMode) {
+      g.addEventListener('click', ()=>showNodeInfo(id));
+      g.addEventListener('mouseover', ()=>{ g.querySelector('circle:nth-child(2)').setAttribute('fill','#2d333b'); });
+      g.addEventListener('mouseout', ()=>{ g.querySelector('circle:nth-child(2)').setAttribute('fill','#21262d'); });
+    }
+  });
+
+  // CE hosts icons (non-clickable)
+  if(!miniMode) {
+    const ceData = [
+      { x:75, y:390, label:'CE-A', ip:'192.168.10.11' },
+      { x:230, y:390, label:'CE-B', ip:'192.168.10.12' },
+      { x:470, y:390, label:'CE-C', ip:'192.168.10.13' },
+      { x:625, y:390, label:'CE-D', ip:'192.168.10.14' },
+    ];
+    ceData.forEach((ce,i) => {
+      const gy = el('g',{transform:`translate(${ce.x},${ce.y})`},svg);
+      el('rect',{x:-20,y:-10,width:40,height:16,rx:3,fill:'#21262d',stroke:'#484f58'},gy);
+      const ct = el('text',{x:0,y:2,'text-anchor':'middle','font-size':'9',fill:'#8b949e'},gy);
+      ct.textContent = ce.label;
+      // Dashed link to leaf
+      const leafNode = NODES[['leaf1','leaf2','leaf3','leaf4'][i]];
+      el('line',{x1:ce.x,y1:ce.y-10,x2:leafNode.x,y2:leafNode.y+26,stroke:'#484f58','stroke-width':'1','stroke-dasharray':'3,2'},svg);
+    });
+  }
+}
+
+function showNodeInfo(id) {
+  const nd = NODES[id];
+  const info = NODE_INFO[id];
+  let html = `<h4>${nd.name} — ${nd.sub}</h4><table>`;
+  for(const [k,v] of Object.entries(info)) {
+    html += `<tr><td>${k}</td><td>${v}</td></tr>`;
+  }
+  html += '</table>';
+  document.getElementById('topo-info').innerHTML = html;
+}
+
+function showLinkInfo(lk) {
+  const a = NODES[lk.a], b = NODES[lk.b];
+  const html = `<h4>Link: ${a.name} ↔ ${b.name}</h4>
+    <table>
+      <tr><td>Tipo</td><td>${lk.type==='spine'?'Inter-Spine (IBL)':'Spine-Leaf Underlay'}</td></tr>
+      <tr><td>Protocollo</td><td>OSPF Area 0 (underlay IP)</td></tr>
+      <tr><td>BGP su questo link</td><td>${lk.type==='spine'?'No (via Loopback)':'iBGP sesione via Loopback'}</td></tr>
+      <tr><td>BFD</td><td>Abilitato (300ms/3x)</td></tr>
+      <tr><td>Ridondanza</td><td>Ogni nodo ha ${lk.type==='leaf'?'2 uplink (Spine1+Spine2)':'2 path verso ogni Leaf'}</td></tr>
+    </table>`;
+  document.getElementById('topo-info').innerHTML = html;
+}
+
+// ─── ANIMATIONS ─────────────────────────────────────────────────
+let animTimer = null;
+let animActive = false;
+
+function initAnimSvg() {
+  renderTopo('anim-svg', true, false);
+  document.getElementById('anim-log').innerHTML = '<div class="log-entry" style="color:#8b949e">Seleziona uno scenario per iniziare l\'animazione...</div>';
+}
+
+function logAnim(msg, cls) {
+  const log = document.getElementById('anim-log');
+  const d = document.createElement('div');
+  d.className = 'log-entry' + (cls?' '+cls:'');
+  const now = new Date();
+  const ts = `${String(now.getSeconds()).padStart(2,'0')}.${String(now.getMilliseconds()).padStart(3,'0')}`;
+  d.innerHTML = `<span>[${ts}]</span> ${msg}`;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+
+function clearAnimLog() {
+  document.getElementById('anim-log').innerHTML = '';
+}
+
+function animPacket(svgId, fromId, toId, color, label, dur, onDone) {
+  const svg = document.getElementById(svgId);
+  const nd = NODES;
+  const from = nd[fromId], to = nd[toId];
+
+  const g = el('g', {}, svg);
+  const circ = el('circle', { r:8, fill:color, opacity:0.9, stroke:'white', 'stroke-width':'1' }, g);
+  const txt = el('text', { x:0, y:4, 'text-anchor':'middle', 'font-size':'8', fill:'white', 'font-weight':'700' }, g);
+  txt.textContent = label;
+
+  const start = performance.now();
+  function step(now) {
+    const t = Math.min((now - start) / dur, 1);
+    const ease = t < .5 ? 2*t*t : -1+(4-2*t)*t;
+    const x = from.x + (to.x - from.x) * ease;
+    const y = from.y + (to.y - from.y) * ease;
+    g.setAttribute('transform', `translate(${x},${y})`);
+    if(t < 1) requestAnimationFrame(step);
+    else { g.remove(); if(onDone) onDone(); }
+  }
+  requestAnimationFrame(step);
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function startAnim(type) {
+  if(animActive) return;
+  animActive = true;
+  document.querySelectorAll('.anim-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.anim-btn[data-anim="${type}"]`).classList.add('active');
+  clearAnimLog();
+  renderTopo('anim-svg', true, false);
+
+  const ap = (from,to,col,lbl,dur) => new Promise(r => animPacket('anim-svg',from,to,col,lbl,dur,r));
+
+  if(type === 'bgp-up') {
+    logAnim('Avvio sessioni iBGP tra Leaf e Route Reflector...');
+    await delay(300);
+    logAnim('Leaf1 → Spine1: BGP OPEN (AS 65000, EVPN cap.)');
+    await ap('leaf1','spine1','#FFD700','OPEN',700);
+    logAnim('Spine1 → Leaf1: BGP OPEN + KEEPALIVE', 'green');
+    await ap('spine1','leaf1','#00C878','OPEN',700);
+    await delay(200);
+    logAnim('Leaf1 → Spine2: BGP OPEN (failover RR)');
+    await ap('leaf1','spine2','#FFD700','OPEN',900);
+    logAnim('Spine2 → Leaf1: BGP OPEN + KEEPALIVE', 'green');
+    await ap('spine2','leaf1','#00C878','OPEN',900);
+    await delay(300);
+    logAnim('Leaf2 → Spine1/Spine2: BGP OPEN');
+    ap('leaf2','spine1','#FFD700','OPEN',800);
+    await delay(150);
+    ap('leaf2','spine2','#FFD700','OPEN',900);
+    await delay(1000);
+    logAnim('Leaf3,Leaf4 → entrambi gli Spine: BGP OPEN');
+    ap('leaf3','spine1','#FFD700','OPEN',800); ap('leaf3','spine2','#FFD700','OPEN',900);
+    await delay(200);
+    ap('leaf4','spine1','#FFD700','OPEN',800); ap('leaf4','spine2','#FFD700','OPEN',900);
+    await delay(1200);
+    logAnim('✅ Tutte le sessioni BGP ESTABLISHED (8 sessioni attive)', 'green');
+    logAnim('📊 AFI=L2VPN SAFI=EVPN negoziato su tutte le sessioni', 'green');
+
+  } else if(type === 'rt3') {
+    logAnim('BGP EVPN — RT-3 (IMET) Advertisement');
+    await delay(300);
+    logAnim('Leaf1 pubblica RT-3: VTEP 10.0.0.3, EVI 1000, VNI 1000');
+    await ap('leaf1','spine1','#FF8C00','RT-3',700);
+    logAnim('Spine1 (RR) riflette RT-3 di Leaf1 verso tutti i client...', 'orange');
+    await delay(300);
+    ap('spine1','leaf2','#FF8C00','RT-3',600);
+    ap('spine1','leaf3','#FF8C00','RT-3',800);
+    ap('spine1','leaf4','#FF8C00','RT-3',700);
+    await delay(1000);
+    logAnim('Leaf2,3,4 pubblicano le proprie RT-3...');
+    ap('leaf2','spine1','#FF8C00','RT-3',700); ap('leaf3','spine1','#FF8C00','RT-3',700);
+    await delay(200);
+    ap('leaf4','spine1','#FF8C00','RT-3',700);
+    await delay(1000);
+    logAnim('Spine1+Spine2 riflettono RT-3 a tutti i VTEP', 'orange');
+    ap('spine1','leaf1','#FF8C00','RT-3',600); ap('spine2','leaf1','#FF8C00','RT-3',700);
+    await delay(300);
+    ap('spine1','leaf2','#FF8C00','RT-3',600); ap('spine2','leaf3','#FF8C00','RT-3',700);
+    await delay(1200);
+    logAnim('✅ Ogni VTEP conosce gli indirizzi di tutti gli altri VTEP', 'green');
+    logAnim('✅ Tunnel VXLAN Ingress-Replication pronti per traffico BUM', 'green');
+
+  } else if(type === 'rt2') {
+    logAnim('Scenario: CE-A (MAC aa:bb:cc:00:00:01) si collega a Leaf1');
+    await delay(400);
+    logAnim('Leaf1 apprende MAC aa:bb:cc:00:00:01 su SAP 1/1/1:1000');
+    await delay(600);
+    logAnim('Leaf1 genera RT-2 (MAC/IP Route): MAC + IP 192.168.10.11');
+    await ap('leaf1','spine1','#79c0ff','RT-2',700);
+    await ap('leaf1','spine2','#79c0ff','RT-2',800);
+    logAnim('Spine1+Spine2 riflettono RT-2 verso gli altri Leaf...', 'green');
+    await delay(400);
+    ap('spine1','leaf2','#79c0ff','RT-2',600);
+    ap('spine1','leaf3','#79c0ff','RT-2',700);
+    ap('spine1','leaf4','#79c0ff','RT-2',650);
+    ap('spine2','leaf2','#79c0ff','RT-2',750);
+    ap('spine2','leaf3','#79c0ff','RT-2',600);
+    ap('spine2','leaf4','#79c0ff','RT-2',700);
+    await delay(1200);
+    logAnim('✅ Leaf2,3,4 installano MAC aa:bb:cc:00:00:01 → VTEP 10.0.0.3', 'green');
+    logAnim('✅ ARP cache: 192.168.10.11 → aa:bb:cc:00:00:01 (nessun flooding!)', 'green');
+    logAnim('📌 RD=10.0.0.3:1000, RT=target:65000:1000, Label/VNI=1000', 'green');
+
+  } else if(type === 'bum') {
+    logAnim('CE-A invia un frame broadcast (MAC dst: ff:ff:ff:ff:ff:ff)');
+    await delay(400);
+    logAnim('Leaf1: MAC dst sconosciuto → Ingress Replication BUM');
+    await delay(300);
+    logAnim('Leaf1 incapsula in VXLAN VNI 1000 e replica verso:');
+    logAnim('  → Leaf2 (VTEP 10.0.0.4)', 'orange');
+    ap('leaf1','spine1','#FF8C00','BUM',500);
+    await delay(200);
+    ap('spine1','leaf2','#FF8C00','BUM',600);
+    logAnim('  → Leaf3 (VTEP 10.0.0.5)', 'orange');
+    ap('leaf1','spine2','#FF8C00','BUM',700);
+    await delay(200);
+    ap('spine2','leaf3','#FF8C00','BUM',600);
+    logAnim('  → Leaf4 (VTEP 10.0.0.6)', 'orange');
+    ap('leaf1','spine1','#FF8C00','BUM',600);
+    await delay(100);
+    ap('spine1','leaf4','#FF8C00','BUM',650);
+    await delay(1200);
+    logAnim('✅ Frame BUM ricevuto e de-incapsulato su tutti i VTEP', 'green');
+    logAnim('⚠  Dopo ricezione: ogni Leaf installa il MAC src via RT-2', 'orange');
+
+  } else if(type === 'unicast') {
+    logAnim('Scenario: CE-A → CE-C (MAC noto tramite RT-2)');
+    await delay(300);
+    logAnim('Leaf1 consulta FDB: MAC-C → VTEP 10.0.0.5 (Leaf3), VNI 1000');
+    await delay(400);
+    logAnim('Leaf1 incapsula: Outer IP src=10.0.0.3 dst=10.0.0.5, UDP 4789');
+    logAnim('VXLAN Header: VNI=0x0003E8 (1000)');
+    await delay(300);
+    logAnim('Pacchetto inoltrato via ECMP: Leaf1 → Spine1 → Leaf3');
+    await ap('leaf1','spine1','#79c0ff','DATA',600);
+    await ap('spine1','leaf3','#79c0ff','DATA',600);
+    logAnim('✅ Leaf3 de-incapsula e consegna frame nativo a CE-C', 'green');
+    await delay(400);
+    logAnim('Risposta CE-C → CE-A (percorso simmetrico):');
+    await ap('leaf3','spine2','#56d364','DATA',600);
+    await ap('spine2','leaf1','#56d364','DATA',600);
+    logAnim('✅ Frame consegnato a CE-A — RTT basso, nessun flooding!', 'green');
+
+  } else if(type === 'arp') {
+    logAnim('CE-A invia ARP Request: "Chi ha 192.168.10.12?"');
+    await delay(400);
+    logAnim('Leaf1 controlla la cache ARP locale (da RT-2 di Leaf2)...');
+    await delay(600);
+    logAnim('✅ MATCH! Cache: 192.168.10.12 → MAC bb:cc:dd:00:00:02 (Leaf2)', 'green');
+    await delay(300);
+    logAnim('Leaf1 genera ARP Reply localmente (Proxy ARP)');
+    logAnim('⚡ ARP Reply inviato a CE-A SENZA flooding sulla rete VXLAN', 'green');
+    await delay(400);
+    logAnim('Beneficio: 0 pacchetti BUM generati per questo ARP!', 'green');
+    logAnim('📊 In una rete con 1000 host: risparmio ~99% del traffico ARP', 'orange');
+  }
+
+  document.querySelectorAll('.anim-btn').forEach(b => b.classList.remove('active'));
+  animActive = false;
+}
+
+// ─── CONFIGS ────────────────────────────────────────────────────
+function hl(code) {
+  return code
+    .replace(/^(configure|exit|no\s|info|admin|commit)(\s|$)/gm, '<span class="kw">$1</span>$2')
+    .replace(/(#[^\n]+)/g, '<span class="cm">$1</span>')
+    .replace(/\b(autonomous-system|router-id|group|neighbor|family|type|cluster|peer-as|local-as|area|interface|passive|description|address|source-ip|evi|vni|tx-tunnel-type|advertise|route-distinguisher|vrf-target|community|sap|create|bgp-evpn|bgp|ospf|vpls|vxlan|routes|mac-ip|incl-mcast|ecmp)\b/g, '<span class="sec">$1</span>')
+    .replace(/\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?:\/\d+)?)\b/g, '<span class="ip">$1</span>')
+    .replace(/"([^"]+)"/g, '<span class="str">"$1"</span>');
+}
+
+const CONFIGS = {
+  spine1:`#=============================================
+# Spine1 — Nokia 7750 SR-7
+# Ruolo: Route Reflector 1 (iBGP EVPN)
+# Loopback: 10.0.0.1/32, AS 65000
+#=============================================
+
+configure router
+    autonomous-system 65000
+    router-id 10.0.0.1
+
+    # Interface di sistema (loopback)
+    interface "system"
+        address 10.0.0.1/32
+    exit
+
+    # Underlay: OSPF Area 0
+    ospf 0
+        area 0.0.0.0
+            interface "system"
+                passive
+            exit
+            interface "to-spine2"   # 10.1.12.1/30
+            exit
+            interface "to-leaf1"    # 10.1.s1l1.1/30
+            exit
+            interface "to-leaf2"
+            exit
+            interface "to-leaf3"
+            exit
+            interface "to-leaf4"
+            exit
+        exit
+    exit
+
+    # BGP: Route Reflector per EVPN
+    bgp
+        group "EVPN-RR-CLIENTS"
+            type internal
+            local-as 65000
+            family evpn          # AFI=L2VPN, SAFI=EVPN
+            cluster 10.0.0.1     # Cluster ID del RR
+            peer-as 65000
+            # Leaf clients
+            neighbor 10.0.0.3    # Leaf1
+            neighbor 10.0.0.4    # Leaf2
+            neighbor 10.0.0.5    # Leaf3
+            neighbor 10.0.0.6    # Leaf4
+        exit
+        # Peer con Spine2 (RR-to-RR per ridondanza)
+        group "RR-PEER"
+            type internal
+            local-as 65000
+            family evpn
+            peer-as 65000
+            neighbor 10.0.0.2    # Spine2
+        exit
+    exit
+exit`,
+
+  spine2:`#=============================================
+# Spine2 — Nokia 7750 SR-7
+# Ruolo: Route Reflector 2 (iBGP EVPN)
+# Loopback: 10.0.0.2/32, AS 65000
+#=============================================
+
+configure router
+    autonomous-system 65000
+    router-id 10.0.0.2
+
+    interface "system"
+        address 10.0.0.2/32
+    exit
+
+    ospf 0
+        area 0.0.0.0
+            interface "system"
+                passive
+            exit
+            interface "to-spine1"
+            exit
+            interface "to-leaf1"
+            exit
+            interface "to-leaf2"
+            exit
+            interface "to-leaf3"
+            exit
+            interface "to-leaf4"
+            exit
+        exit
+    exit
+
+    bgp
+        group "EVPN-RR-CLIENTS"
+            type internal
+            local-as 65000
+            family evpn
+            cluster 10.0.0.2     # Cluster ID diverso da Spine1
+            peer-as 65000
+            neighbor 10.0.0.3
+            neighbor 10.0.0.4
+            neighbor 10.0.0.5
+            neighbor 10.0.0.6
+        exit
+        group "RR-PEER"
+            type internal
+            local-as 65000
+            family evpn
+            peer-as 65000
+            neighbor 10.0.0.1    # Spine1
+        exit
+    exit
+exit`,
+
+  leaf1:`#=============================================
+# Leaf1 — Nokia 7220 IXR-D3
+# Ruolo: VTEP / Provider Edge 1
+# Loopback: 10.0.0.3/32, AS 65000
+# CE Collegato: CE-A (192.168.10.11)
+#=============================================
+
+configure router
+    autonomous-system 65000
+    router-id 10.0.0.3
+
+    interface "system"
+        address 10.0.0.3/32
+    exit
+
+    interface "to-spine1"
+        address 10.1.13.2/30    # Link verso Spine1
+    exit
+    interface "to-spine2"
+        address 10.1.23.2/30    # Link verso Spine2
+    exit
+
+    ospf 0
+        area 0.0.0.0
+            interface "system"
+                passive
+            exit
+            interface "to-spine1"
+            exit
+            interface "to-spine2"
+            exit
+        exit
+    exit
+
+    # BGP: client dei Route Reflector
+    bgp
+        group "TO-RR"
+            type internal
+            local-as 65000
+            family evpn
+            peer-as 65000
+            neighbor 10.0.0.1    # Spine1 (RR primario)
+            neighbor 10.0.0.2    # Spine2 (RR secondario)
+        exit
+    exit
+exit
+
+#=============================================
+# Servizio EVPN/VXLAN — Tenant A (L2)
+#=============================================
+
+configure service
+
+    # VXLAN: indirizzo sorgente per i tunnel
+    vxlan
+        source-ip 10.0.0.3
+    exit
+
+    # VPLS con BGP-EVPN su VXLAN
+    vpls 1000 customer 1 create
+        description "TENANT-A L2 — EVI 1000, VNI 1000"
+
+        bgp-evpn
+            evi 1000            # EVPN Instance identifier
+
+            # Piano dati: VXLAN
+            vxlan
+                vni 1000        # VXLAN Network Identifier
+                ecmp 2          # ECMP su 2 path (Spine1+Spine2)
+            exit
+
+            # Pubblicazione route EVPN
+            routes
+                mac-ip
+                    advertise   # Abilita RT-2 (MAC/IP)
+                exit
+                incl-mcast
+                    advertise
+                    tx-tunnel-type vxlan  # RT-3 (IMET)
+                exit
+            exit
+
+            # RD e RT automatici da EVI
+            # RD = 10.0.0.3:1000
+            # RT = target:65000:1000
+        exit
+
+        # Porta di accesso verso CE-A
+        sap 1/1/1:1000 create
+            description "CE-A Access Port (192.168.10.11)"
+        exit
+
+    exit
+exit`,
+
+  leaf2:`#=============================================
+# Leaf2 — Nokia 7220 IXR-D3
+# Ruolo: VTEP / Provider Edge 2
+# Loopback: 10.0.0.4/32, AS 65000
+# CE Collegato: CE-B (192.168.10.12)
+#=============================================
+
+configure router
+    autonomous-system 65000
+    router-id 10.0.0.4
+
+    interface "system"
+        address 10.0.0.4/32
+    exit
+    interface "to-spine1"
+        address 10.1.14.2/30
+    exit
+    interface "to-spine2"
+        address 10.1.24.2/30
+    exit
+
+    ospf 0
+        area 0.0.0.0
+            interface "system" passive exit
+            interface "to-spine1" exit
+            interface "to-spine2" exit
+        exit
+    exit
+
+    bgp
+        group "TO-RR"
+            type internal
+            local-as 65000
+            family evpn
+            peer-as 65000
+            neighbor 10.0.0.1
+            neighbor 10.0.0.2
+        exit
+    exit
+exit
+
+configure service
+    vxlan
+        source-ip 10.0.0.4
+    exit
+
+    vpls 1000 customer 1 create
+        description "TENANT-A L2 — EVI 1000, VNI 1000"
+        bgp-evpn
+            evi 1000
+            vxlan
+                vni 1000
+                ecmp 2
+            exit
+            routes
+                mac-ip
+                    advertise
+                exit
+                incl-mcast
+                    advertise
+                    tx-tunnel-type vxlan
+                exit
+            exit
+        exit
+        sap 1/1/2:1000 create
+            description "CE-B Access Port (192.168.10.12)"
+        exit
+    exit
+exit`,
+
+  leaf3:`#=============================================
+# Leaf3 — Nokia 7220 IXR-D3
+# Ruolo: VTEP / Provider Edge 3
+# Loopback: 10.0.0.5/32, AS 65000
+# CE Collegato: CE-C (192.168.10.13)
+#=============================================
+
+configure router
+    autonomous-system 65000
+    router-id 10.0.0.5
+
+    interface "system"
+        address 10.0.0.5/32
+    exit
+    interface "to-spine1"
+        address 10.1.15.2/30
+    exit
+    interface "to-spine2"
+        address 10.1.25.2/30
+    exit
+
+    ospf 0
+        area 0.0.0.0
+            interface "system" passive exit
+            interface "to-spine1" exit
+            interface "to-spine2" exit
+        exit
+    exit
+
+    bgp
+        group "TO-RR"
+            type internal
+            local-as 65000
+            family evpn
+            peer-as 65000
+            neighbor 10.0.0.1
+            neighbor 10.0.0.2
+        exit
+    exit
+exit
+
+configure service
+    vxlan
+        source-ip 10.0.0.5
+    exit
+
+    vpls 1000 customer 1 create
+        description "TENANT-A L2 — EVI 1000, VNI 1000"
+        bgp-evpn
+            evi 1000
+            vxlan
+                vni 1000
+                ecmp 2
+            exit
+            routes
+                mac-ip
+                    advertise
+                exit
+                incl-mcast
+                    advertise
+                    tx-tunnel-type vxlan
+                exit
+            exit
+        exit
+        sap 1/1/3:1000 create
+            description "CE-C Access Port (192.168.10.13)"
+        exit
+    exit
+exit`,
+
+  leaf4:`#=============================================
+# Leaf4 — Nokia 7220 IXR-D3
+# Ruolo: VTEP / Provider Edge 4
+# Loopback: 10.0.0.6/32, AS 65000
+# CE Collegato: CE-D (192.168.10.14)
+#=============================================
+
+configure router
+    autonomous-system 65000
+    router-id 10.0.0.6
+
+    interface "system"
+        address 10.0.0.6/32
+    exit
+    interface "to-spine1"
+        address 10.1.16.2/30
+    exit
+    interface "to-spine2"
+        address 10.1.26.2/30
+    exit
+
+    ospf 0
+        area 0.0.0.0
+            interface "system" passive exit
+            interface "to-spine1" exit
+            interface "to-spine2" exit
+        exit
+    exit
+
+    bgp
+        group "TO-RR"
+            type internal
+            local-as 65000
+            family evpn
+            peer-as 65000
+            neighbor 10.0.0.1
+            neighbor 10.0.0.2
+        exit
+    exit
+exit
+
+configure service
+    vxlan
+        source-ip 10.0.0.6
+    exit
+
+    vpls 1000 customer 1 create
+        description "TENANT-A L2 — EVI 1000, VNI 1000"
+        bgp-evpn
+            evi 1000
+            vxlan
+                vni 1000
+                ecmp 2
+            exit
+            routes
+                mac-ip
+                    advertise
+                exit
+                incl-mcast
+                    advertise
+                    tx-tunnel-type vxlan
+                exit
+            exit
+        exit
+        sap 1/1/4:1000 create
+            description "CE-D Access Port (192.168.10.14)"
+        exit
+    exit
+exit`
+};
+
+function buildConfigs() {
+  const panels = document.getElementById('cfg-panels');
+  if(panels.dataset.built) return;
+  panels.dataset.built = '1';
+  for(const [id, code] of Object.entries(CONFIGS)) {
+    const div = document.createElement('div');
+    div.className = 'code-panel' + (id==='spine1'?' active':'');
+    div.dataset.cfg = id;
+    div.innerHTML = `<pre class="sros">${hl(code)}</pre>`;
+    panels.appendChild(div);
+  }
+}
+
+function showCfg(id) {
+  document.querySelectorAll('.code-tab').forEach(t=>t.classList.toggle('active',t.dataset.cfg===id));
+  document.querySelectorAll('.code-panel').forEach(p=>p.classList.toggle('active',p.dataset.cfg===id));
+}
+
+// ─── FAULT SIM ──────────────────────────────────────────────────
+const faultState = {};
+LINKS.forEach(l => faultState[l.id] = false);
+
+function initFaultSvg() {
+  renderFaultSvg();
+  buildFaultBtns();
+  document.getElementById('fault-log').innerHTML = '<div style="color:#8b949e;font-size:12px">Clicca un link per simulare un fault...</div>';
+}
+
+function renderFaultSvg() {
+  const svg = document.getElementById('fault-svg');
+  svg.innerHTML = '';
+  el('rect',{x:0,y:0,width:700,height:380,fill:'#161b22'},svg);
+
+  LINKS.forEach(lk => {
+    const a = NODES[lk.a], b = NODES[lk.b];
+    const failed = faultState[lk.id];
+    el('line',{
+      id:'fl-'+lk.id,
+      x1:a.x,y1:a.y,x2:b.x,y2:b.y,
+      stroke: failed ? '#FF4444' : (lk.type==='spine'?'#0099CC':'#00C878'),
+      'stroke-width': failed?'2.5':(lk.type==='spine'?'2.5':'2'),
+      'stroke-opacity': failed?'0.9':'0.6',
+      'stroke-dasharray': failed?'6,3':(lk.type==='spine'?'6,3':'none'),
+      style:'cursor:pointer; transition:stroke .3s'
+    },svg);
+    if(failed) {
+      const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+      const xm = el('text',{x:mx,y:my,'text-anchor':'middle','font-size':'14',fill:'#FF4444'},svg);
+      xm.textContent='✕';
+    }
+  });
+
+  Object.entries(NODES).forEach(([id,nd]) => {
+    const g = el('g',{transform:`translate(${nd.x},${nd.y})`},svg);
+    const r = nd.type==='spine'?30:26;
+    el('circle',{r,fill:'#21262d',stroke:nd.color,'stroke-width':'2'},g);
+    const ic=el('text',{x:0,y:5,'text-anchor':'middle','font-size':nd.type==='spine'?'16':'14',fill:nd.color},g);
+    ic.textContent=nd.type==='spine'?'▣':'◈';
+    const nm=el('text',{x:0,y:r+16,'text-anchor':'middle','font-size':'12',fill:'#e6edf3','font-weight':'600','font-family':'monospace'},g);
+    nm.textContent=nd.name;
+    const lo=el('text',{x:0,y:r+28,'text-anchor':'middle','font-size':'9',fill:'#8b949e'},g);
+    lo.textContent=nd.lo;
+
+    // Check if node is isolated
+    const myLinks = LINKS.filter(l=>l.a===id||l.b===id);
+    const allFailed = myLinks.every(l=>faultState[l.id]);
+    if(allFailed && myLinks.length>0) {
+      el('circle',{r:r+6,fill:'none',stroke:'#FF4444','stroke-width':'2','stroke-dasharray':'4,2'},g);
+    }
+  });
+}
+
+function buildFaultBtns() {
+  const list = document.getElementById('fault-btn-list');
+  list.innerHTML = '';
+  LINKS.forEach(lk => {
+    const btn = document.createElement('div');
+    btn.className = 'fault-link-btn' + (faultState[lk.id]?' failed':'');
+    btn.id = 'fbtn-'+lk.id;
+    const a = NODES[lk.a], b = NODES[lk.b];
+    btn.innerHTML = `<div class="dot"></div><span>${a.name} ↔ ${b.name}</span>`;
+    btn.addEventListener('click', ()=>toggleFault(lk.id, a.name, b.name));
+    list.appendChild(btn);
+  });
+}
+
+function faultLog(msg, color) {
+  const log = document.getElementById('fault-log');
+  const d = document.createElement('div');
+  d.style.cssText = `color:${color||'#8b949e'};padding:2px 0;font-size:12px`;
+  const now = new Date();
+  d.textContent = `[${String(now.getSeconds()).padStart(2,'0')}.${String(now.getMilliseconds()).padStart(3,'0')}] ${msg}`;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+
+function toggleFault(lid, aName, bName) {
+  faultState[lid] = !faultState[lid];
+  const failed = faultState[lid];
+  const btn = document.getElementById('fbtn-'+lid);
+  btn.classList.toggle('failed', failed);
+
+  if(failed) {
+    faultLog(`⚠ LINK DOWN: ${aName} ↔ ${bName}`, '#FF4444');
+    setTimeout(()=>faultLog(`BFD: session down (300ms timeout)`, '#FF8C00'), 400);
+    setTimeout(()=>faultLog(`BGP NOTIFICATION: Hold Timer Expired`, '#FF8C00'), 800);
+    setTimeout(()=>{
+      faultLog(`BGP: rotte ritirate (UPDATE withdraw)`, '#FF8C00');
+      faultLog(`OSPF: LSA flood → ricalcolo SPF`, '#FF8C00');
+    }, 1200);
+    setTimeout(()=>{
+      faultLog(`✅ Convergenza completata (~1.2s)`, '#00C878');
+      faultLog(`Traffico rediretto via link alternativo`, '#00C878');
+    }, 1800);
+  } else {
+    faultLog(`✅ LINK UP: ${aName} ↔ ${bName}`, '#00C878');
+    setTimeout(()=>faultLog(`OSPF: adjacency forming...`, '#FFD700'), 300);
+    setTimeout(()=>faultLog(`BGP: sessione ristabilita`, '#FFD700'), 800);
+    setTimeout(()=>faultLog(`BGP: rotte riannunciate (UPDATE)`, '#00C878'), 1300);
+    setTimeout(()=>faultLog(`✅ Topologia ripristinata`, '#00C878'), 1800);
+  }
+
+  renderFaultSvg();
+  // Re-attach click handlers after re-render
+  LINKS.forEach(lk => {
+    const lineEl = document.getElementById('fl-'+lk.id);
+    if(lineEl) {
+      const a = NODES[lk.a], b = NODES[lk.b];
+      lineEl.addEventListener('click', ()=>toggleFault(lk.id, a.name, b.name));
+    }
+  });
+}
+
+function resetFault() {
+  LINKS.forEach(l => faultState[l.id] = false);
+  renderFaultSvg();
+  buildFaultBtns();
+  const log = document.getElementById('fault-log');
+  log.innerHTML = '<div style="color:#00C878;font-size:12px">✅ Topologia ripristinata — tutti i link operativi</div>';
+  LINKS.forEach(lk => {
+    const lineEl = document.getElementById('fl-'+lk.id);
+    if(lineEl) {
+      const a = NODES[lk.a], b = NODES[lk.b];
+      lineEl.addEventListener('click', ()=>toggleFault(lk.id, a.name, b.name));
+    }
+  });
+}
+
+// ─── QUIZ ───────────────────────────────────────────────────────
+const QUESTIONS = [
+  {
+    q: "Quale RFC definisce il protocollo BGP MPLS-Based Ethernet VPN (EVPN)?",
+    opts: ["RFC 4364","RFC 7432","RFC 8365","RFC 4761"],
+    ans: 1,
+    exp: "L'RFC 7432 (BGP MPLS-Based Ethernet VPN) è il documento fondante di EVPN. L'RFC 8365 estende EVPN a VXLAN, mentre RFC 4364 definisce BGP/MPLS IP VPN (L3VPN)."
+  },
+  {
+    q: "In un'architettura EVPN con Nokia SR OS, qual è il ruolo del Route Reflector (RR)?",
+    opts: [
+      "Instrada il traffico dati tra i tenant",
+      "Riflette le route BGP EVPN ai client (Leaf) senza sessioni full-mesh",
+      "Termina i tunnel VXLAN tra i VTEP",
+      "Gestisce la tabella ARP dei CE collegati"
+    ],
+    ans: 1,
+    exp: "Il Route Reflector (in questa topologia i nodi Spine) raccoglie le route BGP EVPN dai client (Leaf) e le redistribuisce a tutti gli altri client, evitando la necessità di un full-mesh iBGP tra tutti i nodi."
+  },
+  {
+    q: "Cosa trasporta un Route Type 3 (RT-3) EVPN?",
+    opts: [
+      "Informazioni di raggiungibilità MAC e IP di un host",
+      "La presenza di un VTEP e la sua capacità di gestire traffico BUM via Ingress Replication",
+      "Un prefisso IP di un VRF L3",
+      "La lista degli Ethernet Segment per il multi-homing"
+    ],
+    ans: 1,
+    exp: "L'RT-3 (Inclusive Multicast Ethernet Tag Route, IMET) è pubblicata da ogni VTEP per annunciare la propria presenza e il meccanismo usato per gestire il traffico BUM (Broadcast, Unknown unicast, Multicast). In genere indica 'Ingress Replication' come metodo."
+  },
+  {
+    q: "Qual è la porta UDP standard utilizzata da VXLAN?",
+    opts: ["UDP 8472","UDP 4789","UDP 443","UDP 1194"],
+    ans: 1,
+    exp: "La IANA ha assegnato la porta UDP 4789 a VXLAN (RFC 7348). La porta 8472 era utilizzata in implementazioni Linux precedenti alla standardizzazione."
+  },
+  {
+    q: "In Nokia SR OS, quale comando abilita la pubblicazione delle route RT-2 (MAC/IP) in una VPLS con BGP-EVPN?",
+    opts: [
+      "bgp-evpn / routes / mac-ip / advertise",
+      "bgp / family evpn / advertise mac",
+      "vxlan / mac-advertisement enable",
+      "bgp-evpn / evi / rt-type 2 / enable"
+    ],
+    ans: 0,
+    exp: "Nel CLI Nokia SR OS, sotto la VPLS si configura: bgp-evpn → routes → mac-ip → advertise. Questo abilita la generazione automatica di route di tipo 2 per i MAC appresi sulle SAP."
+  },
+  {
+    q: "Cos'è il VNI (VXLAN Network Identifier)?",
+    opts: [
+      "Un identificatore a 16 bit che distingue le sessioni BGP EVPN",
+      "Un identificatore a 24 bit che identifica un segmento di rete virtuale nel data-plane VXLAN",
+      "Il numero di sessioni VXLAN attive su un VTEP",
+      "L'indirizzo IP del tunnel VXLAN"
+    ],
+    ans: 1,
+    exp: "Il VNI è un campo a 24 bit nell'header VXLAN che identifica il segmento Ethernet virtuale (equivalente alla VLAN nell'overlay). Con 24 bit si possono avere fino a 16 milioni di segmenti, contro i 4096 delle VLAN."
+  },
+  {
+    q: "Qual è il vantaggio principale dell'ARP Suppression in EVPN?",
+    opts: [
+      "Aumenta la velocità di convergenza BGP dopo un fault",
+      "Permette al VTEP di rispondere localmente alle ARP request senza inondare la rete VXLAN",
+      "Riduce il numero di sessioni BGP necessarie",
+      "Abilita il multi-homing attivo-attivo"
+    ],
+    ans: 1,
+    exp: "L'ARP Suppression permette al VTEP locale di intercettare le ARP request dei CE e rispondere direttamente (Proxy ARP) usando le informazioni MAC/IP ricevute via RT-2 (BGP). Questo elimina il flooding ARP su tutti i VTEP dell'EVI."
+  },
+  {
+    q: "In questa topologia a 6 nodi (2 Spine + 4 Leaf), quante sessioni BGP iBGP ci sono in totale?",
+    opts: ["4 sessioni","8 sessioni","10 sessioni","16 sessioni"],
+    ans: 1,
+    exp: "Ogni Leaf apre sessioni verso entrambi gli Spine (RR): 4 Leaf × 2 Spine = 8 sessioni. I due Spine hanno inoltre una sessione RR-to-RR tra loro (non iBGP client-server ma peer-to-peer). Quindi 8 sessioni client-RR + 1 RR-RR = 9 totali; ma le 8 sono quelle rilevanti per la ridondanza."
+  },
+  {
+    q: "Cosa succede alla sessione BGP tra Leaf1 e Spine1 quando il link fisico Leaf1↔Spine1 cade?",
+    opts: [
+      "Nulla: BGP usa il link di Spine2 come fallback automaticamente",
+      "La sessione BGP cade; BFD rileva il fault e BGP la rimuove; il traffico converge su Leaf1↔Spine2",
+      "La sessione rimane up perché BGP usa il loopback come source",
+      "La sessione BGP rimane up per 90 secondi (Hold Timer)"
+    ],
+    ans: 1,
+    exp: "Con BFD (Bidirectional Forwarding Detection) abilitato a 300ms, il fault è rilevato in ~300ms. La sessione BGP cade e Spine1 ritira le route riflesse verso quel Leaf. La sessione Leaf1↔Spine2 rimane attiva e il traffico converge su quel path in circa 1-2 secondi."
+  },
+  {
+    q: "Qual è la differenza tra traffico 'BUM' e 'Known Unicast' in EVPN/VXLAN?",
+    opts: [
+      "BUM è traffico cifrato, Known Unicast è in chiaro",
+      "BUM (Broadcast/Unknown/Multicast) viene replicato a tutti i VTEP; Known Unicast viene inoltrato direttamente al VTEP di destinazione grazie alla RT-2",
+      "BUM usa MPLS, Known Unicast usa VXLAN",
+      "Non c'è differenza: entrambi vengono replicati a tutti i VTEP"
+    ],
+    ans: 1,
+    exp: "Il traffico BUM (Broadcast, Unknown unicast, Multicast) viene gestito con Ingress Replication: il VTEP di ingresso replica il pacchetto VXLAN verso ogni altro VTEP dell'EVI. Il traffico Known Unicast, grazie alle RT-2 distribuite via BGP, viene inoltrato direttamente al VTEP del destinatario — nessuna replica."
+  }
+];
+
+let quizAnswers = {};
+let quizBuilt = false;
+
+function initQuiz() {
+  if(quizBuilt) return;
+  quizBuilt = true;
+  const container = document.getElementById('quiz-container');
+  QUESTIONS.forEach((q, qi) => {
+    const div = document.createElement('div');
+    div.className = 'quiz-q';
+    div.innerHTML = `
+      <div class="q-num">Domanda ${qi+1} di ${QUESTIONS.length}</div>
+      <div class="q-text">${q.q}</div>
+      <div class="quiz-options" id="opts-${qi}">
+        ${q.opts.map((o,oi)=>`
+          <div class="quiz-opt" data-q="${qi}" data-o="${oi}" onclick="answerQuiz(${qi},${oi})">
+            <span class="opt-key">${'ABCD'[oi]}</span>
+            <span>${o}</span>
+          </div>
+        `).join('')}
+      </div>
+      <div class="quiz-explanation" id="exp-${qi}">${q.exp}</div>
+    `;
+    container.appendChild(div);
+  });
+  document.getElementById('q-total').textContent = QUESTIONS.length;
+}
+
+function answerQuiz(qi, oi) {
+  if(quizAnswers[qi] !== undefined) return;
+  quizAnswers[qi] = oi;
+
+  const opts = document.querySelectorAll(`#opts-${qi} .quiz-opt`);
+  opts.forEach((opt, i) => {
+    opt.classList.add('disabled');
+    if(i === QUESTIONS[qi].ans) opt.classList.add('correct');
+    else if(i === oi && oi !== QUESTIONS[qi].ans) opt.classList.add('wrong');
+  });
+  document.getElementById(`exp-${qi}`).classList.add('show');
+
+  const correct = Object.values(quizAnswers).filter((a,i)=>a===QUESTIONS[i]?.ans).length;
+  const answered = Object.keys(quizAnswers).length;
+  document.getElementById('q-correct').textContent = correct;
+  document.getElementById('q-answered').textContent = answered + ' risposte date';
+  document.getElementById('q-progress').style.width = (answered/QUESTIONS.length*100)+'%';
+
+  if(answered === QUESTIONS.length) showQuizResult(correct);
+}
+
+function showQuizResult(correct) {
+  const pct = Math.round(correct/QUESTIONS.length*100);
+  const res = document.getElementById('quiz-result');
+  res.style.display='block';
+  document.getElementById('res-score').textContent = `${correct}/${QUESTIONS.length} (${pct}%)`;
+  const msgs = [
+    [0,  4,  '📚 Riprendi le sezioni Architettura e Animazioni'],
+    [5,  6,  '🎯 Buone basi! Approfondisci la configurazione Nokia SR OS'],
+    [7,  8,  '👍 Buon risultato! Rivedi i dettagli dei Route Type'],
+    [9,  9,  '🏆 Ottimo! Quasi perfetto — controlla le domande sbagliate'],
+    [10, 10, '🥇 Perfetto! Sei pronto per configurare EVPN su Nokia SR OS'],
+  ];
+  const msg = msgs.find(([lo,hi])=>correct>=lo&&correct<=hi);
+  document.getElementById('res-msg').textContent = msg?msg[2]:'';
+  document.getElementById('res-score').style.color = pct>=80?'#00C878':pct>=60?'#FFD700':'#FF4444';
+}
+
+function resetQuiz() {
+  quizAnswers = {};
+  quizBuilt = false;
+  document.getElementById('quiz-container').innerHTML = '';
+  document.getElementById('quiz-result').style.display='none';
+  document.getElementById('q-correct').textContent='0';
+  document.getElementById('q-answered').textContent='0 risposte date';
+  document.getElementById('q-progress').style.width='0%';
+  initQuiz();
+}
+
+// ─── INIT ───────────────────────────────────────────────────────
+renderTopo('topo-svg', false, false);
+</script>
+</body>
+</html>
