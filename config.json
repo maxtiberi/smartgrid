@@ -2,8 +2,9 @@
   "_comment": "Single source of truth for SmartGrid topology. Backend and frontend both load this via /api/config. IP assignments come from 'docker inspect' after containerlab redeploy; update this file when leaf IPs change.",
 
   "services": {
-    "pingService": { "port": 3000 },
-    "gnmiService": { "port": 3001 }
+    "pingService":     { "port": 3000 },
+    "gnmiService":     { "port": 3001 },
+    "mplsGnmiService": { "port": 3002 }
   },
 
   "gnmi": {
@@ -42,6 +43,36 @@
     "leaf2-rtu2": { "router1": "leaf2", "interface1": "ethernet-1/3", "router2": "rtu2",  "interface2": "eth1" },
     "leaf3-rtu3": { "router1": "leaf3", "interface1": "ethernet-1/1", "router2": "rtu3",  "interface2": "eth1" },
     "leaf4-rtu4": { "router1": "leaf4", "interface1": "ethernet-1/3", "router2": "rtu4",  "interface2": "eth1" }
+  },
+
+  "mplsNetwork": {
+    "_comment": "Nokia SR-OS nodes from smart_grid.yaml. gnmiPort 57400 = SR-OS default. Credentials for srsim image.",
+    "credentials": { "username": "admin", "password": "admin" },
+    "sampleIntervalNs": 10000000000,
+    "insecure": true,
+    "nodes": {
+      "mpls-dc1":    { "host": "172.20.30.2",  "name": "dc1",        "type": "SR-1",    "role": "core",        "gnmiPort": 57400,
+                       "ports": ["1/1/c1/1","1/1/c2/1"],
+                       "links": { "1/1/c1/1": "SR1-ACC1", "1/1/c2/1": "dc2" } },
+      "mpls-dc2":    { "host": "172.20.30.3",  "name": "dc2",        "type": "SR-1",    "role": "core",        "gnmiPort": 57400,
+                       "ports": ["1/1/c1/1","1/1/c2/1"],
+                       "links": { "1/1/c1/1": "SR1-ACC2", "1/1/c2/1": "dc1" } },
+      "mpls-acc1":   { "host": "172.20.30.4",  "name": "SR1-ACC1",   "type": "SR-1",    "role": "aggregation", "gnmiPort": 57400,
+                       "ports": ["1/1/c1/1","1/1/c2/1","1/1/c3/1"],
+                       "links": { "1/1/c1/1": "dc1", "1/1/c2/1": "ACCESS1-1", "1/1/c3/1": "SR1-ACC2" } },
+      "mpls-acc2":   { "host": "172.20.30.5",  "name": "SR1-ACC2",   "type": "SR-1",    "role": "aggregation", "gnmiPort": 57400,
+                       "ports": ["1/1/c1/1","1/1/c2/1","1/1/c3/1"],
+                       "links": { "1/1/c1/1": "dc2", "1/1/c2/1": "ACCESS1-3", "1/1/c3/1": "SR1-ACC1" } },
+      "mpls-a1-1":   { "host": "172.20.30.10", "name": "ACCESS1-1",  "type": "SAR-Hmc", "role": "access",      "gnmiPort": 57400,
+                       "ports": ["1/1/c1/1","1/1/c2/1","1/1/c3/1"],
+                       "links": { "1/1/c2/1": "SR1-ACC1", "1/1/c1/1": "ACCESS1-2", "1/1/c3/1": "RTU1" } },
+      "mpls-a1-2":   { "host": "172.20.30.11", "name": "ACCESS1-2",  "type": "SAR-Hmc", "role": "access",      "gnmiPort": 57400,
+                       "ports": ["1/1/c1/1","1/1/c2/1"],
+                       "links": { "1/1/c1/1": "ACCESS1-1", "1/1/c2/1": "ACCESS1-3" } },
+      "mpls-a1-3":   { "host": "172.20.30.12", "name": "ACCESS1-3",  "type": "SAR-Hmc", "role": "access",      "gnmiPort": 57400,
+                       "ports": ["1/1/c1/1","1/1/c2/1","1/1/c3/1"],
+                       "links": { "1/1/c2/1": "SR1-ACC2", "1/1/c1/1": "ACCESS1-2", "1/1/c3/1": "RTU2" } }
+    }
   },
 
   "grid": {
