@@ -2629,4 +2629,291 @@ document.addEventListener('DOMContentLoaded', () => {
         window.gnmiRefresh = fetchStatus;
         window.gnmiToggle  = toggle;
     })();
+
+    // ================================================================
+    // MPLS NETWORK LIVE TELEMETRY — polls gnmi-sros-service (port 3002)
+    // Updates: SVG node LEDs, telemetry tables for dc1 (ports /
+    //          interfaces / IS-IS / BGP / LDP / MPLS-TE)
+    // ================================================================
+    (function initMplsMonitor() {
+        const SROS_BASE = 'http://localhost:3002';
+        const POLL_MS   = 5000;
+
+        // ── Helpers ─────────────────────────────────────────────────
+        function fmt(n) {
+            if (n == null) return '—';
+            if (n >= 1e9)  return (n / 1e9).toFixed(1) + ' Gbps';
+            if (n >= 1e6)  return (n / 1e6).toFixed(1) + ' Mbps';
+            if (n >= 1e3)  return (n / 1e3).toFixed(1) + ' Kbps';
+            return n + ' bps';
+        }
+        function stateClass(s) {
+            if (!s || s === 'unknown') return 'mpls-state-unk';
+            const lo = s.toLowerCase();
+            if (lo === 'up' || lo === 'inservice' || lo === 'established') return 'mpls-state-up';
+            return 'mpls-state-down';
+        }
+        function stateLabel(s) {
+            if (!s || s === 'unknown') return '—';
+            const lo = s.toLowerCase();
+            if (lo === 'inservice') return 'UP';
+            return s.toUpperCase();
+        }
+
+        // Update an SVG node LED: find first .mpls-status-led inside the group
+        function setNodeLed(svgGroupId, status) {
+            const g = document.getElementById(svgGroupId);
+            if (!g) return;
+            const led = g.querySelector('.mpls-status-led');
+            if (!led) return;
+            // Remove existing state classes, set colour via fill attribute
+            if (status === 'connected') {
+                led.setAttribute('fill', '#3a6a4a');
+                led.style.animation = 'mpls-led-pulse 2.8s ease-in-out infinite';
+            } else if (status === 'disconnected') {
+                led.setAttribute('fill', '#8a3a3a');
+                led.style.animation = 'none';
+            } else {
+                led.setAttribute('fill', '#8a7a5a');
+                led.style.animation = 'mpls-led-pulse 0.8s ease-in-out infinite';
+            }
+        }
+
+        // ── dc1 telemetry DOM refs ───────────────────────────────────
+        const dc1 = {
+            pill:       document.getElementById('dc1-status-pill'),
+            led:        document.getElementById('dc1-status-led'),
+            statusText: document.getElementById('dc1-status-text'),
+            cpuBar:     document.getElementById('dc1-cpu-bar'),
+            cpuVal:     document.getElementById('dc1-cpu-val'),
+            memBar:     document.getElementById('dc1-mem-bar'),
+            memVal:     document.getElementById('dc1-mem-val'),
+            portsCount: document.getElementById('dc1-ports-count'),
+            portsBody:  document.getElementById('dc1-ports-body'),
+            ifacesCount:document.getElementById('dc1-ifaces-count'),
+            ifacesBody: document.getElementById('dc1-ifaces-body'),
+            protoCount: document.getElementById('dc1-proto-count'),
+            isisLed:    document.getElementById('dc1-isis-led'),
+            isisState:  document.getElementById('dc1-isis-state'),
+            isisBody:   document.getElementById('dc1-isis-body'),
+            bgpLed:     document.getElementById('dc1-bgp-led'),
+            bgpState:   document.getElementById('dc1-bgp-state'),
+            bgpBody:    document.getElementById('dc1-bgp-body'),
+            ldpLed:     document.getElementById('dc1-ldp-led'),
+            ldpState:   document.getElementById('dc1-ldp-state'),
+            ldpBody:    document.getElementById('dc1-ldp-body'),
+            mplsLed:    document.getElementById('dc1-mpls-led'),
+            mplsState:  document.getElementById('dc1-mpls-state'),
+            mplsBody:   document.getElementById('dc1-mpls-body'),
+            lastUpdate: document.getElementById('dc1-last-update'),
+            lastTs:     document.getElementById('dc1-last-ts')
+        };
+
+        // ── Status pill helper ────────────────────────────────────────
+        function setDc1Status(state, text) {
+            if (dc1.pill) dc1.pill.setAttribute('data-state', state);
+            if (dc1.statusText) dc1.statusText.textContent = text;
+            setNodeLed('mpls-node-mpls-dc1', state);
+        }
+
+        // ── Meter helper ─────────────────────────────────────────────
+        function setMeter(bar, val, pct) {
+            if (!bar || !val) return;
+            const p = pct != null ? Math.min(100, Math.max(0, pct)) : 0;
+            bar.style.width = p + '%';
+            bar.setAttribute('data-warn', p > 70 ? 'true' : 'false');
+            bar.setAttribute('data-crit', p > 90 ? 'true' : 'false');
+            val.textContent = pct != null ? pct + '%' : '—';
+        }
+
+        // ── Table renderers ──────────────────────────────────────────
+        function renderPorts(ports, linkMap) {
+            if (!dc1.portsBody) return;
+            if (!ports || ports.length === 0) {
+                dc1.portsBody.innerHTML = '<tr class="mpls-telem-placeholder"><td colspan="5">no port data</td></tr>';
+                if (dc1.portsCount) dc1.portsCount.textContent = '0';
+                return;
+            }
+            const sorted = [...ports].sort((a, b) => a.portId.localeCompare(b.portId));
+            if (dc1.portsCount) dc1.portsCount.textContent = `${sorted.filter(p => p.operState === 'up').length}/${sorted.length} up`;
+            dc1.portsBody.innerHTML = sorted.map(p => {
+                const peer = linkMap && linkMap[p.portId] ? linkMap[p.portId] : '—';
+                return `<tr>
+                    <td>${p.portId}</td>
+                    <td class="${stateClass(p.operState)}">${stateLabel(p.operState)}</td>
+                    <td>${peer}</td>
+                    <td>${fmt(p.inRate)}</td>
+                    <td>${fmt(p.outRate)}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderIfaces(ifaces) {
+            if (!dc1.ifacesBody) return;
+            if (!ifaces || ifaces.length === 0) {
+                dc1.ifacesBody.innerHTML = '<tr class="mpls-telem-placeholder"><td colspan="5">no interface data</td></tr>';
+                if (dc1.ifacesCount) dc1.ifacesCount.textContent = '0';
+                return;
+            }
+            const sorted = [...ifaces].sort((a, b) => a.name.localeCompare(b.name));
+            if (dc1.ifacesCount) dc1.ifacesCount.textContent = `${sorted.filter(i => i.operState === 'up').length}/${sorted.length} up`;
+            dc1.ifacesBody.innerHTML = sorted.map(i => `<tr>
+                <td>${i.name}</td>
+                <td class="${stateClass(i.operState)}">${stateLabel(i.operState)}</td>
+                <td>${i.ipPrefix || i.ipAddress || '—'}</td>
+                <td>${fmt(i.inRate)}</td>
+                <td>${fmt(i.outRate)}</td>
+            </tr>`).join('');
+        }
+
+        function renderProtocols(proto) {
+            if (!proto) return;
+            let protoUp = 0;
+
+            // IS-IS
+            const isis = proto.isis || {};
+            const isisUp = (isis.operState === 'up');
+            if (isisUp) protoUp++;
+            if (dc1.isisLed)   dc1.isisLed.setAttribute('data-state', isisUp ? 'up' : 'down');
+            if (dc1.isisState) dc1.isisState.textContent = isis.operState || '—';
+            if (dc1.isisBody) {
+                const adjs = isis.adjacencies || [];
+                dc1.isisBody.innerHTML = adjs.length === 0
+                    ? '<tr class="mpls-telem-placeholder"><td colspan="4">no adjacencies</td></tr>'
+                    : adjs.map(a => `<tr>
+                        <td>${a.systemId || '—'}</td>
+                        <td>${a.interfaceName || '—'}</td>
+                        <td>${a.neighborLevel || '—'}</td>
+                        <td class="${stateClass(a.state)}">${stateLabel(a.state)}</td>
+                      </tr>`).join('');
+            }
+
+            // BGP
+            const bgp = proto.bgp || {};
+            const bgpUp = (bgp.activePeers > 0 || bgp.operState === 'up');
+            if (bgpUp) protoUp++;
+            if (dc1.bgpLed)   dc1.bgpLed.setAttribute('data-state', bgpUp ? 'up' : 'down');
+            if (dc1.bgpState) dc1.bgpState.textContent = bgp.totalPeers != null
+                ? `${bgp.activePeers}/${bgp.totalPeers} peers` : (bgp.operState || '—');
+            if (dc1.bgpBody) {
+                const nbrs = bgp.neighbors || [];
+                dc1.bgpBody.innerHTML = nbrs.length === 0
+                    ? '<tr class="mpls-telem-placeholder"><td colspan="4">no neighbors</td></tr>'
+                    : nbrs.map(n => `<tr>
+                        <td>${n.peerAddress}</td>
+                        <td>${n.peerAs || '—'}</td>
+                        <td class="${stateClass(n.sessionState)}">${(n.sessionState || '—').toUpperCase()}</td>
+                        <td>${n.rxRoutes != null ? n.rxRoutes : '—'}</td>
+                      </tr>`).join('');
+            }
+
+            // LDP
+            const ldp = proto.ldp || {};
+            const ldpUp = (ldp.operState === 'up' || (ldp.sessions || []).some(s => s.operState === 'up'));
+            if (ldpUp) protoUp++;
+            if (dc1.ldpLed)   dc1.ldpLed.setAttribute('data-state', ldpUp ? 'up' : 'down');
+            if (dc1.ldpState) dc1.ldpState.textContent = ldp.operState || '—';
+            if (dc1.ldpBody) {
+                const sess = ldp.sessions || [];
+                dc1.ldpBody.innerHTML = sess.length === 0
+                    ? '<tr class="mpls-telem-placeholder"><td colspan="4">no sessions</td></tr>'
+                    : sess.map(s => `<tr>
+                        <td>${s.neighborId}</td>
+                        <td class="${stateClass(s.operState)}">${stateLabel(s.operState)}</td>
+                        <td>${s.txKa != null ? s.txKa : '—'}</td>
+                        <td>${s.rxKa != null ? s.rxKa : '—'}</td>
+                      </tr>`).join('');
+            }
+
+            // MPLS-TE
+            const mpls = proto.mpls || {};
+            const mplsUp = (mpls.activeLsps > 0);
+            if (mplsUp) protoUp++;
+            if (dc1.mplsLed)   dc1.mplsLed.setAttribute('data-state', mplsUp ? 'up' : 'down');
+            if (dc1.mplsState) dc1.mplsState.textContent = mpls.activeLsps != null
+                ? `${mpls.activeLsps} active LSPs` : '—';
+            if (dc1.mplsBody) {
+                const lsps = mpls.lsps || [];
+                dc1.mplsBody.innerHTML = lsps.length === 0
+                    ? '<tr class="mpls-telem-placeholder"><td colspan="4">no LSPs</td></tr>'
+                    : lsps.map(l => `<tr>
+                        <td>${l.name}</td>
+                        <td>${l.toAddr || '—'}</td>
+                        <td>${l.activePath || '—'}</td>
+                        <td class="${stateClass(l.operState)}">${stateLabel(l.operState)}</td>
+                      </tr>`).join('');
+            }
+
+            if (dc1.protoCount) dc1.protoCount.textContent = `${protoUp}/4 active`;
+        }
+
+        // ── Main fetch ───────────────────────────────────────────────
+        async function fetchMplsData() {
+            try {
+                const res = await fetch(`${SROS_BASE}/api/mpls/nodes/mpls-dc1`, { cache: 'no-store' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+
+                setDc1Status(data.status || 'unknown',
+                    data.status === 'connected'    ? 'connected' :
+                    data.status === 'disconnected' ? 'disconnected' : data.status || '—');
+
+                // Resource meters
+                const sum = data.summary || {};
+                setMeter(dc1.cpuBar, dc1.cpuVal, sum.cpu);
+                setMeter(dc1.memBar, dc1.memVal, sum.mem);
+
+                // Port link map from config (static topology)
+                const linkMap = {
+                    '1/1/c1/1': 'SR1-ACC1',
+                    '1/1/c2/1': 'dc2'
+                };
+
+                renderPorts(data.ports || [], linkMap);
+                renderIfaces(data.interfaces || []);
+                renderProtocols(data.protocols || {});
+
+                if (dc1.lastTs) {
+                    const ts = data.lastUpdate ? new Date(data.lastUpdate).toLocaleTimeString() : '—';
+                    dc1.lastTs.textContent = `last update: ${ts}`;
+                }
+
+            } catch (err) {
+                // Service not reachable — show graceful offline state
+                setDc1Status('disconnected', 'service offline');
+                if (dc1.lastTs) dc1.lastTs.textContent = `last update: — (${err.message})`;
+            }
+        }
+
+        // Use SSE when available for push-based updates, fallback to polling
+        function startSse() {
+            try {
+                const es = new EventSource(`${SROS_BASE}/api/mpls/events`);
+                es.addEventListener('node-update', e => {
+                    try {
+                        const data = JSON.parse(e.data);
+                        if (data.nodeId === 'mpls-dc1') {
+                            // Light update from summary — do a full fetch for tables
+                            fetchMplsData();
+                        }
+                    } catch {}
+                });
+                es.addEventListener('snapshot', () => fetchMplsData());
+                es.onerror = () => {
+                    es.close();
+                    // SSE failed — fall back to polling only
+                };
+            } catch {
+                // SSE not supported — polling covers it
+            }
+        }
+
+        // Initial fetch + polling + SSE
+        fetchMplsData();
+        setInterval(fetchMplsData, POLL_MS);
+        startSse();
+
+        // Console helpers
+        window.mplsRefresh = fetchMplsData;
+    })();
 });
