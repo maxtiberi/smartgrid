@@ -3751,3 +3751,293 @@ body {
     .rp2-peer-card { grid-template-columns: 28px 1fr; }
     .peer-routes { display: none; }
 }
+
+/* ============================================================ */
+/* MPLS NETWORK SECTION                                         */
+/* ============================================================ */
+
+.mpls-section {
+    margin-top: 3rem;
+    padding: 2rem 0;
+    border-top: 1px solid var(--text-primary);
+}
+
+.mpls-title {
+    font-family: 'Archivo', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    margin-bottom: 1.4rem;
+}
+
+/* Layer badge row */
+.mpls-layer-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 1.8rem;
+}
+
+.mpls-layer-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid;
+}
+
+.mpls-core-badge   { background: rgba(58,90,138,.12); border-color: #3a5a8a55; color: #3a5a8a; }
+.mpls-agg-badge    { background: rgba(90,90,138,.10); border-color: #5a5a8a55; color: #5a5a8a; }
+.mpls-access-badge { background: rgba(58,122,90,.10); border-color: #3a7a5a55; color: #3a7a5a; }
+.mpls-rtu-badge    { background: rgba(138,90,58,.10); border-color: #8a5a3a55; color: #8a5a3a; }
+
+/* SVG diagram */
+.mpls-diagram {
+    width: 100%;
+    height: auto;
+    min-height: 320px;
+}
+
+/* ---- Zone bands ---- */
+.mpls-zone-band {
+    stroke: none;
+}
+.mpls-zone-core-bg   { fill: url(#mpls-zone-core); }
+.mpls-zone-agg-bg    { fill: url(#mpls-zone-agg); }
+.mpls-zone-access-bg { fill: url(#mpls-zone-access); }
+.mpls-zone-rtu-bg    { fill: url(#mpls-zone-rtu); }
+
+.mpls-zone-sep {
+    stroke: var(--text-primary);
+    stroke-width: 0.5;
+    opacity: 0.15;
+    stroke-dasharray: 4 4;
+}
+
+.mpls-zone-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    fill: var(--text-tertiary);
+    text-transform: uppercase;
+}
+
+.mpls-zone-sublabel {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8px;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    fill: var(--text-tertiary);
+    opacity: 0.65;
+}
+
+/* ---- Links ---- */
+.mpls-link {
+    fill: none;
+    stroke-linecap: round;
+}
+
+.mpls-link-core {
+    stroke: #3a5a8a;
+    stroke-width: 2.5;
+    opacity: 0.7;
+}
+
+.mpls-link-agg {
+    stroke: #5a5a8a;
+    stroke-width: 2;
+    opacity: 0.65;
+}
+
+.mpls-link-access {
+    stroke: #3a7a5a;
+    stroke-width: 1.8;
+    opacity: 0.6;
+}
+
+.mpls-link-rtu {
+    stroke: #8a7a5a;
+    stroke-width: 1.5;
+    opacity: 0.5;
+    stroke-dasharray: 5 3;
+}
+
+/* Link label */
+.mpls-link-label-bg {
+    fill: var(--bg-dark);
+    stroke: var(--text-primary);
+    stroke-width: 0.4;
+    opacity: 0.85;
+}
+
+.mpls-link-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8px;
+    fill: var(--text-tertiary);
+    opacity: 0.85;
+}
+
+/* ---- Animated packets ---- */
+.mpls-packet {
+    opacity: 0.85;
+}
+
+.mpls-packet-core {
+    fill: #3a5a8a;
+    filter: drop-shadow(0 0 3px #3a5a8a);
+}
+
+.mpls-packet-agg {
+    fill: #5a5a8a;
+    filter: drop-shadow(0 0 2.5px #5a5a8a);
+}
+
+.mpls-packet-access {
+    fill: #3a7a5a;
+    filter: drop-shadow(0 0 2px #3a7a5a);
+}
+
+/* ---- Node chassis ---- */
+.mpls-chassis {
+    fill: var(--bg-card);
+    stroke: var(--text-secondary);
+    stroke-width: 1;
+    opacity: 0.95;
+}
+
+.mpls-sar-chassis {
+    /* SAR-Hmc slightly darker / industrial look */
+    fill: #cac8c3;
+}
+
+.mpls-rtu-chassis {
+    fill: #c8c6c0;
+    stroke-dasharray: 2 1;
+}
+
+/* Layer accent stripes */
+.mpls-chassis-accent { opacity: 0.9; }
+.mpls-core-accent   { fill: #3a5a8a; }
+.mpls-agg-accent    { fill: #5a5a8a; }
+.mpls-access-accent { fill: #3a7a5a; }
+.mpls-rtu-accent    { fill: #8a7a5a; }
+
+/* Port row */
+.mpls-port-row {
+    fill: #a8a8b8;
+    opacity: 0.4;
+}
+
+.mpls-port {
+    rx: 1;
+}
+.mpls-port-active { fill: #3a5a8a; opacity: 0.85; }
+.mpls-port-idle   { fill: #7a7a8a; opacity: 0.45; }
+.mpls-port-rtu    { fill: #8a7a5a; opacity: 0.80; }
+
+/* Status LEDs */
+.mpls-status-led { stroke: none; }
+.mpls-led-ok   {
+    fill: #4a6a5a;
+    animation: mpls-led-pulse 2.8s ease-in-out infinite;
+}
+.mpls-led-idle { fill: #7a7a5a; opacity: 0.5; }
+
+@keyframes mpls-led-pulse {
+    0%, 100% { opacity: 0.9; }
+    50%       { opacity: 0.5; }
+}
+
+/* Node text */
+.mpls-node-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    fill: var(--text-primary);
+    letter-spacing: 0.02em;
+}
+
+.mpls-node-type {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8.5px;
+    font-weight: 400;
+    fill: var(--text-secondary);
+    letter-spacing: 0.04em;
+}
+
+.mpls-node-ip {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8px;
+    fill: var(--text-tertiary);
+    opacity: 0.75;
+}
+
+/* Port labels on links */
+.mpls-port-lbl {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 7.5px;
+    fill: var(--text-tertiary);
+    opacity: 0.7;
+}
+
+/* Legend text */
+.mpls-legend-text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8.5px;
+    fill: var(--text-secondary);
+    opacity: 0.8;
+}
+
+/* ---- Info bar (below diagram) ---- */
+.mpls-info-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 1.2rem;
+}
+
+.mpls-info-card {
+    padding: 12px 14px;
+    border-radius: 6px;
+    border-left: 3px solid;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.mpls-info-core   { background: rgba(58,90,138,.07); border-left-color: #3a5a8a; }
+.mpls-info-agg    { background: rgba(90,90,138,.07); border-left-color: #5a5a8a; }
+.mpls-info-access { background: rgba(58,122,90,.07); border-left-color: #3a7a5a; }
+.mpls-info-rtu    { background: rgba(138,122,90,.07); border-left-color: #8a7a5a; }
+
+.mpls-info-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--text-primary);
+}
+
+.mpls-info-core   .mpls-info-label { color: #3a5a8a; }
+.mpls-info-agg    .mpls-info-label { color: #5a5a8a; }
+.mpls-info-access .mpls-info-label { color: #3a7a5a; }
+.mpls-info-rtu    .mpls-info-label { color: #8a7a5a; }
+
+.mpls-info-desc {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9.5px;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+    .mpls-info-bar { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+    .mpls-info-bar { grid-template-columns: 1fr; }
+    .mpls-layer-badges { gap: 6px; }
+}

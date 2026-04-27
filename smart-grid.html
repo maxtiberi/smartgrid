@@ -2310,6 +2310,454 @@
         </div>
     </div>
 
+    <!-- ================================================================ -->
+    <!-- MPLS NETWORK SECTION                                             -->
+    <!-- Topology from smart_grid.yaml (nokia_srsim / SAR-Hmc + RTUs)   -->
+    <!-- ================================================================ -->
+    <div class="mpls-section">
+        <h2 class="mpls-title">MPLS NETWORK</h2>
+
+        <!-- Layer badges row -->
+        <div class="mpls-layer-badges">
+            <span class="mpls-layer-badge mpls-core-badge">CORE · SR-1</span>
+            <span class="mpls-layer-badge mpls-agg-badge">AGGREGATION · SR-1</span>
+            <span class="mpls-layer-badge mpls-access-badge">ACCESS · SAR-Hmc</span>
+            <span class="mpls-layer-badge mpls-rtu-badge">RTU · Linux</span>
+        </div>
+
+        <svg class="mpls-diagram" viewBox="0 0 1100 540" preserveAspectRatio="xMidYMid meet">
+            <defs>
+                <!-- MPLS link gradient (blue-ish for core) -->
+                <linearGradient id="mpls-core-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%"   style="stop-color:#3a5a8a;stop-opacity:0.4"/>
+                    <stop offset="50%"  style="stop-color:#3a5a8a;stop-opacity:1"/>
+                    <stop offset="100%" style="stop-color:#3a5a8a;stop-opacity:0.4"/>
+                </linearGradient>
+                <linearGradient id="mpls-agg-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%"   style="stop-color:#3a5a8a;stop-opacity:0.6"/>
+                    <stop offset="100%" style="stop-color:#5a7aaa;stop-opacity:0.6"/>
+                </linearGradient>
+                <linearGradient id="mpls-access-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%"   style="stop-color:#5a7a6a;stop-opacity:0.5"/>
+                    <stop offset="50%"  style="stop-color:#5a7a6a;stop-opacity:1"/>
+                    <stop offset="100%" style="stop-color:#5a7a6a;stop-opacity:0.5"/>
+                </linearGradient>
+                <!-- Zone fill gradients -->
+                <linearGradient id="mpls-zone-core" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%"   style="stop-color:#3a5a8a;stop-opacity:0.06"/>
+                    <stop offset="100%" style="stop-color:#3a5a8a;stop-opacity:0.02"/>
+                </linearGradient>
+                <linearGradient id="mpls-zone-agg" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%"   style="stop-color:#5a5a8a;stop-opacity:0.05"/>
+                    <stop offset="100%" style="stop-color:#5a5a8a;stop-opacity:0.02"/>
+                </linearGradient>
+                <linearGradient id="mpls-zone-access" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%"   style="stop-color:#3a6a5a;stop-opacity:0.05"/>
+                    <stop offset="100%" style="stop-color:#3a6a5a;stop-opacity:0.02"/>
+                </linearGradient>
+                <linearGradient id="mpls-zone-rtu" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%"   style="stop-color:#6a5a3a;stop-opacity:0.04"/>
+                    <stop offset="100%" style="stop-color:#6a5a3a;stop-opacity:0.01"/>
+                </linearGradient>
+
+                <!-- Packet animation marker -->
+                <marker id="mpls-arrow" viewBox="0 0 8 8" refX="7" refY="4"
+                        markerWidth="4" markerHeight="4" orient="auto">
+                    <path d="M 0 1 L 7 4 L 0 7 z" fill="#3a5a8a" opacity="0.7"/>
+                </marker>
+                <marker id="mpls-arrow-agg" viewBox="0 0 8 8" refX="7" refY="4"
+                        markerWidth="4" markerHeight="4" orient="auto">
+                    <path d="M 0 1 L 7 4 L 0 7 z" fill="#5a5a8a" opacity="0.7"/>
+                </marker>
+                <marker id="mpls-arrow-access" viewBox="0 0 8 8" refX="7" refY="4"
+                        markerWidth="4" markerHeight="4" orient="auto">
+                    <path d="M 0 1 L 7 4 L 0 7 z" fill="#5a7a6a" opacity="0.7"/>
+                </marker>
+                <!-- Glow filter -->
+                <filter id="mpls-glow">
+                    <feGaussianBlur stdDeviation="3" result="blur"/>
+                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+                <filter id="mpls-glow-soft">
+                    <feGaussianBlur stdDeviation="5" result="blur"/>
+                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+            </defs>
+
+            <!-- ========================================================== -->
+            <!-- LAYER ZONE BANDS (horizontal stripes)                       -->
+            <!-- ========================================================== -->
+            <!-- Core band: y 40-170 -->
+            <rect class="mpls-zone-band mpls-zone-core-bg" x="20" y="40" width="1060" height="130" rx="6"/>
+            <text class="mpls-zone-label" x="38" y="65">CORE</text>
+            <text class="mpls-zone-sublabel" x="38" y="80">IP/MPLS backbone · 100 GbE</text>
+
+            <!-- Aggregation band: y 170-300 -->
+            <rect class="mpls-zone-band mpls-zone-agg-bg" x="20" y="170" width="1060" height="130" rx="6"/>
+            <text class="mpls-zone-label" x="38" y="196">AGGREGATION</text>
+            <text class="mpls-zone-sublabel" x="38" y="211">PE/P routers · MPLS-TE</text>
+
+            <!-- Access band: y 300-430 -->
+            <rect class="mpls-zone-band mpls-zone-access-bg" x="20" y="300" width="1060" height="130" rx="6"/>
+            <text class="mpls-zone-label" x="38" y="326">ACCESS</text>
+            <text class="mpls-zone-sublabel" x="38" y="341">SAR-Hmc · IEC 61850 / MPLS-TP</text>
+
+            <!-- RTU band: y 430-520 -->
+            <rect class="mpls-zone-band mpls-zone-rtu-bg" x="20" y="430" width="1060" height="90" rx="6"/>
+            <text class="mpls-zone-label" x="38" y="456">RTU</text>
+            <text class="mpls-zone-sublabel" x="38" y="471">Remote Terminal Units</text>
+
+            <!-- Horizontal zone separators -->
+            <line class="mpls-zone-sep" x1="20" y1="170" x2="1080" y2="170"/>
+            <line class="mpls-zone-sep" x1="20" y1="300" x2="1080" y2="300"/>
+            <line class="mpls-zone-sep" x1="20" y1="430" x2="1080" y2="430"/>
+
+            <!-- ========================================================== -->
+            <!-- LINKS                                                        -->
+            <!-- ========================================================== -->
+
+            <!-- Core interconnect: dc1(360,105) ↔ dc2(740,105) -->
+            <line class="mpls-link mpls-link-core"
+                  x1="420" y1="105" x2="680" y2="105"
+                  marker-end="url(#mpls-arrow)" marker-start="url(#mpls-arrow)"/>
+            <!-- Core link label -->
+            <rect class="mpls-link-label-bg" x="486" y="92" width="128" height="15" rx="7"/>
+            <text class="mpls-link-label" x="550" y="103" text-anchor="middle">1/1/c2/1 ↔ 1/1/c2/1</text>
+
+            <!-- dc1 → SR1-ACC1 vertical: dc1(360,105)→ACC1(360,235) -->
+            <line class="mpls-link mpls-link-agg"
+                  x1="360" y1="138" x2="360" y2="202"
+                  marker-end="url(#mpls-arrow-agg)"/>
+
+            <!-- dc2 → SR1-ACC2 vertical: dc2(740,105)→ACC2(740,235) -->
+            <line class="mpls-link mpls-link-agg"
+                  x1="740" y1="138" x2="740" y2="202"
+                  marker-end="url(#mpls-arrow-agg)"/>
+
+            <!-- Aggregation interconnect: ACC1(360,235) ↔ ACC2(740,235) -->
+            <line class="mpls-link mpls-link-agg"
+                  x1="420" y1="235" x2="680" y2="235"
+                  marker-end="url(#mpls-arrow-agg)" marker-start="url(#mpls-arrow-agg)"/>
+            <rect class="mpls-link-label-bg" x="486" y="222" width="128" height="15" rx="7"/>
+            <text class="mpls-link-label" x="550" y="233" text-anchor="middle">1/1/c3/1 ↔ 1/1/c3/1</text>
+
+            <!-- SR1-ACC1 → ACCESS1-1: ACC1(360,268)→A1-1(250,367) -->
+            <line class="mpls-link mpls-link-agg"
+                  x1="350" y1="268" x2="280" y2="335"
+                  marker-end="url(#mpls-arrow-agg)"/>
+
+            <!-- SR1-ACC2 → ACCESS1-3: ACC2(740,268)→A1-3(820,367) -->
+            <line class="mpls-link mpls-link-agg"
+                  x1="750" y1="268" x2="820" y2="335"
+                  marker-end="url(#mpls-arrow-agg)"/>
+
+            <!-- ACCESS ring: A1-1(250,367) ↔ A1-2(550,367) -->
+            <line class="mpls-link mpls-link-access"
+                  x1="320" y1="367" x2="480" y2="367"
+                  marker-end="url(#mpls-arrow-access)" marker-start="url(#mpls-arrow-access)"/>
+
+            <!-- ACCESS ring: A1-2(550,367) ↔ A1-3(820,367) -->
+            <line class="mpls-link mpls-link-access"
+                  x1="620" y1="367" x2="750" y2="367"
+                  marker-end="url(#mpls-arrow-access)" marker-start="url(#mpls-arrow-access)"/>
+
+            <!-- A1-2 port labels -->
+            <rect class="mpls-link-label-bg" x="380" y="354" width="100" height="14" rx="6"/>
+            <text class="mpls-link-label" x="430" y="364" text-anchor="middle">c1/1 ↔ c1/1</text>
+            <rect class="mpls-link-label-bg" x="668" y="354" width="100" height="14" rx="6"/>
+            <text class="mpls-link-label" x="718" y="364" text-anchor="middle">c2/1 ↔ c1/1</text>
+
+            <!-- A1-1 → RTU1: A1-1(250,400)→RTU1(250,468) -->
+            <line class="mpls-link mpls-link-rtu"
+                  x1="250" y1="400" x2="250" y2="440"
+                  marker-end="url(#mpls-arrow-access)"/>
+
+            <!-- A1-3 → RTU2: A1-3(820,400)→RTU2(820,468) -->
+            <line class="mpls-link mpls-link-rtu"
+                  x1="820" y1="400" x2="820" y2="440"
+                  marker-end="url(#mpls-arrow-access)"/>
+
+            <!-- ========================================================== -->
+            <!-- MPLS DATA PACKETS (animated)                               -->
+            <!-- ========================================================== -->
+            <!-- Core east packet -->
+            <circle class="mpls-packet mpls-packet-core" r="4">
+                <animateMotion dur="2.4s" repeatCount="indefinite"
+                               path="M 420 105 L 680 105"/>
+            </circle>
+            <!-- Core west packet -->
+            <circle class="mpls-packet mpls-packet-core" r="4" opacity="0.6">
+                <animateMotion dur="2.4s" repeatCount="indefinite" begin="1.2s"
+                               path="M 680 105 L 420 105"/>
+            </circle>
+
+            <!-- dc1 → ACC1 south packet -->
+            <circle class="mpls-packet mpls-packet-agg" r="3.5">
+                <animateMotion dur="1.8s" repeatCount="indefinite"
+                               path="M 360 138 L 360 202"/>
+            </circle>
+            <!-- dc2 → ACC2 south packet -->
+            <circle class="mpls-packet mpls-packet-agg" r="3.5">
+                <animateMotion dur="1.8s" repeatCount="indefinite" begin="0.9s"
+                               path="M 740 138 L 740 202"/>
+            </circle>
+
+            <!-- ACC1 ↔ ACC2 east -->
+            <circle class="mpls-packet mpls-packet-agg" r="3.5">
+                <animateMotion dur="2.4s" repeatCount="indefinite" begin="0.4s"
+                               path="M 420 235 L 680 235"/>
+            </circle>
+            <!-- ACC1 ↔ ACC2 west -->
+            <circle class="mpls-packet mpls-packet-agg" r="3" opacity="0.5">
+                <animateMotion dur="2.4s" repeatCount="indefinite" begin="1.6s"
+                               path="M 680 235 L 420 235"/>
+            </circle>
+
+            <!-- ACC1 → A1-1 -->
+            <circle class="mpls-packet mpls-packet-access" r="3">
+                <animateMotion dur="1.6s" repeatCount="indefinite" begin="0.3s"
+                               path="M 350 268 L 280 335"/>
+            </circle>
+            <!-- ACC2 → A1-3 -->
+            <circle class="mpls-packet mpls-packet-access" r="3">
+                <animateMotion dur="1.6s" repeatCount="indefinite" begin="1.1s"
+                               path="M 750 268 L 820 335"/>
+            </circle>
+
+            <!-- Access ring east -->
+            <circle class="mpls-packet mpls-packet-access" r="2.5">
+                <animateMotion dur="2s" repeatCount="indefinite" begin="0.6s"
+                               path="M 320 367 L 480 367"/>
+            </circle>
+            <circle class="mpls-packet mpls-packet-access" r="2.5">
+                <animateMotion dur="2s" repeatCount="indefinite" begin="1.4s"
+                               path="M 620 367 L 750 367"/>
+            </circle>
+
+            <!-- ========================================================== -->
+            <!-- NODES — CORE LAYER                                          -->
+            <!-- ========================================================== -->
+            <!-- dc1 at (360, 105) -->
+            <g class="mpls-node mpls-node-core" transform="translate(360, 105)">
+                <!-- chassis silhouette -->
+                <rect class="mpls-chassis" x="-52" y="-28" width="104" height="56" rx="5"/>
+                <!-- Nokia logo bar (top edge accent) -->
+                <rect class="mpls-chassis-accent mpls-core-accent" x="-52" y="-28" width="104" height="5" rx="5"/>
+                <!-- Port row -->
+                <rect class="mpls-port-row" x="-40" y="-12" width="80" height="8" rx="2"/>
+                <!-- Port highlights -->
+                <rect class="mpls-port mpls-port-active" x="-36" y="-11" width="10" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-active" x="-22" y="-11" width="10" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-idle"   x="-8"  y="-11" width="10" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-active" x="6"   y="-11" width="10" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-idle"   x="20"  y="-11" width="10" height="6" rx="1"/>
+                <!-- Status LED -->
+                <circle class="mpls-status-led mpls-led-ok" cx="36" cy="-8" r="4"/>
+                <!-- Fan vents -->
+                <line x1="-44" y1="4" x2="-44" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
+                <line x1="-40" y1="4" x2="-40" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
+                <line x1="-36" y1="4" x2="-36" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
+                <!-- Labels -->
+                <text class="mpls-node-label" x="0" y="-38" text-anchor="middle">dc1</text>
+                <text class="mpls-node-type"  x="0" y="40" text-anchor="middle">SR-1 · Nokia SR-OS</text>
+                <text class="mpls-node-ip"    x="0" y="53" text-anchor="middle">172.20.30.2</text>
+            </g>
+
+            <!-- dc2 at (740, 105) -->
+            <g class="mpls-node mpls-node-core" transform="translate(740, 105)">
+                <rect class="mpls-chassis" x="-52" y="-28" width="104" height="56" rx="5"/>
+                <rect class="mpls-chassis-accent mpls-core-accent" x="-52" y="-28" width="104" height="5" rx="5"/>
+                <rect class="mpls-port-row" x="-40" y="-12" width="80" height="8" rx="2"/>
+                <rect class="mpls-port mpls-port-active" x="-36" y="-11" width="10" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-active" x="-22" y="-11" width="10" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-idle"   x="-8"  y="-11" width="10" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-active" x="6"   y="-11" width="10" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-idle"   x="20"  y="-11" width="10" height="6" rx="1"/>
+                <circle class="mpls-status-led mpls-led-ok" cx="36" cy="-8" r="4"/>
+                <line x1="-44" y1="4" x2="-44" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
+                <line x1="-40" y1="4" x2="-40" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
+                <line x1="-36" y1="4" x2="-36" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
+                <text class="mpls-node-label" x="0" y="-38" text-anchor="middle">dc2</text>
+                <text class="mpls-node-type"  x="0" y="40" text-anchor="middle">SR-1 · Nokia SR-OS</text>
+                <text class="mpls-node-ip"    x="0" y="53" text-anchor="middle">172.20.30.3</text>
+            </g>
+
+            <!-- ========================================================== -->
+            <!-- NODES — AGGREGATION LAYER                                   -->
+            <!-- ========================================================== -->
+            <!-- SR1-ACC1 at (360, 235) -->
+            <g class="mpls-node mpls-node-agg" transform="translate(360, 235)">
+                <rect class="mpls-chassis" x="-52" y="-28" width="104" height="56" rx="5"/>
+                <rect class="mpls-chassis-accent mpls-agg-accent" x="-52" y="-28" width="104" height="5" rx="5"/>
+                <rect class="mpls-port-row" x="-40" y="-12" width="80" height="8" rx="2"/>
+                <rect class="mpls-port mpls-port-active" x="-36" y="-11" width="10" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-active" x="-22" y="-11" width="10" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-active" x="-8"  y="-11" width="10" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-idle"   x="6"   y="-11" width="10" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-idle"   x="20"  y="-11" width="10" height="6" rx="1"/>
+                <circle class="mpls-status-led mpls-led-ok" cx="36" cy="-8" r="4"/>
+                <line x1="-44" y1="4" x2="-44" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
+                <line x1="-40" y1="4" x2="-40" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
+                <text class="mpls-node-label" x="0" y="-38" text-anchor="middle">SR1-ACC1</text>
+                <text class="mpls-node-type"  x="0" y="40" text-anchor="middle">SR-1 · PE/P router</text>
+                <text class="mpls-node-ip"    x="0" y="53" text-anchor="middle">172.20.30.4</text>
+            </g>
+
+            <!-- SR1-ACC2 at (740, 235) -->
+            <g class="mpls-node mpls-node-agg" transform="translate(740, 235)">
+                <rect class="mpls-chassis" x="-52" y="-28" width="104" height="56" rx="5"/>
+                <rect class="mpls-chassis-accent mpls-agg-accent" x="-52" y="-28" width="104" height="5" rx="5"/>
+                <rect class="mpls-port-row" x="-40" y="-12" width="80" height="8" rx="2"/>
+                <rect class="mpls-port mpls-port-active" x="-36" y="-11" width="10" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-active" x="-22" y="-11" width="10" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-active" x="-8"  y="-11" width="10" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-idle"   x="6"   y="-11" width="10" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-idle"   x="20"  y="-11" width="10" height="6" rx="1"/>
+                <circle class="mpls-status-led mpls-led-ok" cx="36" cy="-8" r="4"/>
+                <line x1="-44" y1="4" x2="-44" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
+                <line x1="-40" y1="4" x2="-40" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
+                <text class="mpls-node-label" x="0" y="-38" text-anchor="middle">SR1-ACC2</text>
+                <text class="mpls-node-type"  x="0" y="40" text-anchor="middle">SR-1 · PE/P router</text>
+                <text class="mpls-node-ip"    x="0" y="53" text-anchor="middle">172.20.30.5</text>
+            </g>
+
+            <!-- ========================================================== -->
+            <!-- NODES — ACCESS LAYER (SAR-Hmc)                             -->
+            <!-- ========================================================== -->
+            <!-- ACCESS1-1 at (250, 367) -->
+            <g class="mpls-node mpls-node-access" transform="translate(250, 367)">
+                <!-- SAR-Hmc is smaller / DIN-rail form factor -->
+                <rect class="mpls-chassis mpls-sar-chassis" x="-42" y="-22" width="84" height="46" rx="4"/>
+                <rect class="mpls-chassis-accent mpls-access-accent" x="-42" y="-22" width="84" height="4" rx="4"/>
+                <!-- Two SFP cages -->
+                <rect class="mpls-port mpls-port-active" x="-32" y="-10" width="14" height="9" rx="2"/>
+                <rect class="mpls-port mpls-port-active" x="-14" y="-10" width="14" height="9" rx="2"/>
+                <rect class="mpls-port mpls-port-active" x="4"   y="-10" width="14" height="9" rx="2"/>
+                <!-- ETH port for RTU -->
+                <rect class="mpls-port mpls-port-rtu" x="22" y="-10" width="12" height="9" rx="2"/>
+                <!-- Status LED -->
+                <circle class="mpls-status-led mpls-led-ok" cx="28" cy="8" r="3.5"/>
+                <!-- Alarm LED -->
+                <circle class="mpls-status-led mpls-led-idle" cx="28" cy="16" r="3"/>
+                <text class="mpls-node-label" x="0" y="-32" text-anchor="middle">ACCESS1-1</text>
+                <text class="mpls-node-type"  x="0" y="34" text-anchor="middle">SAR-Hmc</text>
+                <text class="mpls-node-ip"    x="0" y="47" text-anchor="middle">172.20.30.10</text>
+            </g>
+
+            <!-- ACCESS1-2 at (550, 367) -->
+            <g class="mpls-node mpls-node-access" transform="translate(550, 367)">
+                <rect class="mpls-chassis mpls-sar-chassis" x="-42" y="-22" width="84" height="46" rx="4"/>
+                <rect class="mpls-chassis-accent mpls-access-accent" x="-42" y="-22" width="84" height="4" rx="4"/>
+                <rect class="mpls-port mpls-port-active" x="-32" y="-10" width="14" height="9" rx="2"/>
+                <rect class="mpls-port mpls-port-active" x="-14" y="-10" width="14" height="9" rx="2"/>
+                <rect class="mpls-port mpls-port-active" x="4"   y="-10" width="14" height="9" rx="2"/>
+                <rect class="mpls-port mpls-port-idle"   x="22"  y="-10" width="12" height="9" rx="2"/>
+                <circle class="mpls-status-led mpls-led-ok" cx="28" cy="8" r="3.5"/>
+                <circle class="mpls-status-led mpls-led-idle" cx="28" cy="16" r="3"/>
+                <text class="mpls-node-label" x="0" y="-32" text-anchor="middle">ACCESS1-2</text>
+                <text class="mpls-node-type"  x="0" y="34" text-anchor="middle">SAR-Hmc</text>
+                <text class="mpls-node-ip"    x="0" y="47" text-anchor="middle">172.20.30.11</text>
+            </g>
+
+            <!-- ACCESS1-3 at (820, 367) -->
+            <g class="mpls-node mpls-node-access" transform="translate(820, 367)">
+                <rect class="mpls-chassis mpls-sar-chassis" x="-42" y="-22" width="84" height="46" rx="4"/>
+                <rect class="mpls-chassis-accent mpls-access-accent" x="-42" y="-22" width="84" height="4" rx="4"/>
+                <rect class="mpls-port mpls-port-active" x="-32" y="-10" width="14" height="9" rx="2"/>
+                <rect class="mpls-port mpls-port-active" x="-14" y="-10" width="14" height="9" rx="2"/>
+                <rect class="mpls-port mpls-port-active" x="4"   y="-10" width="14" height="9" rx="2"/>
+                <!-- ETH port for RTU -->
+                <rect class="mpls-port mpls-port-rtu" x="22" y="-10" width="12" height="9" rx="2"/>
+                <circle class="mpls-status-led mpls-led-ok" cx="28" cy="8" r="3.5"/>
+                <circle class="mpls-status-led mpls-led-idle" cx="28" cy="16" r="3"/>
+                <text class="mpls-node-label" x="0" y="-32" text-anchor="middle">ACCESS1-3</text>
+                <text class="mpls-node-type"  x="0" y="34" text-anchor="middle">SAR-Hmc</text>
+                <text class="mpls-node-ip"    x="0" y="47" text-anchor="middle">172.20.30.12</text>
+            </g>
+
+            <!-- ========================================================== -->
+            <!-- NODES — RTU LAYER                                           -->
+            <!-- ========================================================== -->
+            <!-- RTU1 at (250, 475) -->
+            <g class="mpls-node mpls-node-rtu" transform="translate(250, 475)">
+                <rect class="mpls-chassis mpls-rtu-chassis" x="-30" y="-16" width="60" height="32" rx="3"/>
+                <rect class="mpls-chassis-accent mpls-rtu-accent" x="-30" y="-16" width="60" height="4" rx="3"/>
+                <!-- LED indicators -->
+                <circle class="mpls-status-led mpls-led-ok"   cx="-16" cy="3" r="3.5"/>
+                <circle class="mpls-status-led mpls-led-ok"   cx="-6"  cy="3" r="3.5"/>
+                <circle class="mpls-status-led mpls-led-idle" cx="4"   cy="3" r="3.5"/>
+                <!-- ETH port -->
+                <rect x="14" y="-4" width="10" height="8" fill="#5a5a6a" rx="1"/>
+                <text class="mpls-node-label" x="0" y="-25" text-anchor="middle">RTU1</text>
+                <text class="mpls-node-type"  x="0" y="26" text-anchor="middle">Linux container</text>
+            </g>
+
+            <!-- RTU2 at (820, 475) -->
+            <g class="mpls-node mpls-node-rtu" transform="translate(820, 475)">
+                <rect class="mpls-chassis mpls-rtu-chassis" x="-30" y="-16" width="60" height="32" rx="3"/>
+                <rect class="mpls-chassis-accent mpls-rtu-accent" x="-30" y="-16" width="60" height="4" rx="3"/>
+                <circle class="mpls-status-led mpls-led-ok"   cx="-16" cy="3" r="3.5"/>
+                <circle class="mpls-status-led mpls-led-ok"   cx="-6"  cy="3" r="3.5"/>
+                <circle class="mpls-status-led mpls-led-idle" cx="4"   cy="3" r="3.5"/>
+                <rect x="14" y="-4" width="10" height="8" fill="#5a5a6a" rx="1"/>
+                <text class="mpls-node-label" x="0" y="-25" text-anchor="middle">RTU2</text>
+                <text class="mpls-node-type"  x="0" y="26" text-anchor="middle">Linux container</text>
+            </g>
+
+            <!-- ========================================================== -->
+            <!-- PORT LABELS on inter-layer links                            -->
+            <!-- ========================================================== -->
+            <!-- dc1 → ACC1 port label -->
+            <text class="mpls-port-lbl" x="348" y="174" text-anchor="end">c1/1</text>
+            <text class="mpls-port-lbl" x="348" y="184" text-anchor="end">c1/1</text>
+            <!-- dc2 → ACC2 port label -->
+            <text class="mpls-port-lbl" x="754" y="174" text-anchor="start">c1/1</text>
+            <text class="mpls-port-lbl" x="754" y="184" text-anchor="start">c1/1</text>
+            <!-- ACC1 → A1-1 port label -->
+            <text class="mpls-port-lbl" x="322" y="298" text-anchor="middle">c2/1→c2/1</text>
+            <!-- ACC2 → A1-3 port label -->
+            <text class="mpls-port-lbl" x="778" y="298" text-anchor="middle">c2/1→c2/1</text>
+            <!-- A1-1 → RTU1 -->
+            <text class="mpls-port-lbl" x="238" y="422" text-anchor="end">c3/1</text>
+            <text class="mpls-port-lbl" x="238" y="432" text-anchor="end">eth1</text>
+            <!-- A1-3 → RTU2 -->
+            <text class="mpls-port-lbl" x="834" y="422" text-anchor="start">c3/1</text>
+            <text class="mpls-port-lbl" x="834" y="432" text-anchor="start">eth1</text>
+
+            <!-- ========================================================== -->
+            <!-- LEGEND                                                       -->
+            <!-- ========================================================== -->
+            <g transform="translate(870, 48)">
+                <line class="mpls-link mpls-link-core" x1="0" y1="8" x2="34" y2="8" style="marker-end:none"/>
+                <text class="mpls-legend-text" x="40" y="12">Core backbone</text>
+                <line class="mpls-link mpls-link-agg" x1="0" y1="28" x2="34" y2="28" style="marker-end:none"/>
+                <text class="mpls-legend-text" x="40" y="32">Aggregation</text>
+                <line class="mpls-link mpls-link-access" x1="0" y1="48" x2="34" y2="48" style="marker-end:none"/>
+                <text class="mpls-legend-text" x="40" y="52">Access / RTU</text>
+            </g>
+        </svg>
+
+        <!-- Protocol / node type info bar -->
+        <div class="mpls-info-bar">
+            <div class="mpls-info-card mpls-info-core">
+                <span class="mpls-info-label">CORE — SR-1</span>
+                <span class="mpls-info-desc">100 GbE backbone · LDP/RSVP-TE · BGP route reflector</span>
+            </div>
+            <div class="mpls-info-card mpls-info-agg">
+                <span class="mpls-info-label">AGGREGATION — SR-1</span>
+                <span class="mpls-info-desc">MPLS-TE LSPs · VPN PE/P · IS-IS level 1/2</span>
+            </div>
+            <div class="mpls-info-card mpls-info-access">
+                <span class="mpls-info-label">ACCESS — SAR-Hmc</span>
+                <span class="mpls-info-desc">MPLS-TP pseudowires · IEC 61850 · timing (SyncE / PTP)</span>
+            </div>
+            <div class="mpls-info-card mpls-info-rtu">
+                <span class="mpls-info-label">RTU — Linux</span>
+                <span class="mpls-info-desc">IEC 61850 GOOSE/MMS · Modbus TCP · field device</span>
+            </div>
+        </div>
+    </div>
+
     <script src="smart-grid.js"></script>
     <script src="turbine-control.js"></script>
 </body>
