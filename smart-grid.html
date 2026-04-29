@@ -2975,10 +2975,10 @@
                         <div class="mpls-telem-table-wrap">
                             <table class="mpls-telem-table">
                                 <thead>
-                                    <tr><th>System-ID</th><th>Interface</th><th>Level</th><th>State</th></tr>
+                                    <tr><th>Interface</th><th>Neighbor IP</th><th>Level</th><th>State</th><th>Uptime</th></tr>
                                 </thead>
                                 <tbody id="dc1-isis-body">
-                                    <tr class="mpls-telem-placeholder"><td colspan="4">no adjacencies</td></tr>
+                                    <tr class="mpls-telem-placeholder"><td colspan="5">no adjacencies</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -3133,6 +3133,36 @@
                             </tr>
                         </thead>
                         <tbody id="dc1-popup-ifaces-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- IS-IS section -->
+                <div class="dc1-popup-section">
+                    <div class="dc1-popup-section-hdr">
+                        <span class="dc1-popup-section-title">
+                            <span class="dc1-popup-proto-led" id="dc1-popup-isis-led"></span>
+                            IS-IS
+                        </span>
+                        <span class="dc1-popup-section-count" id="dc1-popup-isis-state">—</span>
+                    </div>
+                    <!-- Level info badges (L1 / L2 LSP counts + overload) -->
+                    <div class="dc1-popup-isis-levels" id="dc1-popup-isis-levels">
+                        <!-- Populated by JS -->
+                    </div>
+                    <!-- Adjacency table -->
+                    <table class="dc1-popup-table">
+                        <thead>
+                            <tr>
+                                <th>Interface</th>
+                                <th>Neighbor IP</th>
+                                <th>Level</th>
+                                <th>State</th>
+                                <th>Uptime</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dc1-popup-isis-body">
                             <!-- Populated by JS -->
                         </tbody>
                     </table>

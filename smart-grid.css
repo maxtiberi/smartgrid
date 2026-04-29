@@ -4753,3 +4753,73 @@ body {
     .dc1-popup-table th:nth-child(6),
     .dc1-popup-table td:nth-child(6) { display: none; }
 }
+
+/* ── IS-IS section in DC1 popup ─────────────────────────────────────────── */
+
+/* Inline protocol LED (before IS-IS title) */
+.dc1-popup-proto-led {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #888;
+    margin-right: 6px;
+    vertical-align: middle;
+    transition: background 0.3s, box-shadow 0.3s;
+}
+.dc1-popup-proto-led[data-state="up"] {
+    background: #3aaa5a;
+    box-shadow: 0 0 5px #3aaa5a99;
+}
+.dc1-popup-proto-led[data-state="down"] {
+    background: #cc3a3a;
+    box-shadow: none;
+}
+
+/* Level badge strip (L1 · N LSPs, L2 · N LSPs) */
+.dc1-popup-isis-levels {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+.dc1-isis-level-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    background: rgba(0, 140, 200, 0.09);
+    color: #0077bb;
+    border: 1px solid rgba(0, 140, 200, 0.2);
+    letter-spacing: 0.04em;
+}
+.dc1-isis-level-badge.overloaded {
+    background: rgba(200, 80, 0, 0.09);
+    color: #c85000;
+    border-color: rgba(200, 80, 0, 0.25);
+}
+
+/* Level column tag inside adjacency table */
+.dc1-isis-level-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    background: rgba(0, 140, 200, 0.08);
+    color: #0077bb;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+/* Uptime cell */
+.dc1-isis-uptime {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    color: var(--text-tertiary);
+}

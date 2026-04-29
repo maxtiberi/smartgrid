@@ -59,7 +59,7 @@ function gnmicGet(host, gnmiPort, gnmiPath) {
 }
 
 // Fetch live telemetry for a MPLS node via gnmic.
-// Returns { node, host, ts, interfaces[], ports[] }
+// Returns { node, host, ts, interfaces[], ports[], isis{} }
 async function fetchGnmicNodeData(nodeId) {
     const nodeCfg = (MPLS_CFG.nodes || {})[nodeId];
     if (!nodeCfg) throw new Error(`Unknown node: ${nodeId}`);
@@ -67,14 +67,23 @@ async function fetchGnmicNodeData(nodeId) {
     const host     = nodeCfg.host;
     const gnmiPort = nodeCfg.gnmiPort || 57400;
 
-    // Run all three queries in parallel for best latency
-    const [ifaceStateUpdates, ifaceFullUpdates, portUpdates] = await Promise.all([
+    // Run all six queries in parallel for best latency
+    const [
+        ifaceStateUpdates, ifaceFullUpdates, portUpdates,
+        isisOperUpdates, isisLevelUpdates, isisIfaceUpdates
+    ] = await Promise.all([
         // 1. All routers, all interfaces, oper-state only  ← exact user-specified command
         gnmicGet(host, gnmiPort, '/state/router[router-name=*]/interface[interface-name=*]/oper-state'),
         // 2. Base router, full interface objects (includes primary IP)
         gnmicGet(host, gnmiPort, '/state/router[router-name=Base]/interface[interface-name=*]'),
         // 3. Physical port oper-states
-        gnmicGet(host, gnmiPort, '/state/port[port-id=*]/oper-state')
+        gnmicGet(host, gnmiPort, '/state/port[port-id=*]/oper-state'),
+        // 4. IS-IS instance overall oper-state
+        gnmicGet(host, gnmiPort, '/state/router[router-name=Base]/isis[isis-instance=1]/oper-state').catch(() => []),
+        // 5. IS-IS level info (LSP counts, overload status)
+        gnmicGet(host, gnmiPort, '/state/router[router-name=Base]/isis[isis-instance=1]/level[level-number=*]').catch(() => []),
+        // 6. IS-IS interfaces + adjacencies (includes neighbor IPs, levels, uptime)
+        gnmicGet(host, gnmiPort, '/state/router[router-name=Base]/isis[isis-instance=1]/interface[interface-name=*]').catch(() => [])
     ]);
 
     // Build interface map: key = "routerName|ifaceName"
@@ -137,6 +146,42 @@ async function fetchGnmicNodeData(nodeId) {
         return a.portId.localeCompare(b.portId, undefined, { numeric: true });
     });
 
+    // ── Parse IS-IS data ──────────────────────────────────────────────
+    // Overall oper-state
+    const isisOperState = isisOperUpdates.length > 0
+        ? (String(Object.values(isisOperUpdates[0].values)[0]) || 'unknown')
+        : 'unknown';
+
+    // Level info: { level: 1|2, lsps: N, overload: 'not-in-overload'|... }
+    const isisLevels = isisLevelUpdates.map(upd => {
+        const lvlM = upd.Path.match(/level\[level-number=(\d+)\]/);
+        const obj  = Object.values(upd.values)[0] || {};
+        return {
+            level:    lvlM ? parseInt(lvlM[1], 10) : 0,
+            lsps:     typeof obj.lsps === 'number' ? obj.lsps : 0,
+            overload: (obj.overload && obj.overload.status) || 'unknown'
+        };
+    }).sort((a, b) => a.level - b.level);
+
+    // Interfaces + adjacencies
+    const isisInterfaces = isisIfaceUpdates.map(upd => {
+        const ifaceM = upd.Path.match(/interface\[interface-name=([^\]]+)\]/);
+        const obj    = Object.values(upd.values)[0] || {};
+        const adjs   = (obj.adjacency || []).map(a => ({
+            index:            a['adjacency-index'],
+            level:            a.level             || '—',
+            operState:        a['oper-state']      || 'unknown',
+            neighborIp:       (a.neighbor && a.neighbor.ipv4)         || '—',
+            neighborSystemId: (a.neighbor && a.neighbor['system-id']) || '—',
+            uptime:           typeof a.uptime === 'number' ? a.uptime : null
+        }));
+        return {
+            name:        ifaceM ? ifaceM[1] : '?',
+            operState:   obj['oper-state'] || 'unknown',
+            adjacencies: adjs
+        };
+    });
+
     return {
         node:       nodeCfg.name || nodeId,
         nodeId,
@@ -144,7 +189,13 @@ async function fetchGnmicNodeData(nodeId) {
         gnmiPort,
         ts:         new Date().toISOString(),
         interfaces: Object.values(ifaceMap),
-        ports
+        ports,
+        isis: {
+            operState:  isisOperState,
+            instance:   1,
+            levels:     isisLevels,
+            interfaces: isisInterfaces
+        }
     };
 }
 

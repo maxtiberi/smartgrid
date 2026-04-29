@@ -2654,6 +2654,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const portsCount = document.getElementById('dc1-popup-ports-count');
         const ifacesBody = document.getElementById('dc1-popup-ifaces-body');
         const ifacesCount= document.getElementById('dc1-popup-ifaces-count');
+        // IS-IS section
+        const isisLed    = document.getElementById('dc1-popup-isis-led');
+        const isisState  = document.getElementById('dc1-popup-isis-state');
+        const isisLevels = document.getElementById('dc1-popup-isis-levels');
+        const isisBody   = document.getElementById('dc1-popup-isis-body');
         // SVG node group (click target)
         const dc1SvgNode = document.getElementById('mpls-node-mpls-dc1');
         // SVG port tiles (for live colour sync)
@@ -2683,6 +2688,64 @@ document.addEventListener('DOMContentLoaded', () => {
                       : 'state-unknown';
             const label = lo === 'inservice' ? 'UP' : lo === 'outofservice' ? 'DOWN' : (s||'?').toUpperCase();
             return `<span class="dc1-iface-state ${cls}"><span class="dc1-iface-led"></span>${label}</span>`;
+        }
+
+        // ── Uptime formatter ────────────────────────────────────────
+        function formatUptime(secs) {
+            if (secs == null || secs === 0) return '—';
+            if (secs < 60)   return `${secs}s`;
+            if (secs < 3600) return `${Math.floor(secs / 60)}m ${secs % 60}s`;
+            const h = Math.floor(secs / 3600);
+            const m = Math.floor((secs % 3600) / 60);
+            return `${h}h ${m}m`;
+        }
+
+        // ── IS-IS section renderer ──────────────────────────────────
+        function renderIsisSection(isis) {
+            if (!isis) return;
+
+            // Overall state LED + text
+            const isUp = isis.operState === 'up';
+            if (isisLed)   isisLed.setAttribute('data-state', isUp ? 'up' : 'down');
+            if (isisState) isisState.textContent = isis.operState ? isis.operState.toUpperCase() : '—';
+
+            // Level badges
+            if (isisLevels) {
+                const levels = isis.levels || [];
+                if (levels.length === 0) {
+                    isisLevels.innerHTML = '';
+                } else {
+                    isisLevels.innerHTML = levels.map(l => {
+                        const overloaded = l.overload && l.overload !== 'not-in-overload';
+                        const cls = overloaded ? ' overloaded' : '';
+                        const warn = overloaded ? ' ⚠' : '';
+                        return `<span class="dc1-isis-level-badge${cls}">L${l.level} · ${l.lsps} LSP${l.lsps !== 1 ? 's' : ''}${warn}</span>`;
+                    }).join('');
+                }
+            }
+
+            // Adjacency table — flatten all non-system interfaces
+            if (isisBody) {
+                const rows = [];
+                (isis.interfaces || []).forEach(iface => {
+                    if (iface.name === 'system') return;   // loopback, skip
+                    (iface.adjacencies || []).forEach(adj => {
+                        rows.push({ ifaceName: iface.name, ...adj });
+                    });
+                });
+
+                if (rows.length === 0) {
+                    isisBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888;padding:14px 0">no active adjacencies</td></tr>';
+                } else {
+                    isisBody.innerHTML = rows.map(r => `<tr>
+                        <td>${r.ifaceName}</td>
+                        <td class="dc1-ip-addr">${r.neighborIp}</td>
+                        <td><span class="dc1-isis-level-tag">${r.level}</span></td>
+                        <td>${stateHtml(r.operState)}</td>
+                        <td class="dc1-isis-uptime">${formatUptime(r.uptime)}</td>
+                    </tr>`).join('');
+                }
+            }
         }
 
         // ── Port grid renderer ───────────────────────────────────────
@@ -2771,6 +2834,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 renderPortGrid(data.ports || []);
                 renderIfaceTable(data.interfaces || []);
+                renderIsisSection(data.isis || null);
 
                 // Show body
                 if (loading) loading.style.display = 'none';
@@ -2967,22 +3031,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!proto) return;
             let protoUp = 0;
 
-            // IS-IS
-            const isis = proto.isis || {};
-            const isisUp = (isis.operState === 'up');
-            if (isisUp) protoUp++;
-            if (dc1.isisLed)   dc1.isisLed.setAttribute('data-state', isisUp ? 'up' : 'down');
-            if (dc1.isisState) dc1.isisState.textContent = isis.operState || '—';
-            if (dc1.isisBody) {
-                const adjs = isis.adjacencies || [];
-                dc1.isisBody.innerHTML = adjs.length === 0
-                    ? '<tr class="mpls-telem-placeholder"><td colspan="4">no adjacencies</td></tr>'
-                    : adjs.map(a => `<tr>
-                        <td>${a.systemId || '—'}</td>
-                        <td>${a.interfaceName || '—'}</td>
-                        <td>${a.neighborLevel || '—'}</td>
-                        <td class="${stateClass(a.state)}">${stateLabel(a.state)}</td>
-                      </tr>`).join('');
+            // IS-IS — skipped here when proto.isis === null (gnmic path handles it)
+            if (proto.isis !== null) {
+                const isis = proto.isis || {};
+                const isisUp = (isis.operState === 'up');
+                if (isisUp) protoUp++;
+                // (renderIsisForPanel updates the LED/state/body elements)
             }
 
             // BGP
@@ -3041,44 +3095,110 @@ document.addEventListener('DOMContentLoaded', () => {
                       </tr>`).join('');
             }
 
+            // IS-IS counted separately via gnmic; add 1 if LED is currently up
+            const isisIsUp = dc1.isisLed && dc1.isisLed.getAttribute('data-state') === 'up';
+            if (isisIsUp) protoUp++;
             if (dc1.protoCount) dc1.protoCount.textContent = `${protoUp}/4 active`;
+        }
+
+        // ── IS-IS panel renderer (uses gnmic data, independent of port 3002) ──
+        function renderIsisForPanel(isis) {
+            if (!isis) return;
+            const isUp = isis.operState === 'up';
+
+            if (dc1.isisLed)   dc1.isisLed.setAttribute('data-state', isUp ? 'up' : 'down');
+            if (dc1.isisState) {
+                // Show "UP · L1:1 L2:9" style summary
+                const lvlSummary = (isis.levels || [])
+                    .map(l => `L${l.level}:${l.lsps}`)
+                    .join(' ');
+                dc1.isisState.textContent = isis.operState
+                    ? `${isis.operState.toUpperCase()}${lvlSummary ? '  ' + lvlSummary : ''}`
+                    : '—';
+            }
+
+            if (dc1.isisBody) {
+                const rows = [];
+                (isis.interfaces || []).forEach(iface => {
+                    if (iface.name === 'system') return;
+                    (iface.adjacencies || []).forEach(adj => {
+                        rows.push({ ifaceName: iface.name, ...adj });
+                    });
+                });
+
+                if (rows.length === 0) {
+                    dc1.isisBody.innerHTML = '<tr class="mpls-telem-placeholder"><td colspan="5">no adjacencies</td></tr>';
+                } else {
+                    dc1.isisBody.innerHTML = rows.map(r => {
+                        const sc = stateClass(r.operState);
+                        const sl = stateLabel(r.operState);
+                        const ut = (() => {
+                            const s = r.uptime;
+                            if (!s) return '—';
+                            if (s < 60)   return `${s}s`;
+                            if (s < 3600) return `${Math.floor(s/60)}m`;
+                            return `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
+                        })();
+                        return `<tr>
+                            <td>${r.ifaceName}</td>
+                            <td>${r.neighborIp}</td>
+                            <td>${r.level}</td>
+                            <td class="${sc}">${sl}</td>
+                            <td>${ut}</td>
+                        </tr>`;
+                    }).join('');
+                }
+            }
         }
 
         // ── Main fetch ───────────────────────────────────────────────
         async function fetchMplsData() {
-            try {
-                const res = await fetch(`${SROS_BASE}/api/mpls/nodes/mpls-dc1`, { cache: 'no-store' });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
+            // Fire both fetches in parallel:
+            //   • port 3002 (gnmi-sros-service) for overall status / ports / interfaces / other protocols
+            //   • port 3000 (ping-service gnmic) for IS-IS (always reliable via docker exec)
+            const [srosResult, gnmicResult] = await Promise.allSettled([
+                fetch(`${SROS_BASE}/api/mpls/nodes/mpls-dc1`, { cache: 'no-store' })
+                    .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))),
+                fetch('http://localhost:3000/gnmic/node/mpls-dc1', { cache: 'no-store' })
+                    .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+            ]);
+
+            // ── sros-service data ────────────────────────────────────
+            if (srosResult.status === 'fulfilled') {
+                const data = srosResult.value;
 
                 setDc1Status(data.status || 'unknown',
                     data.status === 'connected'    ? 'connected' :
                     data.status === 'disconnected' ? 'disconnected' : data.status || '—');
 
-                // Resource meters
                 const sum = data.summary || {};
                 setMeter(dc1.cpuBar, dc1.cpuVal, sum.cpu);
                 setMeter(dc1.memBar, dc1.memVal, sum.mem);
 
-                // Port link map from config (static topology)
                 const linkMap = {
                     '1/1/c1/1': 'SR1-ACC1',
                     '1/1/c2/1': 'dc2'
                 };
-
                 renderPorts(data.ports || [], linkMap);
                 renderIfaces(data.interfaces || []);
-                renderProtocols(data.protocols || {});
+
+                // Render BGP / LDP / MPLS-TE from sros-service; IS-IS handled below via gnmic
+                const proto = data.protocols || {};
+                const patchedProto = { ...proto, isis: null };   // suppress IS-IS from this path
+                renderProtocols(patchedProto);
 
                 if (dc1.lastTs) {
                     const ts = data.lastUpdate ? new Date(data.lastUpdate).toLocaleTimeString() : '—';
                     dc1.lastTs.textContent = `last update: ${ts}`;
                 }
-
-            } catch (err) {
-                // Service not reachable — show graceful offline state
+            } else {
                 setDc1Status('disconnected', 'service offline');
-                if (dc1.lastTs) dc1.lastTs.textContent = `last update: — (${err.message})`;
+                if (dc1.lastTs) dc1.lastTs.textContent = `last update: — (${srosResult.reason?.message || 'unreachable'})`;
+            }
+
+            // ── gnmic IS-IS data (primary IS-IS source) ──────────────
+            if (gnmicResult.status === 'fulfilled') {
+                renderIsisForPanel(gnmicResult.value.isis || null);
             }
         }
 
