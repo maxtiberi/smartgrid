@@ -2631,6 +2631,203 @@ document.addEventListener('DOMContentLoaded', () => {
     })();
 
     // ================================================================
+    // DC1 LIVE TELEMETRY POPUP
+    // Triggered by clicking the DC1 node in the MPLS topology SVG.
+    // Fetches live data via GET /gnmic/node/mpls-dc1 (ping-service,
+    // port 3000) which runs docker exec gnmic internally.
+    // ================================================================
+    (function initDc1Popup() {
+        const PING_BASE   = 'http://localhost:3000';
+        const NODE_ID     = 'mpls-dc1';
+        const NODE_NAME   = 'dc1';
+
+        // DOM refs
+        const overlay    = document.getElementById('dc1-popup-overlay');
+        const closeBtn   = document.getElementById('dc1-popup-close-btn');
+        const refreshBtn = document.getElementById('dc1-popup-refresh-btn');
+        const loading    = document.getElementById('dc1-popup-loading');
+        const errorBox   = document.getElementById('dc1-popup-error');
+        const errorText  = document.getElementById('dc1-popup-error-text');
+        const body       = document.getElementById('dc1-popup-body');
+        const tsEl       = document.getElementById('dc1-popup-ts');
+        const portGrid   = document.getElementById('dc1-popup-port-grid');
+        const portsCount = document.getElementById('dc1-popup-ports-count');
+        const ifacesBody = document.getElementById('dc1-popup-ifaces-body');
+        const ifacesCount= document.getElementById('dc1-popup-ifaces-count');
+        // SVG node group (click target)
+        const dc1SvgNode = document.getElementById('mpls-node-mpls-dc1');
+        // SVG port tiles (for live colour sync)
+        const svgPortMap = {
+            '1/1/c1':   document.getElementById('dc1-svg-port-c1'),
+            '1/1/c2':   document.getElementById('dc1-svg-port-c2'),
+            '1/1/c3':   document.getElementById('dc1-svg-port-c3'),
+            '1/1/c4':   document.getElementById('dc1-svg-port-c4'),
+            '1/1/c5':   document.getElementById('dc1-svg-port-c5'),
+        };
+
+        if (!overlay) return; // Guard: HTML section may be absent
+
+        // ── Helpers ─────────────────────────────────────────────────
+        function fmt0(n) {
+            if (n == null) return '—';
+            if (n >= 1e9) return (n/1e9).toFixed(1)+'G';
+            if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
+            if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+            return String(n);
+        }
+
+        function stateHtml(s) {
+            const lo = (s || '').toLowerCase();
+            const cls = (lo === 'up' || lo === 'inservice') ? 'state-up'
+                      : (lo === 'down' || lo === 'outofservice') ? 'state-down'
+                      : 'state-unknown';
+            const label = lo === 'inservice' ? 'UP' : lo === 'outofservice' ? 'DOWN' : (s||'?').toUpperCase();
+            return `<span class="dc1-iface-state ${cls}"><span class="dc1-iface-led"></span>${label}</span>`;
+        }
+
+        // ── Port grid renderer ───────────────────────────────────────
+        function renderPortGrid(ports) {
+            if (!portGrid) return;
+            portGrid.innerHTML = '';
+            const upCount = ports.filter(p => p.operState === 'up').length;
+            if (portsCount) portsCount.textContent = `${upCount}/${ports.length} up`;
+
+            ports.forEach(p => {
+                const isUp        = p.operState === 'up';
+                const isBreakout  = /\/\d+$/.test(p.portId) && p.portId.includes('/c');
+                const isMgmt      = p.portId.startsWith('A/') || p.portId.startsWith('B/');
+                const tileClass   = isMgmt ? 'port-mgmt' : isBreakout ? 'port-breakout' : 'port-connector';
+                const ledClass    = isUp ? 'port-up' : 'port-down';
+
+                const tile = document.createElement('div');
+                tile.className = `dc1-port-tile ${tileClass}`;
+                tile.title    = `${p.portId}: ${p.operState.toUpperCase()}`;
+                tile.innerHTML = `
+                    <div class="dc1-port-tile-led ${ledClass}"></div>
+                    <span class="dc1-port-tile-id">${p.portId.replace('1/1/', '')}</span>`;
+                portGrid.appendChild(tile);
+
+                // Also update the matching SVG chassis port rect
+                const svgPort = svgPortMap[p.portId];
+                if (svgPort) {
+                    svgPort.setAttribute('fill', isUp ? '#3a6a4a' : '#3a3a4a');
+                }
+            });
+        }
+
+        // ── Interface table renderer ─────────────────────────────────
+        function renderIfaceTable(ifaces) {
+            if (!ifacesBody) return;
+            if (!ifaces || ifaces.length === 0) {
+                ifacesBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;padding:16px">no interface data</td></tr>';
+                return;
+            }
+            // Sort: Base router first, then alphabetically
+            const sorted = [...ifaces].sort((a, b) => {
+                if (a.router !== b.router) return a.router === 'Base' ? -1 : 1;
+                return a.name.localeCompare(b.name);
+            });
+            const upCount = sorted.filter(i => i.operState === 'up').length;
+            if (ifacesCount) ifacesCount.textContent = `${upCount}/${sorted.length} up`;
+
+            ifacesBody.innerHTML = sorted.map(i => {
+                const isMgmt  = i.router !== 'Base';
+                const rdgBadge= isMgmt
+                    ? `<span class="dc1-router-badge badge-mgmt">${i.router}</span>`
+                    : `<span class="dc1-router-badge">Base</span>`;
+                const ipHtml  = i.ipv4
+                    ? `<span class="dc1-ip-addr">${i.ipv4}</span>`
+                    : `<span class="dc1-ip-addr empty">—</span>`;
+                return `<tr>
+                    <td>${rdgBadge}</td>
+                    <td>${i.name}</td>
+                    <td>${stateHtml(i.operState)}</td>
+                    <td>${ipHtml}</td>
+                    <td>${fmt0(i.inPkts)}</td>
+                    <td>${fmt0(i.outPkts)}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        // ── Fetch & render ───────────────────────────────────────────
+        async function loadData() {
+            // Reset to loading state
+            if (loading)  loading.style.display  = 'flex';
+            if (errorBox) errorBox.style.display  = 'none';
+            if (body)     body.style.display      = 'none';
+            if (refreshBtn) refreshBtn.disabled   = true;
+
+            try {
+                const res = await fetch(`${PING_BASE}/gnmic/node/${NODE_ID}`, { cache: 'no-store' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+
+                // Timestamp badge
+                if (tsEl) {
+                    const t = new Date(data.ts);
+                    tsEl.textContent = `${t.toLocaleTimeString()} · gnmic`;
+                }
+
+                renderPortGrid(data.ports || []);
+                renderIfaceTable(data.interfaces || []);
+
+                // Show body
+                if (loading) loading.style.display = 'none';
+                if (body)    body.style.display    = 'block';
+
+            } catch (err) {
+                if (loading)    loading.style.display = 'none';
+                if (errorBox)   errorBox.style.display = 'flex';
+                if (errorText)  errorText.textContent =
+                    `gnmic unreachable: ${err.message} — is ping-service.js running?`;
+            } finally {
+                if (refreshBtn) refreshBtn.disabled = false;
+            }
+        }
+
+        // ── Open / Close ─────────────────────────────────────────────
+        function openPopup() {
+            overlay.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            loadData();
+        }
+
+        function closePopup() {
+            overlay.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        // ── Event wiring ─────────────────────────────────────────────
+        // Click on DC1 SVG node
+        if (dc1SvgNode) {
+            dc1SvgNode.addEventListener('click', openPopup);
+            dc1SvgNode.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPopup(); }
+            });
+        }
+
+        // Close button
+        if (closeBtn) closeBtn.addEventListener('click', closePopup);
+
+        // Refresh button
+        if (refreshBtn) refreshBtn.addEventListener('click', loadData);
+
+        // Click outside card to close
+        overlay.addEventListener('click', e => {
+            if (e.target === overlay) closePopup();
+        });
+
+        // ESC key
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && overlay.style.display !== 'none') closePopup();
+        });
+
+        // Console helper
+        window.dc1Popup = { open: openPopup, close: closePopup, refresh: loadData };
+    })();
+
+    // ================================================================
     // MPLS NETWORK LIVE TELEMETRY — polls gnmi-sros-service (port 3002)
     // Updates: SVG node LEDs, telemetry tables for dc1 (ports /
     //          interfaces / IS-IS / BGP / LDP / MPLS-TE)

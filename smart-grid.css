@@ -4332,3 +4332,424 @@ body {
     .mpls-telem-meters { flex-direction: column; }
     .mpls-meter-card { flex: none; }
 }
+
+/* ============================================================ */
+/* DC1 CLICKABLE NODE — SVG styles                              */
+/* ============================================================ */
+.mpls-node-clickable {
+    cursor: pointer;
+}
+.mpls-node-clickable .mpls-hit-area {
+    opacity: 0;
+}
+.mpls-node-clickable:hover .mpls-chassis {
+    filter: brightness(1.18);
+    stroke: #005AFF;
+    stroke-width: 1.5;
+}
+.mpls-node-clickable:focus .mpls-chassis {
+    stroke: #005AFF;
+    stroke-width: 2;
+    outline: none;
+}
+.mpls-click-hint {
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.2s, transform 0.2s;
+}
+.mpls-node-clickable:hover .mpls-click-hint,
+.mpls-node-clickable:focus .mpls-click-hint {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ============================================================ */
+/* DC1 LIVE TELEMETRY POPUP                                     */
+/* ============================================================ */
+
+/* Overlay backdrop */
+.dc1-popup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(3px);
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: dc1-overlay-in 0.18s ease;
+}
+
+@keyframes dc1-overlay-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* Modal card */
+.dc1-popup-card {
+    background: #f7f5f2;
+    border-radius: 10px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.38), 0 4px 16px rgba(0,0,0,0.18);
+    width: min(820px, 96vw);
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: dc1-card-in 0.22s cubic-bezier(0.22,1,0.36,1);
+}
+
+@keyframes dc1-card-in {
+    from { opacity: 0; transform: scale(0.94) translateY(12px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+/* Header */
+.dc1-popup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px 12px;
+    background: #1a1a2e;
+    color: white;
+    flex-shrink: 0;
+}
+
+.dc1-popup-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.dc1-popup-nokia-logo {
+    flex-shrink: 0;
+    border-radius: 5px;
+}
+
+.dc1-popup-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.dc1-popup-node-name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #fff;
+}
+
+.dc1-popup-node-sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: rgba(255,255,255,0.55);
+    letter-spacing: 0.08em;
+}
+
+.dc1-popup-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.dc1-popup-ts-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+}
+
+.dc1-popup-refresh-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    background: rgba(0,90,255,0.75);
+    border: 1px solid rgba(0,90,255,0.9);
+    border-radius: 5px;
+    color: white;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.dc1-popup-refresh-btn:hover { background: #005AFF; }
+.dc1-popup-refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.dc1-popup-close-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.7);
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+}
+.dc1-popup-close-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
+
+/* Loading state */
+.dc1-popup-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 60px 0;
+    color: var(--text-tertiary);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+}
+
+.dc1-popup-spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid rgba(0,90,255,0.15);
+    border-top-color: #005AFF;
+    border-radius: 50%;
+    animation: dc1-spin 0.8s linear infinite;
+}
+@keyframes dc1-spin { to { transform: rotate(360deg); } }
+
+/* Error state */
+.dc1-popup-error {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 24px;
+    color: #8a3a3a;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    background: rgba(138,58,58,0.06);
+    border-bottom: 1px solid rgba(138,58,58,0.15);
+}
+
+/* Popup body (scrollable) */
+.dc1-popup-body {
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Section */
+.dc1-popup-section {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(0,0,0,0.07);
+}
+.dc1-popup-section:last-child { border-bottom: none; }
+
+.dc1-popup-section-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.dc1-popup-section-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+}
+
+.dc1-popup-section-count {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: #005AFF;
+}
+
+/* Chassis front-panel visual */
+.dc1-chassis-panel {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #1a1a2e;
+    border-radius: 8px;
+    padding: 12px 16px;
+    overflow-x: auto;
+}
+
+.dc1-chassis-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: rgba(255,255,255,0.4);
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    flex-shrink: 0;
+}
+
+.dc1-port-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+    flex: 1;
+}
+
+/* Individual port tile */
+.dc1-port-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: default;
+}
+
+.dc1-port-tile-led {
+    width: 22px;
+    height: 14px;
+    border-radius: 3px;
+    position: relative;
+    transition: box-shadow 0.3s;
+}
+.dc1-port-tile-led.port-up {
+    background: #2a6a3a;
+    box-shadow: 0 0 6px #3aaa5a66;
+}
+.dc1-port-tile-led.port-up::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border-radius: 2px;
+    background: linear-gradient(135deg, #5aff8a44, transparent);
+}
+.dc1-port-tile-led.port-down {
+    background: #2a2a3a;
+    border: 1px solid #3a3a4a;
+}
+.dc1-port-tile-led.port-down::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #3a3a5a;
+}
+
+.dc1-port-tile-id {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 7px;
+    color: rgba(255,255,255,0.35);
+    white-space: nowrap;
+    max-width: 30px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+}
+
+/* Connector port (c1, c2…) vs breakout (c1/1) */
+.dc1-port-tile.port-connector .dc1-port-tile-led {
+    width: 26px;
+    height: 18px;
+}
+.dc1-port-tile.port-breakout .dc1-port-tile-led {
+    width: 18px;
+    height: 12px;
+}
+.dc1-port-tile.port-mgmt .dc1-port-tile-led {
+    width: 20px;
+    height: 14px;
+    border: 1px solid #4a4a6a;
+}
+
+/* Interface table */
+.dc1-popup-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+}
+
+.dc1-popup-table thead tr {
+    background: rgba(0,0,0,0.04);
+}
+
+.dc1-popup-table th {
+    padding: 7px 12px;
+    text-align: left;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    border-bottom: 2px solid rgba(0,0,0,0.07);
+    white-space: nowrap;
+}
+
+.dc1-popup-table td {
+    padding: 8px 12px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    white-space: nowrap;
+}
+
+.dc1-popup-table tr:last-child td { border-bottom: none; }
+.dc1-popup-table tr:hover td { background: rgba(0,90,255,0.03); }
+
+/* State cell */
+.dc1-iface-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    font-size: 10px;
+}
+.dc1-iface-led {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.dc1-iface-state.state-up   .dc1-iface-led { background: #3aaa5a; box-shadow: 0 0 4px #3aaa5a88; }
+.dc1-iface-state.state-up               { color: #2a6a3a; }
+.dc1-iface-state.state-down .dc1-iface-led { background: #cc3a3a; }
+.dc1-iface-state.state-down             { color: #8a3a3a; }
+.dc1-iface-state.state-unknown .dc1-iface-led { background: #888; }
+.dc1-iface-state.state-unknown          { color: var(--text-tertiary); }
+
+/* Router badge */
+.dc1-router-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    background: rgba(0,90,255,0.1);
+    color: #005AFF;
+}
+.dc1-router-badge.badge-mgmt {
+    background: rgba(100,100,100,0.12);
+    color: var(--text-tertiary);
+}
+
+/* IP address cell */
+.dc1-ip-addr {
+    font-family: 'IBM Plex Mono', monospace;
+    color: #3a5a3a;
+    font-size: 10.5px;
+}
+.dc1-ip-addr.empty { color: var(--text-tertiary); }
+
+@media (max-width: 600px) {
+    .dc1-popup-table th:nth-child(5),
+    .dc1-popup-table td:nth-child(5),
+    .dc1-popup-table th:nth-child(6),
+    .dc1-popup-table td:nth-child(6) { display: none; }
+}

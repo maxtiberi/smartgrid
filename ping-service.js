@@ -20,6 +20,134 @@ const ALLOWED_IPS = [
     ...Object.values(CONFIG.rtus).map(r => r.host)
 ];
 
+// ── gnmic helper ─────────────────────────────────────────────────────────────
+// Runs a gnmic GET via `docker exec` in the gnmic container.
+// Returns a Promise<object[]> (the parsed updates array).
+const MPLS_CFG = CONFIG.mplsNetwork;
+const GNMIC_CONTAINER = MPLS_CFG.gnmicContainer || 'gnmic';
+const GNMIC_BIN       = MPLS_CFG.gnmicBinary    || '/app/gnmic';
+const GNMIC_CREDS     = MPLS_CFG.credentials;
+
+function gnmicGet(host, gnmiPort, gnmiPath) {
+    return new Promise((resolve, reject) => {
+        const cmd = [
+            'docker', 'exec', '-i', GNMIC_CONTAINER, GNMIC_BIN,
+            '-a', `${host}:${gnmiPort}`,
+            '-u', GNMIC_CREDS.username,
+            '-p', GNMIC_CREDS.password,
+            '--insecure',
+            'get',
+            '--path', gnmiPath,
+            '--format', 'json'
+        ].join(' ');
+
+        exec(cmd, { maxBuffer: 8 * 1024 * 1024, timeout: 10000 }, (err, stdout, stderr) => {
+            if (err) {
+                reject(new Error(stderr ? stderr.trim() : err.message));
+                return;
+            }
+            try {
+                const parsed = JSON.parse(stdout);
+                // gnmic returns an array of source responses; flatten updates
+                const updates = parsed.flatMap(src => src.updates || []);
+                resolve(updates);
+            } catch (e) {
+                reject(new Error('Failed to parse gnmic JSON: ' + e.message));
+            }
+        });
+    });
+}
+
+// Fetch live telemetry for a MPLS node via gnmic.
+// Returns { node, host, ts, interfaces[], ports[] }
+async function fetchGnmicNodeData(nodeId) {
+    const nodeCfg = (MPLS_CFG.nodes || {})[nodeId];
+    if (!nodeCfg) throw new Error(`Unknown node: ${nodeId}`);
+
+    const host     = nodeCfg.host;
+    const gnmiPort = nodeCfg.gnmiPort || 57400;
+
+    // Run all three queries in parallel for best latency
+    const [ifaceStateUpdates, ifaceFullUpdates, portUpdates] = await Promise.all([
+        // 1. All routers, all interfaces, oper-state only  ← exact user-specified command
+        gnmicGet(host, gnmiPort, '/state/router[router-name=*]/interface[interface-name=*]/oper-state'),
+        // 2. Base router, full interface objects (includes primary IP)
+        gnmicGet(host, gnmiPort, '/state/router[router-name=Base]/interface[interface-name=*]'),
+        // 3. Physical port oper-states
+        gnmicGet(host, gnmiPort, '/state/port[port-id=*]/oper-state')
+    ]);
+
+    // Build interface map: key = "routerName|ifaceName"
+    // Seed from query 1 (all routers, oper-state scalar)
+    const ifaceMap = {};
+    for (const upd of ifaceStateUpdates) {
+        const routerM = upd.Path.match(/router\[router-name=([^\]]+)\]/);
+        const ifaceM  = upd.Path.match(/interface\[interface-name=([^\]]+)\]/);
+        if (!routerM || !ifaceM) continue;
+        const key = `${routerM[1]}|${ifaceM[1]}`;
+        const val = Object.values(upd.values)[0];
+        ifaceMap[key] = {
+            router:    routerM[1],
+            name:      ifaceM[1],
+            operState: typeof val === 'string' ? val : 'unknown',
+            ipv4:      '',
+            inPkts:    null,
+            outPkts:   null
+        };
+    }
+
+    // Enrich from query 2 (Base router full objects) — adds IP + counters
+    for (const upd of ifaceFullUpdates) {
+        const routerM = upd.Path.match(/router\[router-name=([^\]]+)\]/);
+        const ifaceM  = upd.Path.match(/interface\[interface-name=([^\]]+)\]/);
+        if (!routerM || !ifaceM) continue;
+        const key = `${routerM[1]}|${ifaceM[1]}`;
+        const obj = Object.values(upd.values)[0];
+        if (!ifaceMap[key]) {
+            ifaceMap[key] = { router: routerM[1], name: ifaceM[1],
+                              operState: 'unknown', ipv4: '', inPkts: null, outPkts: null };
+        }
+        const entry = ifaceMap[key];
+        // oper-state (may override the scalar from query 1)
+        if (obj['oper-state']) entry.operState = obj['oper-state'];
+        // Primary IPv4 address
+        const pri = obj.ipv4 && obj.ipv4.primary;
+        if (pri && pri['oper-address']) entry.ipv4 = pri['oper-address'];
+        // Packet counters
+        const stats = obj.ipv4 && obj.ipv4.statistics;
+        if (stats) {
+            entry.inPkts  = parseInt(stats['in-packets'],  10) || 0;
+            entry.outPkts = parseInt(stats['out-packets'], 10) || 0;
+        }
+    }
+
+    // Build port list from query 3
+    const ports = portUpdates.map(upd => {
+        const portM = upd.Path.match(/port\[port-id=([^\]]+)\]/);
+        const state = Object.values(upd.values)[0];
+        return {
+            portId:    portM ? portM[1] : '?',
+            operState: typeof state === 'string' ? state : 'unknown'
+        };
+    }).sort((a, b) => {
+        // Natural sort: A/ ports first, then 1/1/c* numerically
+        const aIsAlpha = a.portId.startsWith('A/') || a.portId.startsWith('B/');
+        const bIsAlpha = b.portId.startsWith('A/') || b.portId.startsWith('B/');
+        if (aIsAlpha !== bIsAlpha) return aIsAlpha ? 1 : -1;
+        return a.portId.localeCompare(b.portId, undefined, { numeric: true });
+    });
+
+    return {
+        node:       nodeCfg.name || nodeId,
+        nodeId,
+        host,
+        gnmiPort,
+        ts:         new Date().toISOString(),
+        interfaces: Object.values(ifaceMap),
+        ports
+    };
+}
+
 // --- gNMI Service Manager ---
 let gnmiProcess = null;
 let gnmiLogs = [];
@@ -214,6 +342,15 @@ const server = http.createServer(async (req, res) => {
         const result = await startGnmi();
         res.writeHead(result.success ? 200 : 409, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
+    }
+    // gnmic live node telemetry — GET /gnmic/node/:nodeId
+    // Runs docker exec gnmic queries and returns live port+interface data.
+    else if (parsedUrl.pathname.startsWith('/gnmic/node/') && req.method === 'GET') {
+        const nodeId = parsedUrl.pathname.replace('/gnmic/node/', '');
+        res.setHeader('Content-Type', 'application/json');
+        fetchGnmicNodeData(nodeId)
+            .then(data  => { res.writeHead(200); res.end(JSON.stringify(data)); })
+            .catch(err  => { res.writeHead(500); res.end(JSON.stringify({ error: err.message })); });
     }
     // gNMI stop
     else if (parsedUrl.pathname === '/gnmi/stop' && req.method === 'GET') {
