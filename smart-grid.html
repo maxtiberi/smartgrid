@@ -2574,23 +2574,35 @@
                 </g>
             </g>
 
-            <!-- dc2 at (740, 105) -->
-            <g id="mpls-node-mpls-dc2" class="mpls-node mpls-node-core" transform="translate(740, 105)">
+            <!-- dc2 at (740, 105) — clickable telemetry node -->
+            <g id="mpls-node-mpls-dc2" class="mpls-node mpls-node-core mpls-node-clickable"
+               transform="translate(740, 105)" role="button" tabindex="0"
+               aria-label="dc2 — click to view live telemetry">
+                <!-- invisible hit area -->
+                <rect class="mpls-hit-area" x="-58" y="-44" width="116" height="80" rx="6" fill="transparent"/>
                 <rect class="mpls-chassis" x="-52" y="-28" width="104" height="56" rx="5"/>
                 <rect class="mpls-chassis-accent mpls-core-accent" x="-52" y="-28" width="104" height="5" rx="5"/>
                 <rect class="mpls-port-row" x="-40" y="-12" width="80" height="8" rx="2"/>
-                <rect class="mpls-port mpls-port-active" x="-36" y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-active" x="-22" y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="-8"  y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-active" x="6"   y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="20"  y="-11" width="10" height="6" rx="1"/>
-                <circle class="mpls-status-led mpls-led-ok" cx="36" cy="-8" r="4"/>
+                <!-- Port highlights (updated live from gnmic) -->
+                <rect class="mpls-port" id="dc2-svg-port-c1"   x="-36" y="-11" width="10" height="6" rx="1" fill="#3a6a4a"/>
+                <rect class="mpls-port" id="dc2-svg-port-c2"   x="-22" y="-11" width="10" height="6" rx="1" fill="#3a6a4a"/>
+                <rect class="mpls-port" id="dc2-svg-port-c3"   x="-8"  y="-11" width="10" height="6" rx="1" fill="#3a3a4a"/>
+                <rect class="mpls-port" id="dc2-svg-port-c4"   x="6"   y="-11" width="10" height="6" rx="1" fill="#3a3a4a"/>
+                <rect class="mpls-port" id="dc2-svg-port-c5"   x="20"  y="-11" width="10" height="6" rx="1" fill="#3a3a4a"/>
+                <circle class="mpls-status-led mpls-led-ok" id="dc2-svg-status-led" cx="36" cy="-8" r="4"/>
                 <line x1="-44" y1="4" x2="-44" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
                 <line x1="-40" y1="4" x2="-40" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
                 <line x1="-36" y1="4" x2="-36" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
                 <text class="mpls-node-label" x="0" y="-38" text-anchor="middle">dc2</text>
                 <text class="mpls-node-type"  x="0" y="40" text-anchor="middle">SR-1 · Nokia SR-OS</text>
                 <text class="mpls-node-ip"    x="0" y="53" text-anchor="middle">192.168.30.3</text>
+                <!-- Click hint badge -->
+                <g class="mpls-click-hint" transform="translate(0, 64)">
+                    <rect x="-24" y="-7" width="48" height="13" rx="6" fill="#005AFF" opacity="0.85"/>
+                    <text x="0" y="3" text-anchor="middle" fill="white"
+                          font-family="IBM Plex Mono,monospace" font-size="7" font-weight="600"
+                          letter-spacing="0.08em">▶ TELEMETRY</text>
+                </g>
             </g>
 
             <!-- ========================================================== -->
@@ -3171,6 +3183,146 @@
             </div><!-- end body -->
         </div><!-- end card -->
     </div><!-- end overlay -->
+
+    <!-- ================================================================= -->
+    <!-- DC2 LIVE TELEMETRY POPUP                                         -->
+    <!-- Opened when user clicks the dc2 SVG node in MPLS NETWORK         -->
+    <!-- ================================================================= -->
+    <div id="dc2-popup-overlay" class="dc1-popup-overlay" role="dialog" aria-modal="true" aria-label="dc2 telemetry" style="display:none">
+        <div class="dc1-popup-card" style="max-width:740px">
+
+            <!-- Header -->
+            <div class="dc1-popup-header">
+                <div class="dc1-popup-header-left">
+                    <svg class="dc1-popup-nokia-logo" width="28" height="28" viewBox="0 0 28 28">
+                        <circle cx="14" cy="14" r="13" fill="#005AFF" opacity="0.15"/>
+                        <text x="14" y="19" text-anchor="middle" fill="#005AFF"
+                              font-family="Nokia Pure,Arial,sans-serif" font-size="11" font-weight="700">N</text>
+                    </svg>
+                    <div class="dc1-popup-title-group">
+                        <span class="dc1-popup-node-name">dc2</span>
+                        <span class="dc1-popup-node-sub">SR-1 · Nokia SR-OS · 192.168.30.3</span>
+                    </div>
+                </div>
+                <div class="dc1-popup-header-right">
+                    <span class="dc1-popup-ts-badge" id="dc2-popup-ts">—</span>
+                    <button class="dc1-popup-refresh-btn" id="dc2-popup-refresh-btn" title="Refresh live data">
+                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                            <path d="M13.5 8A5.5 5.5 0 1 1 8 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                            <polyline points="12,0 14,2.5 11.5,4.5" fill="currentColor"/>
+                        </svg>
+                        Refresh
+                    </button>
+                    <button class="dc1-popup-close-btn" id="dc2-popup-close-btn" aria-label="Close">✕</button>
+                </div>
+            </div>
+
+            <!-- Loading spinner -->
+            <div class="dc1-popup-loading" id="dc2-popup-loading">
+                <div class="dc1-popup-spinner"></div>
+                <span style="color:var(--text-secondary);font-size:13px">Querying gnmic…</span>
+            </div>
+
+            <!-- Error banner -->
+            <div class="dc1-popup-error" id="dc2-popup-error" style="display:none">
+                <svg width="16" height="16" fill="none" viewBox="0 0 16 16">
+                    <circle cx="8" cy="8" r="7" stroke="#cc3a3a" stroke-width="1.5"/>
+                    <line x1="8" y1="5" x2="8" y2="9" stroke="#cc3a3a" stroke-width="1.5"/>
+                    <circle cx="8" cy="11.5" r="0.7" fill="#cc3a3a"/>
+                </svg>
+                <span id="dc2-popup-error-text">Could not reach gnmic service</span>
+            </div>
+
+            <!-- Body -->
+            <div class="dc1-popup-body" id="dc2-popup-body" style="display:none">
+
+                <!-- PHYSICAL PORTS -->
+                <div class="dc1-popup-section">
+                    <div class="dc1-popup-section-hdr">
+                        <span class="dc1-popup-section-title">PHYSICAL PORTS</span>
+                        <span class="dc1-popup-section-count" id="dc2-popup-ports-count">—</span>
+                    </div>
+                    <div class="dc1-chassis-panel">
+                        <div class="dc1-port-grid" id="dc2-popup-port-grid">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ROUTER INTERFACES -->
+                <div class="dc1-popup-section">
+                    <div class="dc1-popup-section-hdr">
+                        <span class="dc1-popup-section-title">ROUTER INTERFACES</span>
+                        <span class="dc1-popup-section-count" id="dc2-popup-ifaces-count">—</span>
+                    </div>
+                    <table class="dc1-popup-table" id="dc2-popup-ifaces-table">
+                        <thead>
+                            <tr>
+                                <th>Router</th><th>Interface</th><th>State</th>
+                                <th>IPv4 Address</th><th>Rx Pkts</th><th>Tx Pkts</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dc2-popup-ifaces-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- IS-IS -->
+                <div class="dc1-popup-section">
+                    <div class="dc1-popup-section-hdr">
+                        <span class="dc1-popup-section-title">
+                            <span class="dc1-popup-proto-led" id="dc2-popup-isis-led"></span>
+                            IS-IS
+                        </span>
+                        <span class="dc1-popup-section-count" id="dc2-popup-isis-state">—</span>
+                    </div>
+                    <div class="dc1-popup-isis-levels" id="dc2-popup-isis-levels">
+                        <!-- Populated by JS -->
+                    </div>
+                    <table class="dc1-popup-table">
+                        <thead>
+                            <tr>
+                                <th>Interface</th><th>Neighbor IP</th>
+                                <th>Level</th><th>State</th><th>Uptime</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dc2-popup-isis-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- SEGMENT ROUTING -->
+                <div class="dc1-popup-section">
+                    <div class="dc1-popup-section-hdr">
+                        <span class="dc1-popup-section-title">
+                            <span class="dc1-popup-proto-led" id="dc2-popup-sr-led"></span>
+                            SEGMENT ROUTING
+                        </span>
+                        <span class="dc1-popup-section-count" id="dc2-popup-sr-state">—</span>
+                    </div>
+                    <!-- SR Policies summary row -->
+                    <div class="dc-sr-summary" id="dc2-popup-sr-summary">
+                        <!-- Populated by JS -->
+                    </div>
+                    <!-- Adjacency-SID table -->
+                    <table class="dc1-popup-table">
+                        <thead>
+                            <tr>
+                                <th>Interface</th><th>Adj-SID</th>
+                                <th>Type</th><th>Protected</th><th>LFA Backup IP</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dc2-popup-sr-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+            </div><!-- end body -->
+        </div><!-- end card -->
+    </div><!-- end dc2 overlay -->
 
     <script src="smart-grid.js"></script>
     <script src="turbine-control.js"></script>

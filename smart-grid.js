@@ -2892,6 +2892,265 @@ document.addEventListener('DOMContentLoaded', () => {
     })();
 
     // ================================================================
+    // DC2 LIVE TELEMETRY POPUP
+    // Opened when user clicks the dc2 SVG node in MPLS NETWORK.
+    // Fetches from ping-service /gnmic/node/mpls-dc2 which runs
+    // docker exec gnmic for ports, interfaces, IS-IS, and SR adj-SIDs.
+    // ================================================================
+    (function initDc2Popup() {
+        const PING_BASE = 'http://localhost:3000';
+        const NODE_ID   = 'mpls-dc2';
+
+        // DOM refs
+        const overlay    = document.getElementById('dc2-popup-overlay');
+        const closeBtn   = document.getElementById('dc2-popup-close-btn');
+        const refreshBtn = document.getElementById('dc2-popup-refresh-btn');
+        const loading    = document.getElementById('dc2-popup-loading');
+        const errorBox   = document.getElementById('dc2-popup-error');
+        const errorText  = document.getElementById('dc2-popup-error-text');
+        const body       = document.getElementById('dc2-popup-body');
+        const tsEl       = document.getElementById('dc2-popup-ts');
+        const portGrid   = document.getElementById('dc2-popup-port-grid');
+        const portsCount = document.getElementById('dc2-popup-ports-count');
+        const ifacesBody = document.getElementById('dc2-popup-ifaces-body');
+        const ifacesCount= document.getElementById('dc2-popup-ifaces-count');
+        // IS-IS
+        const isisLed    = document.getElementById('dc2-popup-isis-led');
+        const isisState  = document.getElementById('dc2-popup-isis-state');
+        const isisLevels = document.getElementById('dc2-popup-isis-levels');
+        const isisBody   = document.getElementById('dc2-popup-isis-body');
+        // Segment Routing
+        const srLed      = document.getElementById('dc2-popup-sr-led');
+        const srState    = document.getElementById('dc2-popup-sr-state');
+        const srSummary  = document.getElementById('dc2-popup-sr-summary');
+        const srBody     = document.getElementById('dc2-popup-sr-body');
+        // SVG node + port tiles
+        const dc2SvgNode = document.getElementById('mpls-node-mpls-dc2');
+        const svgPortMap = {
+            '1/1/c1':   document.getElementById('dc2-svg-port-c1'),
+            '1/1/c2':   document.getElementById('dc2-svg-port-c2'),
+            '1/1/c3':   document.getElementById('dc2-svg-port-c3'),
+            '1/1/c4':   document.getElementById('dc2-svg-port-c4'),
+            '1/1/c5':   document.getElementById('dc2-svg-port-c5'),
+        };
+
+        if (!overlay) return;
+
+        // ── Helpers ─────────────────────────────────────────────────
+        function fmt0(n) {
+            if (n == null) return '—';
+            if (n >= 1e9) return (n/1e9).toFixed(1)+'G';
+            if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
+            if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+            return String(n);
+        }
+        function stateHtml(s) {
+            const lo = (s || '').toLowerCase();
+            const cls = (lo === 'up' || lo === 'inservice') ? 'state-up'
+                      : (lo === 'down' || lo === 'outofservice') ? 'state-down'
+                      : 'state-unknown';
+            const label = lo === 'inservice' ? 'UP' : lo === 'outofservice' ? 'DOWN' : (s||'?').toUpperCase();
+            return `<span class="dc1-iface-state ${cls}"><span class="dc1-iface-led"></span>${label}</span>`;
+        }
+        function fmtUptime(secs) {
+            if (secs == null || secs === 0) return '—';
+            if (secs < 60)   return `${secs}s`;
+            if (secs < 3600) return `${Math.floor(secs/60)}m ${secs%60}s`;
+            const h = Math.floor(secs/3600), m = Math.floor((secs%3600)/60);
+            return `${h}h ${m}m`;
+        }
+
+        // ── Port grid ────────────────────────────────────────────────
+        function renderPortGrid(ports) {
+            if (!portGrid) return;
+            portGrid.innerHTML = '';
+            const upCount = ports.filter(p => p.operState === 'up').length;
+            if (portsCount) portsCount.textContent = `${upCount}/${ports.length} up`;
+            ports.forEach(p => {
+                const isUp       = p.operState === 'up';
+                const isBreakout = /\/\d+$/.test(p.portId) && p.portId.includes('/c');
+                const isMgmt     = p.portId.startsWith('A/') || p.portId.startsWith('B/');
+                const tileClass  = isMgmt ? 'port-mgmt' : isBreakout ? 'port-breakout' : 'port-connector';
+                const tile = document.createElement('div');
+                tile.className = `dc1-port-tile ${tileClass}`;
+                tile.title = `${p.portId}: ${p.operState.toUpperCase()}`;
+                tile.innerHTML = `
+                    <div class="dc1-port-tile-led ${isUp ? 'port-up' : 'port-down'}"></div>
+                    <span class="dc1-port-tile-id">${p.portId.replace('1/1/', '')}</span>`;
+                portGrid.appendChild(tile);
+                const svgPort = svgPortMap[p.portId];
+                if (svgPort) svgPort.setAttribute('fill', isUp ? '#3a6a4a' : '#3a3a4a');
+            });
+        }
+
+        // ── Interface table ──────────────────────────────────────────
+        function renderIfaceTable(ifaces) {
+            if (!ifacesBody) return;
+            if (!ifaces || ifaces.length === 0) {
+                ifacesBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;padding:16px">no interface data</td></tr>';
+                return;
+            }
+            const sorted = [...ifaces].sort((a, b) => {
+                if (a.router !== b.router) return a.router === 'Base' ? -1 : 1;
+                return a.name.localeCompare(b.name);
+            });
+            const upCount = sorted.filter(i => i.operState === 'up').length;
+            if (ifacesCount) ifacesCount.textContent = `${upCount}/${sorted.length} up`;
+            ifacesBody.innerHTML = sorted.map(i => {
+                const isMgmt  = i.router !== 'Base';
+                const badge   = isMgmt
+                    ? `<span class="dc1-router-badge badge-mgmt">${i.router}</span>`
+                    : `<span class="dc1-router-badge">Base</span>`;
+                const ipHtml  = i.ipv4
+                    ? `<span class="dc1-ip-addr">${i.ipv4}</span>`
+                    : `<span class="dc1-ip-addr empty">—</span>`;
+                return `<tr>
+                    <td>${badge}</td>
+                    <td>${i.name}</td>
+                    <td>${stateHtml(i.operState)}</td>
+                    <td>${ipHtml}</td>
+                    <td>${fmt0(i.inPkts)}</td>
+                    <td>${fmt0(i.outPkts)}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        // ── IS-IS section ────────────────────────────────────────────
+        function renderIsisSection(isis) {
+            if (!isis) return;
+            const isUp = isis.operState === 'up';
+            if (isisLed)   isisLed.setAttribute('data-state', isUp ? 'up' : 'down');
+            if (isisState) isisState.textContent = isUp ? 'UP' : (isis.operState || '—').toUpperCase();
+            if (isisLevels) {
+                isisLevels.innerHTML = (isis.levels || []).map(l => {
+                    const over = l.overload && l.overload !== 'not-in-overload';
+                    return `<span class="dc1-isis-level-badge${over ? ' overloaded' : ''}">L${l.level} · ${l.lsps} LSP${l.lsps !== 1 ? 's' : ''}${over ? ' ⚠' : ''}</span>`;
+                }).join('');
+            }
+            if (isisBody) {
+                const rows = [];
+                (isis.interfaces || []).forEach(ifc => {
+                    if (ifc.name === 'system') return;
+                    (ifc.adjacencies || []).forEach(adj => rows.push({ ifaceName: ifc.name, ...adj }));
+                });
+                isisBody.innerHTML = rows.length === 0
+                    ? '<tr><td colspan="5" style="text-align:center;color:#888;padding:14px 0">no active adjacencies</td></tr>'
+                    : rows.map(r => `<tr>
+                        <td>${r.ifaceName}</td>
+                        <td class="dc1-ip-addr">${r.neighborIp}</td>
+                        <td><span class="dc1-isis-level-tag">${r.level}</span></td>
+                        <td>${stateHtml(r.operState)}</td>
+                        <td class="dc1-isis-uptime">${fmtUptime(r.uptime)}</td>
+                      </tr>`).join('');
+            }
+        }
+
+        // ── Segment Routing section ──────────────────────────────────
+        function renderSrSection(sr) {
+            if (!sr) return;
+            const adjSids = sr.adjSids || [];
+            const pol     = sr.policies || {};
+
+            // LED: up when at least one adj-SID exists with a valid label
+            const hasActiveSids = adjSids.some(s => s.sidValue != null && s.sidValue !== 524287);
+            // 524287 = max-label / unallocated sentinel in srsim
+            const srActive = adjSids.length > 0;
+            if (srLed)   srLed.setAttribute('data-state', srActive ? 'up' : 'down');
+            if (srState) srState.textContent = `${adjSids.length} adj-SID${adjSids.length !== 1 ? 's' : ''}`;
+
+            // Summary stats row
+            if (srSummary) {
+                const stats = [
+                    { v: adjSids.length,                         l: 'Adj-SIDs' },
+                    { v: pol.bindingSidsAllocated ?? '—',        l: 'Binding SIDs' },
+                    { v: pol.ttmPreferences       ?? '—',        l: 'TTM Prefs' },
+                    { v: pol.activeBgpPolicies    ?? '—',        l: 'Active BGP Pol' },
+                    { v: pol.activeStaticLocalPolicies ?? '—',   l: 'Static Pol' }
+                ];
+                srSummary.innerHTML = stats.map(s =>
+                    `<div class="dc-sr-stat">
+                        <span class="dc-sr-stat-value">${s.v}</span>
+                        <span class="dc-sr-stat-label">${s.l}</span>
+                    </div>`
+                ).join('');
+            }
+
+            // Adjacency-SID table
+            if (srBody) {
+                srBody.innerHTML = adjSids.length === 0
+                    ? '<tr><td colspan="5" style="text-align:center;color:#888;padding:14px 0">no adjacency SIDs</td></tr>'
+                    : adjSids.map(s => {
+                        const protHtml = s.sidProtected
+                            ? '<span class="dc-sr-protected">Protected</span>'
+                            : '<span class="dc-sr-unprotected">—</span>';
+                        const typeLabel = (s.sidType || '').replace('mpls-label', 'MPLS');
+                        return `<tr>
+                            <td>${s.ifaceName}</td>
+                            <td><span class="dc-sr-sid-badge">${s.sidValue ?? '—'}</span></td>
+                            <td><span class="dc-sr-type-chip">${typeLabel}</span></td>
+                            <td>${protHtml}</td>
+                            <td class="dc-sr-backup-ip">${s.backupIp}</td>
+                        </tr>`;
+                    }).join('');
+            }
+        }
+
+        // ── Fetch & render ───────────────────────────────────────────
+        async function loadData() {
+            if (loading)    loading.style.display  = 'flex';
+            if (errorBox)   errorBox.style.display = 'none';
+            if (body)       body.style.display     = 'none';
+            if (refreshBtn) refreshBtn.disabled    = true;
+
+            try {
+                const res = await fetch(`${PING_BASE}/gnmic/node/${NODE_ID}`, { cache: 'no-store' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+
+                if (tsEl) {
+                    const t = new Date(data.ts);
+                    tsEl.textContent = `${t.toLocaleTimeString()} · gnmic`;
+                }
+
+                renderPortGrid(data.ports || []);
+                renderIfaceTable(data.interfaces || []);
+                renderIsisSection(data.isis || null);
+                renderSrSection(data.sr || null);
+
+                if (loading) loading.style.display = 'none';
+                if (body)    body.style.display    = 'block';
+
+            } catch (err) {
+                if (loading)   loading.style.display = 'none';
+                if (errorBox)  errorBox.style.display = 'flex';
+                if (errorText) errorText.textContent =
+                    `gnmic unreachable: ${err.message} — is ping-service.js running?`;
+            } finally {
+                if (refreshBtn) refreshBtn.disabled = false;
+            }
+        }
+
+        function openPopup()  { overlay.style.display = 'flex'; document.body.style.overflow = 'hidden'; loadData(); }
+        function closePopup() { overlay.style.display = 'none'; document.body.style.overflow = ''; }
+
+        if (dc2SvgNode) {
+            dc2SvgNode.addEventListener('click', openPopup);
+            dc2SvgNode.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPopup(); }
+            });
+        }
+        if (closeBtn)   closeBtn.addEventListener('click', closePopup);
+        if (refreshBtn) refreshBtn.addEventListener('click', loadData);
+        overlay.addEventListener('click', e => { if (e.target === overlay) closePopup(); });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && overlay.style.display !== 'none') closePopup();
+        });
+
+        window.dc2Popup = { open: openPopup, close: closePopup, refresh: loadData };
+    })();
+
+    // ================================================================
     // MPLS NETWORK LIVE TELEMETRY — polls gnmi-sros-service (port 3002)
     // Updates: SVG node LEDs, telemetry tables for dc1 (ports /
     //          interfaces / IS-IS / BGP / LDP / MPLS-TE)

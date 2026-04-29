@@ -67,10 +67,11 @@ async function fetchGnmicNodeData(nodeId) {
     const host     = nodeCfg.host;
     const gnmiPort = nodeCfg.gnmiPort || 57400;
 
-    // Run all six queries in parallel for best latency
+    // Run all eight queries in parallel for best latency
     const [
         ifaceStateUpdates, ifaceFullUpdates, portUpdates,
-        isisOperUpdates, isisLevelUpdates, isisIfaceUpdates
+        isisOperUpdates, isisLevelUpdates, isisIfaceUpdates,
+        srPoliciesUpdates, srAdjSidUpdates
     ] = await Promise.all([
         // 1. All routers, all interfaces, oper-state only  ← exact user-specified command
         gnmicGet(host, gnmiPort, '/state/router[router-name=*]/interface[interface-name=*]/oper-state'),
@@ -83,7 +84,11 @@ async function fetchGnmicNodeData(nodeId) {
         // 5. IS-IS level info (LSP counts, overload status)
         gnmicGet(host, gnmiPort, '/state/router[router-name=Base]/isis[isis-instance=1]/level[level-number=*]').catch(() => []),
         // 6. IS-IS interfaces + adjacencies (includes neighbor IPs, levels, uptime)
-        gnmicGet(host, gnmiPort, '/state/router[router-name=Base]/isis[isis-instance=1]/interface[interface-name=*]').catch(() => [])
+        gnmicGet(host, gnmiPort, '/state/router[router-name=Base]/isis[isis-instance=1]/interface[interface-name=*]').catch(() => []),
+        // 7. Segment Routing policies summary (binding-SIDs, active policies, TTM preferences)
+        gnmicGet(host, gnmiPort, '/state/router[router-name=Base]/segment-routing').catch(() => []),
+        // 8. SR adjacency-SIDs per IS-IS interface/adjacency (mpls-label values, protection)
+        gnmicGet(host, gnmiPort, '/state/router[router-name=Base]/isis[isis-instance=1]/interface[interface-name=*]/adjacency[adjacency-index=*]/sr-ipv4').catch(() => [])
     ]);
 
     // Build interface map: key = "routerName|ifaceName"
@@ -182,6 +187,41 @@ async function fetchGnmicNodeData(nodeId) {
         };
     });
 
+    // ── Parse Segment Routing data ────────────────────────────────────
+    // Query 7: SR policies summary from the segment-routing root object
+    let srPolicies = null;
+    if (srPoliciesUpdates.length > 0) {
+        const srRoot = Object.values(srPoliciesUpdates[0].values)[0] || {};
+        const pol = srRoot['sr-policies'] || {};
+        srPolicies = {
+            ttmPreferences:           pol['ttm-preferences']             ?? null,
+            bindingSidsAllocated:     pol['binding-sids-allocated']      ?? 0,
+            srv6BindingSidsAllocated: pol['srv6-binding-sids-allocated'] ?? 0,
+            activeBgpPolicies:        pol['active-bgp-policies']         ?? 0,
+            activeStaticLocalPolicies:pol['active-static-local-policies']?? 0,
+            bgpPolicies:              pol['bgp-policies']                ?? 0,
+            staticLocalPolicies:      pol['static-local-policies']       ?? 0,
+            staticNonLocalPolicies:   pol['static-non-local-policies']   ?? 0
+        };
+    }
+
+    // Query 8: SR adjacency-SIDs keyed by interface+adj-index
+    const srAdjSids = srAdjSidUpdates.map(upd => {
+        const ifaceM = upd.Path.match(/interface\[interface-name=([^\]]+)\]/);
+        const adjM   = upd.Path.match(/adjacency\[adjacency-index=(\d+)\]/);
+        const obj    = Object.values(upd.values)[0] || {};
+        const lfa    = obj['sr-lfa-info'] || {};
+        return {
+            ifaceName:   ifaceM ? ifaceM[1] : '?',
+            adjIndex:    adjM   ? parseInt(adjM[1], 10) : 0,
+            sidType:     obj['sid-type']      || 'unknown',
+            sidValue:    obj['sid-value']     ?? null,
+            sidProtected:obj['sid-protected'] ?? false,
+            backupType:  lfa['backup-lfa-protection-type'] || '—',
+            backupIp:    lfa['backup-path-ip']             || '—'
+        };
+    });
+
     return {
         node:       nodeCfg.name || nodeId,
         nodeId,
@@ -195,6 +235,10 @@ async function fetchGnmicNodeData(nodeId) {
             instance:   1,
             levels:     isisLevels,
             interfaces: isisInterfaces
+        },
+        sr: {
+            policies: srPolicies,
+            adjSids:  srAdjSids
         }
     };
 }
