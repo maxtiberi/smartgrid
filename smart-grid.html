@@ -2762,9 +2762,6 @@
                 <text class="mpls-legend-text" x="40" y="32">Aggregation</text>
                 <line class="mpls-link mpls-link-access" x1="0" y1="48" x2="34" y2="48" style="marker-end:none"/>
                 <text class="mpls-legend-text" x="40" y="52">Access / RTU</text>
-                <line x1="0" y1="68" x2="34" y2="68" stroke="#1a8a8a" stroke-width="1.2"
-                      stroke-dasharray="4 2" style="marker-end:none"/>
-                <text class="mpls-legend-text" x="40" y="72">gNMI / relay</text>
             </g>
 
             <!-- ========================================================== -->
@@ -2779,20 +2776,7 @@
                   letter-spacing="0.18em" fill="#1a8a8a" opacity="0.7"
                   x="28" y="527">MONITORING INFRASTRUCTURE</text>
 
-            <!-- Dashed collector lines: gnmic → dc1 and gnmi-relay → dc1 -->
-            <!-- gnmic (380,580) → dc1 chassis bottom (360,133) — routed around the side -->
-            <path d="M 380 555 L 380 508 L 310 508 L 310 133"
-                  fill="none" stroke="#1a8a8a" stroke-width="1" stroke-dasharray="4 3"
-                  marker-end="url(#mpls-arrow)" opacity="0.5"/>
-            <text font-family="IBM Plex Mono,monospace" font-size="7" fill="#1a8a8a" opacity="0.6"
-                  x="264" y="350" transform="rotate(-90,264,350)">gNMI subscribe</text>
-
-            <!-- gnmi-relay (720,580) → dc1 via short path label -->
-            <path d="M 720 555 L 720 508 L 430 508 L 430 133"
-                  fill="none" stroke="#e07820" stroke-width="1" stroke-dasharray="4 3"
-                  marker-end="url(#mpls-arrow)" opacity="0.45"/>
-            <text font-family="IBM Plex Mono,monospace" font-size="7" fill="#e07820" opacity="0.6"
-                  x="438" y="360" transform="rotate(-90,438,360)">TCP relay :57400</text>
+            <!-- Collector lines removed for readability -->
 
             <!-- ── gnmic node at (380, 580) ── -->
             <g class="mpls-node" transform="translate(380, 580)">
