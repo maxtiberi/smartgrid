@@ -47,14 +47,16 @@
 
   "mplsNetwork": {
     "_comment": "Nokia SR-OS nodes from smart_grid.yaml. gnmiPort 57400 = SR-OS default. Credentials for srsim image.",
-    "credentials": { "username": "admin", "password": "admin" },
+    "credentials": { "username": "admin", "password": "NokiaSros1!" },
     "sampleIntervalNs": 10000000000,
     "insecure": true,
+    "gnmicContainer": "gnmic",
+    "gnmicBinary": "/app/gnmic",
     "nodes": {
-      "mpls-dc1":    { "host": "172.20.30.2",  "name": "dc1",        "type": "SR-1",    "role": "core",        "gnmiPort": 57400,
+      "mpls-dc1":    { "host": "192.168.30.2",  "name": "dc1",        "type": "SR-1",    "role": "core",        "gnmiPort": 57400,
                        "ports": ["1/1/c1/1","1/1/c2/1"],
                        "links": { "1/1/c1/1": "SR1-ACC1", "1/1/c2/1": "dc2" } },
-      "mpls-dc2":    { "host": "172.20.30.3",  "name": "dc2",        "type": "SR-1",    "role": "core",        "gnmiPort": 57400,
+      "mpls-dc2":    { "host": "192.168.30.3",  "name": "dc2",        "type": "SR-1",    "role": "core",        "gnmiPort": 57400,
                        "ports": ["1/1/c1/1","1/1/c2/1"],
                        "links": { "1/1/c1/1": "SR1-ACC2", "1/1/c2/1": "dc1" } },
       "mpls-acc1":   { "host": "172.20.30.4",  "name": "SR1-ACC1",   "type": "SR-1",    "role": "aggregation", "gnmiPort": 57400,
