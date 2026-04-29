@@ -2659,6 +2659,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const isisState  = document.getElementById('dc1-popup-isis-state');
         const isisLevels = document.getElementById('dc1-popup-isis-levels');
         const isisBody   = document.getElementById('dc1-popup-isis-body');
+        // Segment Routing section
+        const srLed      = document.getElementById('dc1-popup-sr-led');
+        const srState    = document.getElementById('dc1-popup-sr-state');
+        const srSummary  = document.getElementById('dc1-popup-sr-summary');
+        const srBody     = document.getElementById('dc1-popup-sr-body');
         // SVG node group (click target)
         const dc1SvgNode = document.getElementById('mpls-node-mpls-dc1');
         // SVG port tiles (for live colour sync)
@@ -2812,6 +2817,51 @@ document.addEventListener('DOMContentLoaded', () => {
             }).join('');
         }
 
+        // ── Segment Routing section renderer ────────────────────────
+        function renderSrSection(sr) {
+            if (!sr) return;
+            const adjSids = sr.adjSids || [];
+            const pol     = sr.policies || {};
+
+            const srActive = adjSids.length > 0;
+            if (srLed)   srLed.setAttribute('data-state', srActive ? 'up' : 'down');
+            if (srState) srState.textContent = `${adjSids.length} adj-SID${adjSids.length !== 1 ? 's' : ''}`;
+
+            if (srSummary) {
+                const stats = [
+                    { v: adjSids.length,                          l: 'Adj-SIDs' },
+                    { v: pol.bindingSidsAllocated  ?? '—',        l: 'Binding SIDs' },
+                    { v: pol.ttmPreferences        ?? '—',        l: 'TTM Prefs' },
+                    { v: pol.activeBgpPolicies     ?? '—',        l: 'Active BGP Pol' },
+                    { v: pol.activeStaticLocalPolicies ?? '—',    l: 'Static Pol' }
+                ];
+                srSummary.innerHTML = stats.map(s =>
+                    `<div class="dc-sr-stat">
+                        <span class="dc-sr-stat-value">${s.v}</span>
+                        <span class="dc-sr-stat-label">${s.l}</span>
+                    </div>`
+                ).join('');
+            }
+
+            if (srBody) {
+                srBody.innerHTML = adjSids.length === 0
+                    ? '<tr><td colspan="5" style="text-align:center;color:#888;padding:14px 0">no adjacency SIDs</td></tr>'
+                    : adjSids.map(s => {
+                        const protHtml   = s.sidProtected
+                            ? '<span class="dc-sr-protected">Protected</span>'
+                            : '<span class="dc-sr-unprotected">—</span>';
+                        const typeLabel  = (s.sidType || '').replace('mpls-label', 'MPLS');
+                        return `<tr>
+                            <td>${s.ifaceName}</td>
+                            <td><span class="dc-sr-sid-badge">${s.sidValue ?? '—'}</span></td>
+                            <td><span class="dc-sr-type-chip">${typeLabel}</span></td>
+                            <td>${protHtml}</td>
+                            <td class="dc-sr-backup-ip">${s.backupIp}</td>
+                        </tr>`;
+                    }).join('');
+            }
+        }
+
         // ── Fetch & render ───────────────────────────────────────────
         async function loadData() {
             // Reset to loading state
@@ -2835,6 +2885,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderPortGrid(data.ports || []);
                 renderIfaceTable(data.interfaces || []);
                 renderIsisSection(data.isis || null);
+                renderSrSection(data.sr || null);
 
                 // Show body
                 if (loading) loading.style.display = 'none';
