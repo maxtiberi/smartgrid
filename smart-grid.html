@@ -21,13 +21,14 @@
                     <span class="stat-value" id="gridStatus">offline</span>
                 </div>
 
-                <!-- gNMI Service toggle (controlled via ping-service on port 3000) -->
-                <div class="stat-item gnmi-control" id="gnmi-control" data-state="unknown" title="gNMI telemetry service">
-                    <span class="stat-label">gNMI Service</span>
-                    <button class="gnmi-toggle-btn" id="gnmi-toggle-btn" type="button" disabled>
-                        <span class="gnmi-led" aria-hidden="true"></span>
-                        <span class="gnmi-state-text" id="gnmi-state-text">checking…</span>
-                    </button>
+                <!-- ping-service.js health status -->
+                <div class="stat-item" id="ping-svc-status" data-state="unknown"
+                     title="ping-service backend on port 3000">
+                    <span class="stat-label">Backend</span>
+                    <div class="ping-svc-pill">
+                        <span class="ping-svc-led" aria-hidden="true"></span>
+                        <span class="ping-svc-text" id="ping-svc-text">checking…</span>
+                    </div>
                 </div>
             </div>
         </header>
@@ -1023,9 +1024,9 @@
                                 <span class="teleprotection-state" id="teleprotection-state-text">CHIUSO / CLOSED</span>
                             </div>
                             <div class="teleprotection-info">
-                                <span class="info-text">Connessione: DC1 (T1) ↔ DC2 (T2)</span>
-                                <span class="info-text router-status" id="router-dc1-status">DC1: <span class="status-dot ok"></span>Raggiungibile</span>
-                                <span class="info-text router-status" id="router-dc2-status">DC2: <span class="status-dot ok"></span>Raggiungibile</span>
+                                <span class="info-text">Connessione: RTU1 ↔ RTU2 via MPLS GOOSE</span>
+                                <span class="info-text router-status" id="mpls-rtu1-status">RTU1: <span class="status-dot ok"></span>GOOSE Active</span>
+                                <span class="info-text router-status" id="mpls-rtu2-status">RTU2: <span class="status-dot ok"></span>GOOSE Active</span>
                             </div>
                         </div>
                     </div>
@@ -1116,827 +1117,7 @@
             </div>
         </div>
 
-        <!-- Router Topology Section -->
-        <div class="router-topology-section">
-            <h2 class="topology-title">SMART GRID ROUTER INFRASTRUCTURE</h2>
 
-            <!-- gNMI Service Control Panel -->
-            <div class="gnmi-control-panel" id="gnmiControlPanel">
-                <div class="gnmi-control-left">
-                    <div class="gnmi-status-indicator">
-                        <span class="gnmi-dot" id="gnmiDot"></span>
-                        <span class="gnmi-status-label" id="gnmiStatusLabel">Checking...</span>
-                    </div>
-                    <span class="gnmi-service-name">gNMI Telemetry Service</span>
-                    <span class="gnmi-pid-label" id="gnmiPidLabel"></span>
-                </div>
-                <div class="gnmi-control-right">
-                    <button class="gnmi-log-btn" id="gnmiLogBtn" title="Mostra log del servizio" onclick="window.gnmiToggleLogs()">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-                        Log
-                    </button>
-                    <button class="gnmi-action-btn" id="gnmiActionBtn" onclick="window.gnmiToggleService()">
-                        <span id="gnmiActionIcon">⏳</span>
-                        <span id="gnmiActionLabel">Loading...</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- gNMI Log Panel (collapsibile) -->
-            <div class="gnmi-log-panel" id="gnmiLogPanel" style="display:none;">
-                <div class="gnmi-log-header">
-                    <span>Console Output — gnmi-service.js</span>
-                    <button class="gnmi-log-close" onclick="document.getElementById('gnmiLogPanel').style.display='none'">✕</button>
-                </div>
-                <div class="gnmi-log-body" id="gnmiLogBody">
-                    <span class="gnmi-log-empty">Nessun log disponibile.</span>
-                </div>
-            </div>
-
-            <!-- Fault injection + event timeline (didattico) -->
-            <div class="fault-timeline-panel">
-                <div class="fault-injection">
-                    <div class="ft-header">Iniettore guasti / Fault injection</div>
-                    <div class="ft-row">
-                        <label>Tipo
-                            <select id="fault-kind">
-                                <option value="router">Router</option>
-                                <option value="rtu">RTU</option>
-                                <option value="link">Link</option>
-                            </select>
-                        </label>
-                        <label>ID
-                            <select id="fault-id"></select>
-                        </label>
-                        <button id="fault-down-btn" type="button">Guasto (down)</button>
-                        <button id="fault-up-btn" type="button">Ripristina (up)</button>
-                        <button id="fault-clear-btn" type="button" title="Rimuove tutti gli override">Clear all</button>
-                    </div>
-                    <div class="ft-hint">Simula un guasto cliccando "Guasto": la teleprotezione reagisce secondo l'FSM del backend (ARMED → PICKUP → TRIP).</div>
-                </div>
-                <div class="event-timeline">
-                    <div class="ft-header">Timeline eventi</div>
-                    <ul id="event-timeline-list" class="timeline-list"></ul>
-                </div>
-            </div>
-
-            <!-- Router Statistics Infographic -->
-            <div class="router-stats-infographic" id="router-stats-infographic">
-                <div class="stats-card">
-                    <div class="stats-ring-container">
-                        <svg class="stats-ring" viewBox="0 0 36 36">
-                            <circle class="ring-bg" cx="18" cy="18" r="15.9" fill="none" stroke="#e0e0e0" stroke-width="3"/>
-                            <circle class="ring-progress" id="routers-ring" cx="18" cy="18" r="15.9" fill="none" stroke="#dc3545" stroke-width="3" stroke-dasharray="0 100" stroke-linecap="round" transform="rotate(-90 18 18)"/>
-                        </svg>
-                        <div class="ring-content">
-                            <span class="ring-value" id="active-routers">0</span>
-                            <span class="ring-total">/<span id="total-routers">6</span></span>
-                        </div>
-                    </div>
-                    <div class="stats-info">
-                        <span class="stats-label">SR Linux Routers</span>
-                        <span class="stats-sublabel" id="routers-status-text">Offline</span>
-                    </div>
-                </div>
-                <div class="stats-card">
-                    <div class="stats-ring-container">
-                        <svg class="stats-ring" viewBox="0 0 36 36">
-                            <circle class="ring-bg" cx="18" cy="18" r="15.9" fill="none" stroke="#e0e0e0" stroke-width="3"/>
-                            <circle class="ring-progress" id="rtus-ring" cx="18" cy="18" r="15.9" fill="none" stroke="#dc3545" stroke-width="3" stroke-dasharray="0 100" stroke-linecap="round" transform="rotate(-90 18 18)"/>
-                        </svg>
-                        <div class="ring-content">
-                            <span class="ring-value" id="active-rtus">0</span>
-                            <span class="ring-total">/<span id="total-rtus">4</span></span>
-                        </div>
-                    </div>
-                    <div class="stats-info">
-                        <span class="stats-label">RTU Units</span>
-                        <span class="stats-sublabel" id="rtus-status-text">Offline</span>
-                    </div>
-                </div>
-                <div class="stats-card overall">
-                    <div class="stats-ring-container large">
-                        <svg class="stats-ring" viewBox="0 0 36 36">
-                            <circle class="ring-bg" cx="18" cy="18" r="15.9" fill="none" stroke="#e0e0e0" stroke-width="3"/>
-                            <circle class="ring-progress" id="overall-ring" cx="18" cy="18" r="15.9" fill="none" stroke="#dc3545" stroke-width="3" stroke-dasharray="0 100" stroke-linecap="round" transform="rotate(-90 18 18)"/>
-                        </svg>
-                        <div class="ring-content">
-                            <span class="ring-value" id="active-devices">0</span>
-                            <span class="ring-total">/<span id="total-devices">10</span></span>
-                        </div>
-                    </div>
-                    <div class="stats-info">
-                        <span class="stats-label">Overall Health</span>
-                        <span class="stats-sublabel" id="overall-status-text">Offline</span>
-                    </div>
-                </div>
-            </div>
-
-            <svg class="router-diagram" viewBox="0 0 1000 650" preserveAspectRatio="xMidYMid meet">
-                <!-- Connection Lines with Port Labels -->
-                <g class="router-connections">
-                    <!-- DC-1 to Leaf-1 (e1/1 ↔ e1/1) -->
-                    <path class="router-connection" d="M 300 150 L 150 350" data-link="dc1-leaf1"/>
-                    <text class="port-label dc-port" x="240" y="220" transform="rotate(-53 240 220)">e1/1</text>
-                    <text class="port-label leaf-port" x="160" y="310" transform="rotate(-53 160 310)">e1/1</text>
-
-                    <!-- DC-2 to Leaf-1 (e1/2 ↔ e1/5) -->
-                    <path class="router-connection" d="M 700 150 L 150 350" data-link="dc2-leaf1"/>
-                    <text class="port-label dc-port" x="620" y="190" transform="rotate(-20 620 190)">e1/2</text>
-                    <text class="port-label leaf-port" x="250" y="330" transform="rotate(-20 250 330)">e1/5</text>
-
-                    <!-- DC-1 to Leaf-2 (e1/2 ↔ e1/1) -->
-                    <path class="router-connection" d="M 300 150 L 350 350" data-link="dc1-leaf2"/>
-                    <text class="port-label dc-port" x="310" y="220" transform="rotate(14 310 220)">e1/2</text>
-                    <text class="port-label leaf-port" x="340" y="310" transform="rotate(14 340 310)">e1/1</text>
-
-                    <!-- DC-2 to Leaf-2 (e1/1 ↔ e1/2) -->
-                    <path class="router-connection" d="M 700 150 L 350 350" data-link="dc2-leaf2"/>
-                    <text class="port-label dc-port" x="620" y="200" transform="rotate(-30 620 200)">e1/1</text>
-                    <text class="port-label leaf-port" x="420" y="320" transform="rotate(-30 420 320)">e1/2</text>
-
-                    <!-- DC-1 to Leaf-3 (e1/3 ↔ e1/2) -->
-                    <path class="router-connection" d="M 300 150 L 550 350" data-link="dc1-leaf3"/>
-                    <text class="port-label dc-port" x="370" y="200" transform="rotate(38 370 200)">e1/3</text>
-                    <text class="port-label leaf-port" x="490" y="310" transform="rotate(38 490 310)">e1/2</text>
-
-                    <!-- DC-2 to Leaf-3 (e1/3 ↔ e1/3) -->
-                    <path class="router-connection" d="M 700 150 L 550 350" data-link="dc2-leaf3"/>
-                    <text class="port-label dc-port" x="660" y="220" transform="rotate(-37 660 220)">e1/3</text>
-                    <text class="port-label leaf-port" x="575" y="310" transform="rotate(-37 575 310)">e1/3</text>
-
-                    <!-- DC-1 to Leaf-4 (e1/4 ↔ e1/1) -->
-                    <path class="router-connection" d="M 300 150 L 750 350" data-link="dc1-leaf4"/>
-                    <text class="port-label dc-port" x="400" y="190" transform="rotate(24 400 190)">e1/4</text>
-                    <text class="port-label leaf-port" x="660" y="320" transform="rotate(24 660 320)">e1/1</text>
-
-                    <!-- DC-2 to Leaf-4 (e1/4 ↔ e1/2) -->
-                    <path class="router-connection" d="M 700 150 L 750 350" data-link="dc2-leaf4"/>
-                    <text class="port-label dc-port" x="710" y="220" transform="rotate(14 710 220)">e1/4</text>
-                    <text class="port-label leaf-port" x="740" y="310" transform="rotate(14 740 310)">e1/2</text>
-
-                    <!-- Leaf-1 to RTU-1 (e1/3 ↔ eth1) -->
-                    <path class="router-connection rtu-connection" d="M 150 395 L 150 500" data-link="leaf1-rtu1"/>
-                    <text class="port-label" x="163" y="430" font-size="9">e1/3</text>
-                    <text class="port-label" x="163" y="490" font-size="9">eth1</text>
-
-                    <!-- Leaf-2 to RTU-2 (e1/3 ↔ eth1) -->
-                    <path class="router-connection rtu-connection" d="M 350 395 L 350 500" data-link="leaf2-rtu2"/>
-                    <text class="port-label" x="363" y="430" font-size="9">e1/3</text>
-                    <text class="port-label" x="363" y="490" font-size="9">eth1</text>
-
-                    <!-- Leaf-3 to RTU-3 (e1/1 ↔ eth1) -->
-                    <path class="router-connection rtu-connection" d="M 550 395 L 550 500" data-link="leaf3-rtu3"/>
-                    <text class="port-label" x="563" y="430" font-size="9">e1/1</text>
-                    <text class="port-label" x="563" y="490" font-size="9">eth1</text>
-
-                    <!-- Leaf-4 to RTU-4 (e1/3 ↔ eth1) -->
-                    <path class="router-connection rtu-connection" d="M 750 395 L 750 500" data-link="leaf4-rtu4"/>
-                    <text class="port-label" x="763" y="430" font-size="9">e1/3</text>
-                    <text class="port-label" x="763" y="490" font-size="9">eth1</text>
-                </g>
-
-                <!-- Security Packet Animations -->
-                <g class="security-packets" id="security-packets">
-                    <!-- Encrypted packets with shield (shown when encryption is enabled) -->
-                    <!-- DC-1 to Leaf-1 -->
-                    <g class="secure-packet">
-                        <circle r="5" fill="#4CAF50" opacity="0.9"/>
-                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
-                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
-                        </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" path="M 300 150 L 150 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite"/>
-                    </g>
-                    <!-- DC-1 to Leaf-2 -->
-                    <g class="secure-packet">
-                        <circle r="5" fill="#4CAF50" opacity="0.9"/>
-                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
-                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
-                        </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="0.4s" path="M 300 150 L 350 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="0.4s"/>
-                    </g>
-                    <!-- DC-1 to Leaf-3 -->
-                    <g class="secure-packet">
-                        <circle r="5" fill="#4CAF50" opacity="0.9"/>
-                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
-                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
-                        </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="0.8s" path="M 300 150 L 550 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="0.8s"/>
-                    </g>
-                    <!-- DC-1 to Leaf-4 -->
-                    <g class="secure-packet">
-                        <circle r="5" fill="#4CAF50" opacity="0.9"/>
-                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
-                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
-                        </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="1.2s" path="M 300 150 L 750 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1.2s"/>
-                    </g>
-                    <!-- DC-2 to Leaf-1 -->
-                    <g class="secure-packet">
-                        <circle r="5" fill="#4CAF50" opacity="0.9"/>
-                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
-                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
-                        </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="1.6s" path="M 700 150 L 150 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1.6s"/>
-                    </g>
-                    <!-- DC-2 to Leaf-2 -->
-                    <g class="secure-packet">
-                        <circle r="5" fill="#4CAF50" opacity="0.9"/>
-                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
-                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
-                        </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="2s" path="M 700 150 L 350 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="2s"/>
-                    </g>
-                    <!-- DC-2 to Leaf-3 -->
-                    <g class="secure-packet">
-                        <circle r="5" fill="#4CAF50" opacity="0.9"/>
-                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
-                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
-                        </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="2.4s" path="M 700 150 L 550 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="2.4s"/>
-                    </g>
-                    <!-- DC-2 to Leaf-4 -->
-                    <g class="secure-packet">
-                        <circle r="5" fill="#4CAF50" opacity="0.9"/>
-                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
-                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#fff" stroke="#2e7d32" stroke-width="0.5"/>
-                        </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="2.8s" path="M 700 150 L 750 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="2.8s"/>
-                    </g>
-
-                    <!-- Insecure packets with open lock (shown when encryption is disabled) -->
-                    <!-- DC-1 to Leaf-1 -->
-                    <g class="insecure-packet">
-                        <circle r="5" fill="#FF5252" opacity="0.9"/>
-                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
-                            <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
-                            <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
-                        </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" path="M 300 150 L 150 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite"/>
-                    </g>
-                    <!-- DC-1 to Leaf-2 -->
-                    <g class="insecure-packet">
-                        <circle r="5" fill="#FF5252" opacity="0.9"/>
-                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
-                            <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
-                            <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
-                        </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="0.4s" path="M 300 150 L 350 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="0.4s"/>
-                    </g>
-                    <!-- DC-1 to Leaf-3 -->
-                    <g class="insecure-packet">
-                        <circle r="5" fill="#FF5252" opacity="0.9"/>
-                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
-                            <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
-                            <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
-                        </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="0.8s" path="M 300 150 L 550 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="0.8s"/>
-                    </g>
-                    <!-- DC-1 to Leaf-4 -->
-                    <g class="insecure-packet">
-                        <circle r="5" fill="#FF5252" opacity="0.9"/>
-                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
-                            <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
-                            <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
-                        </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="1.2s" path="M 300 150 L 750 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1.2s"/>
-                    </g>
-                    <!-- DC-2 to Leaf-1 -->
-                    <g class="insecure-packet">
-                        <circle r="5" fill="#FF5252" opacity="0.9"/>
-                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
-                            <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
-                            <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
-                        </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="1.6s" path="M 700 150 L 150 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1.6s"/>
-                    </g>
-                    <!-- DC-2 to Leaf-2 -->
-                    <g class="insecure-packet">
-                        <circle r="5" fill="#FF5252" opacity="0.9"/>
-                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
-                            <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
-                            <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
-                        </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="2s" path="M 700 150 L 350 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="2s"/>
-                    </g>
-                    <!-- DC-2 to Leaf-3 -->
-                    <g class="insecure-packet">
-                        <circle r="5" fill="#FF5252" opacity="0.9"/>
-                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
-                            <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
-                            <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
-                        </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="2.4s" path="M 700 150 L 550 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="2.4s"/>
-                    </g>
-                    <!-- DC-2 to Leaf-4 -->
-                    <g class="insecure-packet">
-                        <circle r="5" fill="#FF5252" opacity="0.9"/>
-                        <svg width="10" height="10" x="-5" y="-5" viewBox="0 0 24 24">
-                            <rect x="7" y="11" width="10" height="9" rx="1" fill="#fff" stroke="#c62828" stroke-width="0.8"/>
-                            <path d="M 9 11 L 9 8 Q 9 5 12 5 Q 15 5 15 8 L 15 9" fill="none" stroke="#fff" stroke-width="1.5"/>
-                        </svg>
-                        <animateMotion dur="3s" repeatCount="indefinite" begin="2.8s" path="M 700 150 L 750 350"/>
-                        <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="2.8s"/>
-                    </g>
-                </g>
-
-                <!-- Router Nodes -->
-                <g class="router-nodes">
-                    <!-- Spine Layer: Data Centers -->
-                    <g class="router-node dc-node" data-router="dc1" transform="translate(300, 120)">
-                        <rect class="router-outer" x="-40" y="-25" width="80" height="50" rx="4"/>
-                        <circle class="router-led" cx="-25" cy="-12" r="2"/>
-                        <circle class="router-led" cx="-15" cy="-12" r="2"/>
-                        <circle class="router-led" cx="-25" cy="6" r="2"/>
-                        <circle class="router-led" cx="-15" cy="6" r="2"/>
-                        <text class="router-label" x="0" y="45" text-anchor="middle">DC-1</text>
-                        <text class="router-ip" x="0" y="60" text-anchor="middle">172.20.20.5</text>
-                    </g>
-
-                    <g class="router-node dc-node" data-router="dc2" transform="translate(700, 120)">
-                        <rect class="router-outer" x="-40" y="-25" width="80" height="50" rx="4"/>
-                        <circle class="router-led" cx="-25" cy="-12" r="2"/>
-                        <circle class="router-led" cx="-15" cy="-12" r="2"/>
-                        <circle class="router-led" cx="-25" cy="6" r="2"/>
-                        <circle class="router-led" cx="-15" cy="6" r="2"/>
-                        <text class="router-label" x="0" y="45" text-anchor="middle">DC-2</text>
-                        <text class="router-ip" x="0" y="60" text-anchor="middle">172.20.20.8</text>
-                    </g>
-
-                    <!-- Leaf Layer: Leaf Switches -->
-                    <g class="router-node leaf-node" data-router="leaf1" transform="translate(150, 370)">
-                        <rect class="router-outer" x="-35" y="-20" width="70" height="40" rx="3"/>
-                        <line x1="-25" y1="-10" x2="-25" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
-                        <line x1="-10" y1="-10" x2="-10" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
-                        <line x1="5" y1="-10" x2="5" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
-                        <line x1="20" y1="-10" x2="20" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
-                        <text class="router-label" x="0" y="38" text-anchor="middle">Leaf-1</text>
-                        <text class="router-ip" x="0" y="53" text-anchor="middle">172.20.20.2</text>
-                    </g>
-
-                    <g class="router-node leaf-node" data-router="leaf2" transform="translate(350, 370)">
-                        <rect class="router-outer" x="-35" y="-20" width="70" height="40" rx="3"/>
-                        <line x1="-25" y1="-10" x2="-25" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
-                        <line x1="-10" y1="-10" x2="-10" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
-                        <line x1="5" y1="-10" x2="5" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
-                        <line x1="20" y1="-10" x2="20" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
-                        <text class="router-label" x="0" y="38" text-anchor="middle">Leaf-2</text>
-                        <text class="router-ip" x="0" y="53" text-anchor="middle">172.20.20.3</text>
-                    </g>
-
-                    <g class="router-node leaf-node" data-router="leaf3" transform="translate(550, 370)">
-                        <rect class="router-outer" x="-35" y="-20" width="70" height="40" rx="3"/>
-                        <line x1="-25" y1="-10" x2="-25" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
-                        <line x1="-10" y1="-10" x2="-10" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
-                        <line x1="5" y1="-10" x2="5" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
-                        <line x1="20" y1="-10" x2="20" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
-                        <text class="router-label" x="0" y="38" text-anchor="middle">Leaf-3</text>
-                        <text class="router-ip" x="0" y="53" text-anchor="middle">172.20.20.9</text>
-                    </g>
-
-                    <g class="router-node leaf-node" data-router="leaf4" transform="translate(750, 370)">
-                        <rect class="router-outer" x="-35" y="-20" width="70" height="40" rx="3"/>
-                        <line x1="-25" y1="-10" x2="-25" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
-                        <line x1="-10" y1="-10" x2="-10" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
-                        <line x1="5" y1="-10" x2="5" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
-                        <line x1="20" y1="-10" x2="20" y2="10" stroke="#4a4a68" stroke-width="1.5"/>
-                        <text class="router-label" x="0" y="38" text-anchor="middle">Leaf-4</text>
-                        <text class="router-ip" x="0" y="53" text-anchor="middle">172.20.20.10</text>
-                    </g>
-
-                    <!-- High Voltage Transmission Towers -->
-                    <!-- Power lines connecting the towers -->
-                    <g class="transmission-towers">
-                        <!-- Connection lines between towers -->
-                        <line class="hv-line" x1="150" y1="610" x2="350" y2="610" stroke="#4a4a4a" stroke-width="3"/>
-                        <line class="hv-line" x1="350" y1="610" x2="550" y2="610" stroke="#4a4a4a" stroke-width="3"/>
-                        <line class="hv-line" x1="550" y1="610" x2="750" y2="610" stroke="#4a4a4a" stroke-width="3"/>
-
-                        <!-- Upper power lines (3-phase) -->
-                        <line class="hv-line" x1="150" y1="605" x2="350" y2="605" stroke="#6a6a6a" stroke-width="2"/>
-                        <line class="hv-line" x1="350" y1="605" x2="550" y2="605" stroke="#6a6a6a" stroke-width="2"/>
-                        <line class="hv-line" x1="550" y1="605" x2="750" y2="605" stroke="#6a6a6a" stroke-width="2"/>
-
-                        <line class="hv-line" x1="150" y1="615" x2="350" y2="615" stroke="#6a6a6a" stroke-width="2"/>
-                        <line class="hv-line" x1="350" y1="615" x2="550" y2="615" stroke="#6a6a6a" stroke-width="2"/>
-                        <line class="hv-line" x1="550" y1="615" x2="750" y2="615" stroke="#6a6a6a" stroke-width="2"/>
-
-                        <!-- Energy pulse animations on power lines -->
-                        <!-- Line 1 to 2 - Multiple pulses for realistic AC current simulation -->
-                        <circle class="hv-pulse" r="6" fill="#ffd700" opacity="0.9">
-                            <animateMotion dur="2s" repeatCount="indefinite" path="M 150 610 L 350 610"/>
-                            <animate attributeName="opacity" values="0.4;1;0.4" dur="2s" repeatCount="indefinite"/>
-                            <animate attributeName="r" values="5;7;5" dur="2s" repeatCount="indefinite"/>
-                        </circle>
-                        <circle class="hv-pulse" r="5" fill="#ffed4e" opacity="0.7">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.3s" path="M 150 605 L 350 605"/>
-                            <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite" begin="0.3s"/>
-                            <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" begin="0.3s"/>
-                        </circle>
-                        <circle class="hv-pulse" r="5" fill="#ffed4e" opacity="0.7">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.6s" path="M 150 615 L 350 615"/>
-                            <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite" begin="0.6s"/>
-                            <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" begin="0.6s"/>
-                        </circle>
-                        <!-- Additional fast pulses -->
-                        <circle class="hv-pulse" r="4" fill="#fff" opacity="0.5">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="1s" path="M 150 610 L 350 610"/>
-                            <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2s" repeatCount="indefinite" begin="1s"/>
-                        </circle>
-                        <circle class="hv-pulse" r="3" fill="#ffa500" opacity="0.6">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="1.5s" path="M 150 610 L 350 610"/>
-                            <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2s" repeatCount="indefinite" begin="1.5s"/>
-                        </circle>
-
-                        <!-- Line 2 to 3 -->
-                        <circle class="hv-pulse" r="6" fill="#ffd700" opacity="0.9">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.2s" path="M 350 610 L 550 610"/>
-                            <animate attributeName="opacity" values="0.4;1;0.4" dur="2s" repeatCount="indefinite" begin="0.2s"/>
-                            <animate attributeName="r" values="5;7;5" dur="2s" repeatCount="indefinite" begin="0.2s"/>
-                        </circle>
-                        <circle class="hv-pulse" r="5" fill="#ffed4e" opacity="0.7">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.5s" path="M 350 605 L 550 605"/>
-                            <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite" begin="0.5s"/>
-                            <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" begin="0.5s"/>
-                        </circle>
-                        <circle class="hv-pulse" r="5" fill="#ffed4e" opacity="0.7">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.8s" path="M 350 615 L 550 615"/>
-                            <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite" begin="0.8s"/>
-                            <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" begin="0.8s"/>
-                        </circle>
-                        <circle class="hv-pulse" r="4" fill="#fff" opacity="0.5">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="1.2s" path="M 350 610 L 550 610"/>
-                            <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2s" repeatCount="indefinite" begin="1.2s"/>
-                        </circle>
-                        <circle class="hv-pulse" r="3" fill="#ffa500" opacity="0.6">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="1.7s" path="M 350 610 L 550 610"/>
-                            <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2s" repeatCount="indefinite" begin="1.7s"/>
-                        </circle>
-
-                        <!-- Line 3 to 4 -->
-                        <circle class="hv-pulse" r="6" fill="#ffd700" opacity="0.9">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.4s" path="M 550 610 L 750 610"/>
-                            <animate attributeName="opacity" values="0.4;1;0.4" dur="2s" repeatCount="indefinite" begin="0.4s"/>
-                            <animate attributeName="r" values="5;7;5" dur="2s" repeatCount="indefinite" begin="0.4s"/>
-                        </circle>
-                        <circle class="hv-pulse" r="5" fill="#ffed4e" opacity="0.7">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="0.7s" path="M 550 605 L 750 605"/>
-                            <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite" begin="0.7s"/>
-                            <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" begin="0.7s"/>
-                        </circle>
-                        <circle class="hv-pulse" r="5" fill="#ffed4e" opacity="0.7">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="1s" path="M 550 615 L 750 615"/>
-                            <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite" begin="1s"/>
-                            <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" begin="1s"/>
-                        </circle>
-                        <circle class="hv-pulse" r="4" fill="#fff" opacity="0.5">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="1.4s" path="M 550 610 L 750 610"/>
-                            <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2s" repeatCount="indefinite" begin="1.4s"/>
-                        </circle>
-                        <circle class="hv-pulse" r="3" fill="#ffa500" opacity="0.6">
-                            <animateMotion dur="2s" repeatCount="indefinite" begin="1.9s" path="M 550 610 L 750 610"/>
-                            <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2s" repeatCount="indefinite" begin="1.9s"/>
-                        </circle>
-
-                        <!-- ══ TOWER 1 — HV Lattice Pylon ══ -->
-                        <g class="hv-pylon" transform="translate(150, 590)">
-                            <!-- Control cable RTU → tower (IP/MPLS link style) -->
-                            <line x1="0" y1="-70" x2="0" y2="-2" stroke="#4a90d9" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.55"/>
-                            <!-- ── Lattice A-frame legs ── -->
-                            <line x1="-4" y1="0" x2="-14" y2="52" stroke="#5a6e82" stroke-width="1.5"/>
-                            <line x1="4"  y1="0" x2="14"  y2="52" stroke="#5a6e82" stroke-width="1.5"/>
-                            <!-- ── Internal lattice – upper section (y 0–13) ── -->
-                            <line x1="-4" y1="1"  x2="4"  y2="13" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="4"  y1="1"  x2="-4" y2="13" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="-4.5" y1="13" x2="4.5" y2="13" stroke="#5a6e82" stroke-width="1"/>
-                            <!-- ── Internal lattice – middle section (y 13–30) ── -->
-                            <line x1="-4.5" y1="13" x2="8"   y2="27" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="4.5"  y1="13" x2="-8"  y2="27" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="-8"   y1="27" x2="8"   y2="27" stroke="#5a6e82" stroke-width="1"/>
-                            <!-- ── Internal lattice – lower section (y 30–52) ── -->
-                            <line x1="-8"  y1="28" x2="13"  y2="44" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="8"   y1="28" x2="-13" y2="44" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="-13" y1="44" x2="13"  y2="44" stroke="#5a6e82" stroke-width="1"/>
-                            <!-- ── Tower apex (peak) ── -->
-                            <line x1="-4" y1="0" x2="0" y2="-7" stroke="#6a8090" stroke-width="1.5"/>
-                            <line x1="4"  y1="0" x2="0" y2="-7" stroke="#6a8090" stroke-width="1.5"/>
-                            <circle cx="0" cy="-7" r="1.8" fill="#7a90a0"/>
-                            <!-- ── Upper guard-wire arms (y=6) ── -->
-                            <line x1="-14" y1="6" x2="14" y2="6"  stroke="#5a6e82" stroke-width="1.4"/>
-                            <line x1="-4"  y1="0" x2="-14" y2="6" stroke="#4a5e72" stroke-width="0.9"/>
-                            <line x1="4"   y1="0" x2="14"  y2="6" stroke="#4a5e72" stroke-width="0.9"/>
-                            <circle cx="-14" cy="6" r="1.2" fill="#6a8090" opacity="0.8"/>
-                            <circle cx="14"  cy="6" r="1.2" fill="#6a8090" opacity="0.8"/>
-                            <!-- ── Main cross-arms (y=18, ±22px) ── -->
-                            <line x1="-22" y1="18" x2="22" y2="18" stroke="#6a8090" stroke-width="2"/>
-                            <line x1="-4"  y1="8"  x2="-22" y2="18" stroke="#5a6e82" stroke-width="1.1"/>
-                            <line x1="4"   y1="8"  x2="22"  y2="18" stroke="#5a6e82" stroke-width="1.1"/>
-                            <!-- ── Insulator chains (3 disc rings each side) ── -->
-                            <line x1="-22" y1="18" x2="-22" y2="19.5" stroke="#7a8a94" stroke-width="1"/>
-                            <ellipse cx="-22" cy="21" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <ellipse cx="-22" cy="24" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <ellipse cx="-22" cy="27" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <line x1="22" y1="18" x2="22" y2="19.5"  stroke="#7a8a94" stroke-width="1"/>
-                            <ellipse cx="22" cy="21" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <ellipse cx="22" cy="24" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <ellipse cx="22" cy="27" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <!-- ── Corona glow at conductor attachment ── -->
-                            <circle cx="-22" cy="28" r="2.5" fill="#3a7ac0">
-                                <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite"/>
-                            </circle>
-                            <circle cx="-22" cy="28" r="5" fill="none" stroke="#5aaaf0" stroke-width="0.6" opacity="0">
-                                <animate attributeName="opacity" values="0;0.4;0" dur="3s" repeatCount="indefinite"/>
-                                <animate attributeName="r"       values="3;7;3"   dur="3s" repeatCount="indefinite"/>
-                            </circle>
-                            <circle cx="22" cy="28" r="2.5" fill="#3a7ac0">
-                                <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1.5s"/>
-                            </circle>
-                            <circle cx="22" cy="28" r="5" fill="none" stroke="#5aaaf0" stroke-width="0.6" opacity="0">
-                                <animate attributeName="opacity" values="0;0.4;0" dur="3s" repeatCount="indefinite" begin="1.5s"/>
-                                <animate attributeName="r"       values="3;7;3"   dur="3s" repeatCount="indefinite" begin="1.5s"/>
-                            </circle>
-                            <!-- ── Base footing ── -->
-                            <line x1="-14" y1="52" x2="-18" y2="57" stroke="#4a5e72" stroke-width="1.5"/>
-                            <line x1="-14" y1="52" x2="-10" y2="57" stroke="#4a5e72" stroke-width="1.5"/>
-                            <line x1="-19" y1="57" x2="-9"  y2="57" stroke="#5a6e82" stroke-width="1.8"/>
-                            <line x1="14"  y1="52" x2="18"  y2="57" stroke="#4a5e72" stroke-width="1.5"/>
-                            <line x1="14"  y1="52" x2="10"  y2="57" stroke="#4a5e72" stroke-width="1.5"/>
-                            <line x1="19"  y1="57" x2="9"   y2="57" stroke="#5a6e82" stroke-width="1.8"/>
-                        </g>
-
-                        <!-- ══ TOWER 2 — HV Lattice Pylon ══ -->
-                        <g class="hv-pylon" transform="translate(350, 590)">
-                            <line x1="0" y1="-70" x2="0" y2="-2" stroke="#4a90d9" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.55"/>
-                            <line x1="-4" y1="0" x2="-14" y2="52" stroke="#5a6e82" stroke-width="1.5"/>
-                            <line x1="4"  y1="0" x2="14"  y2="52" stroke="#5a6e82" stroke-width="1.5"/>
-                            <line x1="-4" y1="1"  x2="4"  y2="13" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="4"  y1="1"  x2="-4" y2="13" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="-4.5" y1="13" x2="4.5" y2="13" stroke="#5a6e82" stroke-width="1"/>
-                            <line x1="-4.5" y1="13" x2="8"   y2="27" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="4.5"  y1="13" x2="-8"  y2="27" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="-8"   y1="27" x2="8"   y2="27" stroke="#5a6e82" stroke-width="1"/>
-                            <line x1="-8"  y1="28" x2="13"  y2="44" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="8"   y1="28" x2="-13" y2="44" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="-13" y1="44" x2="13"  y2="44" stroke="#5a6e82" stroke-width="1"/>
-                            <line x1="-4" y1="0" x2="0" y2="-7" stroke="#6a8090" stroke-width="1.5"/>
-                            <line x1="4"  y1="0" x2="0" y2="-7" stroke="#6a8090" stroke-width="1.5"/>
-                            <circle cx="0" cy="-7" r="1.8" fill="#7a90a0"/>
-                            <line x1="-14" y1="6" x2="14" y2="6"  stroke="#5a6e82" stroke-width="1.4"/>
-                            <line x1="-4"  y1="0" x2="-14" y2="6" stroke="#4a5e72" stroke-width="0.9"/>
-                            <line x1="4"   y1="0" x2="14"  y2="6" stroke="#4a5e72" stroke-width="0.9"/>
-                            <circle cx="-14" cy="6" r="1.2" fill="#6a8090" opacity="0.8"/>
-                            <circle cx="14"  cy="6" r="1.2" fill="#6a8090" opacity="0.8"/>
-                            <line x1="-22" y1="18" x2="22" y2="18" stroke="#6a8090" stroke-width="2"/>
-                            <line x1="-4"  y1="8"  x2="-22" y2="18" stroke="#5a6e82" stroke-width="1.1"/>
-                            <line x1="4"   y1="8"  x2="22"  y2="18" stroke="#5a6e82" stroke-width="1.1"/>
-                            <line x1="-22" y1="18" x2="-22" y2="19.5" stroke="#7a8a94" stroke-width="1"/>
-                            <ellipse cx="-22" cy="21" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <ellipse cx="-22" cy="24" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <ellipse cx="-22" cy="27" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <line x1="22" y1="18" x2="22" y2="19.5"  stroke="#7a8a94" stroke-width="1"/>
-                            <ellipse cx="22" cy="21" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <ellipse cx="22" cy="24" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <ellipse cx="22" cy="27" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <circle cx="-22" cy="28" r="2.5" fill="#3a7ac0">
-                                <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="0.5s"/>
-                            </circle>
-                            <circle cx="-22" cy="28" r="5" fill="none" stroke="#5aaaf0" stroke-width="0.6" opacity="0">
-                                <animate attributeName="opacity" values="0;0.4;0" dur="3s" repeatCount="indefinite" begin="0.5s"/>
-                                <animate attributeName="r"       values="3;7;3"   dur="3s" repeatCount="indefinite" begin="0.5s"/>
-                            </circle>
-                            <circle cx="22" cy="28" r="2.5" fill="#3a7ac0">
-                                <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="2s"/>
-                            </circle>
-                            <circle cx="22" cy="28" r="5" fill="none" stroke="#5aaaf0" stroke-width="0.6" opacity="0">
-                                <animate attributeName="opacity" values="0;0.4;0" dur="3s" repeatCount="indefinite" begin="2s"/>
-                                <animate attributeName="r"       values="3;7;3"   dur="3s" repeatCount="indefinite" begin="2s"/>
-                            </circle>
-                            <line x1="-14" y1="52" x2="-18" y2="57" stroke="#4a5e72" stroke-width="1.5"/>
-                            <line x1="-14" y1="52" x2="-10" y2="57" stroke="#4a5e72" stroke-width="1.5"/>
-                            <line x1="-19" y1="57" x2="-9"  y2="57" stroke="#5a6e82" stroke-width="1.8"/>
-                            <line x1="14"  y1="52" x2="18"  y2="57" stroke="#4a5e72" stroke-width="1.5"/>
-                            <line x1="14"  y1="52" x2="10"  y2="57" stroke="#4a5e72" stroke-width="1.5"/>
-                            <line x1="19"  y1="57" x2="9"   y2="57" stroke="#5a6e82" stroke-width="1.8"/>
-                        </g>
-
-                        <!-- ══ TOWER 3 — HV Lattice Pylon ══ -->
-                        <g class="hv-pylon" transform="translate(550, 590)">
-                            <line x1="0" y1="-70" x2="0" y2="-2" stroke="#4a90d9" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.55"/>
-                            <line x1="-4" y1="0" x2="-14" y2="52" stroke="#5a6e82" stroke-width="1.5"/>
-                            <line x1="4"  y1="0" x2="14"  y2="52" stroke="#5a6e82" stroke-width="1.5"/>
-                            <line x1="-4" y1="1"  x2="4"  y2="13" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="4"  y1="1"  x2="-4" y2="13" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="-4.5" y1="13" x2="4.5" y2="13" stroke="#5a6e82" stroke-width="1"/>
-                            <line x1="-4.5" y1="13" x2="8"   y2="27" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="4.5"  y1="13" x2="-8"  y2="27" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="-8"   y1="27" x2="8"   y2="27" stroke="#5a6e82" stroke-width="1"/>
-                            <line x1="-8"  y1="28" x2="13"  y2="44" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="8"   y1="28" x2="-13" y2="44" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="-13" y1="44" x2="13"  y2="44" stroke="#5a6e82" stroke-width="1"/>
-                            <line x1="-4" y1="0" x2="0" y2="-7" stroke="#6a8090" stroke-width="1.5"/>
-                            <line x1="4"  y1="0" x2="0" y2="-7" stroke="#6a8090" stroke-width="1.5"/>
-                            <circle cx="0" cy="-7" r="1.8" fill="#7a90a0"/>
-                            <line x1="-14" y1="6" x2="14" y2="6"  stroke="#5a6e82" stroke-width="1.4"/>
-                            <line x1="-4"  y1="0" x2="-14" y2="6" stroke="#4a5e72" stroke-width="0.9"/>
-                            <line x1="4"   y1="0" x2="14"  y2="6" stroke="#4a5e72" stroke-width="0.9"/>
-                            <circle cx="-14" cy="6" r="1.2" fill="#6a8090" opacity="0.8"/>
-                            <circle cx="14"  cy="6" r="1.2" fill="#6a8090" opacity="0.8"/>
-                            <line x1="-22" y1="18" x2="22" y2="18" stroke="#6a8090" stroke-width="2"/>
-                            <line x1="-4"  y1="8"  x2="-22" y2="18" stroke="#5a6e82" stroke-width="1.1"/>
-                            <line x1="4"   y1="8"  x2="22"  y2="18" stroke="#5a6e82" stroke-width="1.1"/>
-                            <line x1="-22" y1="18" x2="-22" y2="19.5" stroke="#7a8a94" stroke-width="1"/>
-                            <ellipse cx="-22" cy="21" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <ellipse cx="-22" cy="24" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <ellipse cx="-22" cy="27" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <line x1="22" y1="18" x2="22" y2="19.5"  stroke="#7a8a94" stroke-width="1"/>
-                            <ellipse cx="22" cy="21" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <ellipse cx="22" cy="24" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <ellipse cx="22" cy="27" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <circle cx="-22" cy="28" r="2.5" fill="#3a7ac0">
-                                <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1s"/>
-                            </circle>
-                            <circle cx="-22" cy="28" r="5" fill="none" stroke="#5aaaf0" stroke-width="0.6" opacity="0">
-                                <animate attributeName="opacity" values="0;0.4;0" dur="3s" repeatCount="indefinite" begin="1s"/>
-                                <animate attributeName="r"       values="3;7;3"   dur="3s" repeatCount="indefinite" begin="1s"/>
-                            </circle>
-                            <circle cx="22" cy="28" r="2.5" fill="#3a7ac0">
-                                <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="2.5s"/>
-                            </circle>
-                            <circle cx="22" cy="28" r="5" fill="none" stroke="#5aaaf0" stroke-width="0.6" opacity="0">
-                                <animate attributeName="opacity" values="0;0.4;0" dur="3s" repeatCount="indefinite" begin="2.5s"/>
-                                <animate attributeName="r"       values="3;7;3"   dur="3s" repeatCount="indefinite" begin="2.5s"/>
-                            </circle>
-                            <line x1="-14" y1="52" x2="-18" y2="57" stroke="#4a5e72" stroke-width="1.5"/>
-                            <line x1="-14" y1="52" x2="-10" y2="57" stroke="#4a5e72" stroke-width="1.5"/>
-                            <line x1="-19" y1="57" x2="-9"  y2="57" stroke="#5a6e82" stroke-width="1.8"/>
-                            <line x1="14"  y1="52" x2="18"  y2="57" stroke="#4a5e72" stroke-width="1.5"/>
-                            <line x1="14"  y1="52" x2="10"  y2="57" stroke="#4a5e72" stroke-width="1.5"/>
-                            <line x1="19"  y1="57" x2="9"   y2="57" stroke="#5a6e82" stroke-width="1.8"/>
-                        </g>
-
-                        <!-- ══ TOWER 4 — HV Lattice Pylon ══ -->
-                        <g class="hv-pylon" transform="translate(750, 590)">
-                            <line x1="0" y1="-70" x2="0" y2="-2" stroke="#4a90d9" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.55"/>
-                            <line x1="-4" y1="0" x2="-14" y2="52" stroke="#5a6e82" stroke-width="1.5"/>
-                            <line x1="4"  y1="0" x2="14"  y2="52" stroke="#5a6e82" stroke-width="1.5"/>
-                            <line x1="-4" y1="1"  x2="4"  y2="13" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="4"  y1="1"  x2="-4" y2="13" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="-4.5" y1="13" x2="4.5" y2="13" stroke="#5a6e82" stroke-width="1"/>
-                            <line x1="-4.5" y1="13" x2="8"   y2="27" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="4.5"  y1="13" x2="-8"  y2="27" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="-8"   y1="27" x2="8"   y2="27" stroke="#5a6e82" stroke-width="1"/>
-                            <line x1="-8"  y1="28" x2="13"  y2="44" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="8"   y1="28" x2="-13" y2="44" stroke="#445a6e" stroke-width="0.9"/>
-                            <line x1="-13" y1="44" x2="13"  y2="44" stroke="#5a6e82" stroke-width="1"/>
-                            <line x1="-4" y1="0" x2="0" y2="-7" stroke="#6a8090" stroke-width="1.5"/>
-                            <line x1="4"  y1="0" x2="0" y2="-7" stroke="#6a8090" stroke-width="1.5"/>
-                            <circle cx="0" cy="-7" r="1.8" fill="#7a90a0"/>
-                            <line x1="-14" y1="6" x2="14" y2="6"  stroke="#5a6e82" stroke-width="1.4"/>
-                            <line x1="-4"  y1="0" x2="-14" y2="6" stroke="#4a5e72" stroke-width="0.9"/>
-                            <line x1="4"   y1="0" x2="14"  y2="6" stroke="#4a5e72" stroke-width="0.9"/>
-                            <circle cx="-14" cy="6" r="1.2" fill="#6a8090" opacity="0.8"/>
-                            <circle cx="14"  cy="6" r="1.2" fill="#6a8090" opacity="0.8"/>
-                            <line x1="-22" y1="18" x2="22" y2="18" stroke="#6a8090" stroke-width="2"/>
-                            <line x1="-4"  y1="8"  x2="-22" y2="18" stroke="#5a6e82" stroke-width="1.1"/>
-                            <line x1="4"   y1="8"  x2="22"  y2="18" stroke="#5a6e82" stroke-width="1.1"/>
-                            <line x1="-22" y1="18" x2="-22" y2="19.5" stroke="#7a8a94" stroke-width="1"/>
-                            <ellipse cx="-22" cy="21" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <ellipse cx="-22" cy="24" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <ellipse cx="-22" cy="27" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <line x1="22" y1="18" x2="22" y2="19.5"  stroke="#7a8a94" stroke-width="1"/>
-                            <ellipse cx="22" cy="21" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <ellipse cx="22" cy="24" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <ellipse cx="22" cy="27" rx="2.2" ry="1.5" fill="none" stroke="#7a8a94" stroke-width="0.9"/>
-                            <circle cx="-22" cy="28" r="2.5" fill="#3a7ac0">
-                                <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="1.5s"/>
-                            </circle>
-                            <circle cx="-22" cy="28" r="5" fill="none" stroke="#5aaaf0" stroke-width="0.6" opacity="0">
-                                <animate attributeName="opacity" values="0;0.4;0" dur="3s" repeatCount="indefinite" begin="1.5s"/>
-                                <animate attributeName="r"       values="3;7;3"   dur="3s" repeatCount="indefinite" begin="1.5s"/>
-                            </circle>
-                            <circle cx="22" cy="28" r="2.5" fill="#3a7ac0">
-                                <animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="3s"/>
-                            </circle>
-                            <circle cx="22" cy="28" r="5" fill="none" stroke="#5aaaf0" stroke-width="0.6" opacity="0">
-                                <animate attributeName="opacity" values="0;0.4;0" dur="3s" repeatCount="indefinite" begin="3s"/>
-                                <animate attributeName="r"       values="3;7;3"   dur="3s" repeatCount="indefinite" begin="3s"/>
-                            </circle>
-                            <line x1="-14" y1="52" x2="-18" y2="57" stroke="#4a5e72" stroke-width="1.5"/>
-                            <line x1="-14" y1="52" x2="-10" y2="57" stroke="#4a5e72" stroke-width="1.5"/>
-                            <line x1="-19" y1="57" x2="-9"  y2="57" stroke="#5a6e82" stroke-width="1.8"/>
-                            <line x1="14"  y1="52" x2="18"  y2="57" stroke="#4a5e72" stroke-width="1.5"/>
-                            <line x1="14"  y1="52" x2="10"  y2="57" stroke="#4a5e72" stroke-width="1.5"/>
-                            <line x1="19"  y1="57" x2="9"   y2="57" stroke="#5a6e82" stroke-width="1.8"/>
-                        </g>
-                    </g>
-
-                    <!-- RTU Units -->
-                    <!-- RTU Layer -->
-                    <g class="router-node rtu-node" data-router="rtu1" transform="translate(150, 520)">
-                        <rect class="router-outer" x="-30" y="-18" width="60" height="36" rx="3"/>
-                        <circle class="rtu-led" cx="-15" cy="-5" r="4"/>
-                        <circle class="rtu-led" cx="0" cy="-5" r="4"/>
-                        <circle class="rtu-led" cx="15" cy="-5" r="4"/>
-                        <rect x="-20" y="2" width="40" height="8" fill="#6a6a7a" rx="1"/>
-                        <text class="router-label" x="0" y="35" text-anchor="middle">RTU-1</text>
-                        <text class="router-ip" x="0" y="50" text-anchor="middle">172.20.20.20</text>
-                    </g>
-
-                    <g class="router-node rtu-node" data-router="rtu2" transform="translate(350, 520)">
-                        <rect class="router-outer" x="-30" y="-18" width="60" height="36" rx="3"/>
-                        <circle class="rtu-led" cx="-15" cy="-5" r="4"/>
-                        <circle class="rtu-led" cx="0" cy="-5" r="4"/>
-                        <circle class="rtu-led" cx="15" cy="-5" r="4"/>
-                        <rect x="-20" y="2" width="40" height="8" fill="#6a6a7a" rx="1"/>
-                        <text class="router-label" x="0" y="35" text-anchor="middle">RTU-2</text>
-                        <text class="router-ip" x="0" y="50" text-anchor="middle">172.20.20.21</text>
-                    </g>
-
-                    <g class="router-node rtu-node" data-router="rtu3" transform="translate(550, 520)">
-                        <rect class="router-outer" x="-30" y="-18" width="60" height="36" rx="3"/>
-                        <circle class="rtu-led" cx="-15" cy="-5" r="4"/>
-                        <circle class="rtu-led" cx="0" cy="-5" r="4"/>
-                        <circle class="rtu-led" cx="15" cy="-5" r="4"/>
-                        <rect x="-20" y="2" width="40" height="8" fill="#6a6a7a" rx="1"/>
-                        <text class="router-label" x="0" y="35" text-anchor="middle">RTU-3</text>
-                        <text class="router-ip" x="0" y="50" text-anchor="middle">172.20.20.22</text>
-                    </g>
-
-                    <g class="router-node rtu-node" data-router="rtu4" transform="translate(750, 520)">
-                        <rect class="router-outer" x="-30" y="-18" width="60" height="36" rx="3"/>
-                        <circle class="rtu-led" cx="-15" cy="-5" r="4"/>
-                        <circle class="rtu-led" cx="0" cy="-5" r="4"/>
-                        <circle class="rtu-led" cx="15" cy="-5" r="4"/>
-                        <rect x="-20" y="2" width="40" height="8" fill="#6a6a7a" rx="1"/>
-                        <text class="router-label" x="0" y="35" text-anchor="middle">RTU-4</text>
-                        <text class="router-ip" x="0" y="50" text-anchor="middle">172.20.20.23</text>
-                    </g>
-                </g>
-            </svg>
-
-            <!-- Security + Override panels side by side -->
-            <div class="control-panels-row">
-
-            <!-- Security Panel -->
-            <div class="security-panel">
-                <div class="security-header">
-                    <svg width="24" height="24" viewBox="0 0 24 24" class="security-icon">
-                        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="currentColor"/>
-                    </svg>
-                    <h3>Security</h3>
-                </div>
-                <div class="security-content">
-                    <div class="security-row">
-                        <span class="security-label">Anysec Encryption:</span>
-                        <label class="security-switch">
-                            <input type="checkbox" id="anysec-toggle">
-                            <span class="security-slider"></span>
-                        </label>
-                        <span class="security-status" id="security-status">Disabled</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Manual Override Panel -->
-            <div class="override-panel">
-                <div class="override-header">
-                    <svg width="24" height="24" viewBox="0 0 24 24" class="override-icon">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h2v-2h-2v2zm0-4h2V7h-2v6z" fill="currentColor"/>
-                    </svg>
-                    <h3>Manual Override</h3>
-                </div>
-                <div class="override-content">
-                    <div class="override-row">
-                        <span class="override-label">Force All Online:</span>
-                        <label class="override-switch">
-                            <input type="checkbox" id="manual-override-toggle">
-                            <span class="override-slider"></span>
-                        </label>
-                        <span class="override-status inactive" id="override-status">Inactive</span>
-                    </div>
-                    <div class="override-warning" id="override-warning">
-                        Manual Override Active — statuses are simulated, not from live telemetry
-                    </div>
-                </div>
-            </div>
-
-            </div><!-- end .control-panels-row -->
-        </div>
 
         <!-- Teleprotection System Section -->
         <div class="teleprotection-system-section">
@@ -2165,7 +1346,7 @@
                 </g>
 
                 <!-- ===================================================== -->
-                <!-- Telecommunication Network (DC-1 / DC-2 routers)        -->
+                <!-- Telecommunication Network (ACCESS1-1 / ACCESS1-3 nodes)  -->
                 <!-- ===================================================== -->
                 <g class="tp-telecom" transform="translate(500, 290)">
                     <rect class="tp-card tp-telecom-frame" x="-80" y="-35" width="160" height="70" rx="5"/>
@@ -2183,7 +1364,7 @@
                         <!-- Port strip -->
                         <line x1="-18" y1="4" x2="18" y2="4" stroke="#5a5a5a" stroke-width="1"/>
                         <line x1="-18" y1="8" x2="18" y2="8" stroke="#5a5a5a" stroke-width="1"/>
-                        <text x="0" y="26" text-anchor="middle" class="tp-router-label">DC-1</text>
+                        <text x="0" y="26" text-anchor="middle" class="tp-router-label">ACCESS1-1</text>
                     </g>
                     <!-- Router DC-2 -->
                     <g transform="translate(38, 5)">
@@ -2195,7 +1376,7 @@
                         <circle cx="14"  cy="-6" r="1.8" fill="#2a2a2a"/>
                         <line x1="-18" y1="4" x2="18" y2="4" stroke="#5a5a5a" stroke-width="1"/>
                         <line x1="-18" y1="8" x2="18" y2="8" stroke="#5a5a5a" stroke-width="1"/>
-                        <text x="0" y="26" text-anchor="middle" class="tp-router-label">DC-2</text>
+                        <text x="0" y="26" text-anchor="middle" class="tp-router-label">ACCESS1-3</text>
                     </g>
                     <!-- Inter-router link (MPLS-TP dashed) -->
                     <line class="tp-inter-router" x1="-14" y1="5" x2="14" y2="5"/>
@@ -2217,7 +1398,7 @@
                     <circle class="tp-led" cx="6"   cy="-8" r="3.2" fill="#4caf50"/>
                     <circle class="tp-led" cx="18"  cy="-8" r="3.2" fill="#4caf50"/>
                     <rect class="tp-display" x="-32" y="3" width="64" height="14" rx="1.5"/>
-                    <text x="0" y="13" text-anchor="middle" class="tp-rack-text">RTU-4</text>
+                    <text x="0" y="13" text-anchor="middle" class="tp-rack-text">RTU-2</text>
                     <rect x="-30" y="22" width="6" height="5" fill="#6a6a6a" rx="0.5"/>
                     <rect x="-20" y="22" width="6" height="5" fill="#6a6a6a" rx="0.5"/>
                     <rect x="-10" y="22" width="6" height="5" fill="#6a6a6a" rx="0.5"/>
@@ -2226,7 +1407,7 @@
                     <rect x="20"  y="22" width="6" height="5" fill="#6a6a6a" rx="0.5"/>
 
                     <text x="0" y="52" text-anchor="middle" class="tp-eqp-label">Teleprotection B</text>
-                    <text x="0" y="64" text-anchor="middle" class="tp-eqp-sublabel">RTU-4 · Leaf-4</text>
+                    <text x="0" y="64" text-anchor="middle" class="tp-eqp-sublabel">RTU-2 · Leaf-4</text>
                 </g>
 
                 <!-- ===================================================== -->
@@ -2254,30 +1435,34 @@
                 <!-- ===================================================== -->
                 <g class="tp-comm-layer">
                     <!-- RTU-A (x=272, right edge) → Telecom (x=420, left edge), y=290 center -->
-                    <path class="tp-comm-line" d="M 272 290 L 420 290"
+                    <path id="tp-comm-line-a" class="tp-comm-line" d="M 272 290 L 420 290"
                           fill="none" marker-end="url(#tp-arrow-comm)"/>
                     <!-- Telecom (x=580, right edge) → RTU-B (x=728, left edge) -->
-                    <path class="tp-comm-line" d="M 580 290 L 728 290"
+                    <path id="tp-comm-line-b" class="tp-comm-line" d="M 580 290 L 728 290"
                           fill="none" marker-end="url(#tp-arrow-comm)"/>
 
-                    <!-- Animated red comm packets (forward) -->
-                    <circle class="tp-comm-pulse" r="3">
-                        <animateMotion dur="2s" repeatCount="indefinite"
-                                       path="M 272 290 L 420 290"/>
-                    </circle>
-                    <circle class="tp-comm-pulse" r="3">
-                        <animateMotion dur="2s" repeatCount="indefinite" begin="0.5s"
-                                       path="M 580 290 L 728 290"/>
-                    </circle>
-                    <!-- Return packets (lighter) -->
-                    <circle class="tp-comm-pulse tp-comm-return" r="2.5">
-                        <animateMotion dur="2s" repeatCount="indefinite" begin="1s"
-                                       path="M 420 290 L 272 290"/>
-                    </circle>
-                    <circle class="tp-comm-pulse tp-comm-return" r="2.5">
-                        <animateMotion dur="2s" repeatCount="indefinite" begin="1.5s"
-                                       path="M 728 290 L 580 290"/>
-                    </circle>
+                </g>
+
+                <!-- ===================================================== -->
+                <!-- Fault indicator: ACCESS1-1 ↔ RTU1 link (hidden by JS)  -->
+                <!-- ===================================================== -->
+                <g id="tp-fault-a11-rtu" display="none">
+                    <!-- Pulsing halo -->
+                    <circle cx="346" cy="290" r="14" fill="#dc3545" opacity="0.12" class="tp-fault-halo"/>
+                    <!-- Fault circle -->
+                    <circle cx="346" cy="290" r="11" fill="#1a1a1a" stroke="#dc3545" stroke-width="1.8"/>
+                    <!-- X mark -->
+                    <line x1="341" y1="285" x2="351" y2="295" stroke="#dc3545" stroke-width="2.2" stroke-linecap="round"/>
+                    <line x1="351" y1="285" x2="341" y2="295" stroke="#dc3545" stroke-width="2.2" stroke-linecap="round"/>
+                    <!-- Label -->
+                    <rect x="306" y="306" width="80" height="13" rx="3" fill="#dc3545" opacity="0.15"/>
+                    <text x="346" y="315.5" text-anchor="middle"
+                          font-family="IBM Plex Mono,monospace" font-size="7.5"
+                          fill="#dc3545" font-weight="700" letter-spacing="0.05em">LINK FAULT</text>
+                    <!-- Node label -->
+                    <text x="346" y="330" text-anchor="middle"
+                          font-family="IBM Plex Mono,monospace" font-size="6.5"
+                          fill="#dc3545" opacity="0.8">ACCESS1-1 · c3/1 → RTU1</text>
                 </g>
 
                 <!-- ===================================================== -->
@@ -2315,7 +1500,7 @@
     <!-- Topology from smart_grid.yaml (nokia_srsim / SAR-Hmc + RTUs)   -->
     <!-- ================================================================ -->
     <div class="mpls-section">
-        <h2 class="mpls-title">MPLS NETWORK</h2>
+        <h2 class="mpls-title">MPLS NETWORK<a href="telemetry.html" target="_blank" class="mpls-telemetry-link">↗ TELEMETRY DETAIL</a></h2>
 
         <!-- Layer badges row -->
         <div class="mpls-layer-badges">
@@ -2325,7 +1510,7 @@
             <span class="mpls-layer-badge mpls-rtu-badge">RTU · Linux</span>
         </div>
 
-        <svg class="mpls-diagram" viewBox="0 0 1100 640" preserveAspectRatio="xMidYMid meet">
+        <svg class="mpls-diagram" viewBox="0 0 1100 590" preserveAspectRatio="xMidYMid meet">
             <defs>
                 <!-- MPLS link gradient (blue-ish for core) -->
                 <linearGradient id="mpls-core-grad" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -2417,191 +1602,131 @@
             <!-- ========================================================== -->
 
             <!-- Core interconnect: dc1(360,105) ↔ dc2(740,105) -->
-            <line class="mpls-link mpls-link-core"
-                  x1="420" y1="105" x2="680" y2="105"
+            <line id="link-dc1-dc2" class="mpls-link mpls-link-core"
+                  x1="392" y1="105" x2="708" y2="105"
                   marker-end="url(#mpls-arrow)" marker-start="url(#mpls-arrow)"/>
             <!-- Core link label -->
             <rect class="mpls-link-label-bg" x="486" y="92" width="128" height="15" rx="7"/>
             <text class="mpls-link-label" x="550" y="103" text-anchor="middle">1/1/c2/1 ↔ 1/1/c2/1</text>
 
             <!-- dc1 → SR1-ACC1 vertical: dc1(360,105)→ACC1(360,235) -->
-            <line class="mpls-link mpls-link-agg"
+            <line id="link-dc1-acc1" class="mpls-link mpls-link-agg"
                   x1="360" y1="138" x2="360" y2="202"
                   marker-end="url(#mpls-arrow-agg)"/>
 
             <!-- dc2 → SR1-ACC2 vertical: dc2(740,105)→ACC2(740,235) -->
-            <line class="mpls-link mpls-link-agg"
+            <line id="link-dc2-acc2" class="mpls-link mpls-link-agg"
                   x1="740" y1="138" x2="740" y2="202"
                   marker-end="url(#mpls-arrow-agg)"/>
 
             <!-- Aggregation interconnect: ACC1(360,235) ↔ ACC2(740,235) -->
-            <line class="mpls-link mpls-link-agg"
-                  x1="420" y1="235" x2="680" y2="235"
+            <line id="link-acc1-acc2" class="mpls-link mpls-link-agg"
+                  x1="392" y1="235" x2="708" y2="235"
                   marker-end="url(#mpls-arrow-agg)" marker-start="url(#mpls-arrow-agg)"/>
             <rect class="mpls-link-label-bg" x="486" y="222" width="128" height="15" rx="7"/>
             <text class="mpls-link-label" x="550" y="233" text-anchor="middle">1/1/c3/1 ↔ 1/1/c3/1</text>
 
             <!-- SR1-ACC1 → ACCESS1-1: ACC1(360,268)→A1-1(250,367) -->
-            <line class="mpls-link mpls-link-agg"
+            <line id="link-acc1-a1-1" class="mpls-link mpls-link-agg"
                   x1="350" y1="268" x2="280" y2="335"
                   marker-end="url(#mpls-arrow-agg)"/>
 
             <!-- SR1-ACC2 → ACCESS1-3: ACC2(740,268)→A1-3(820,367) -->
-            <line class="mpls-link mpls-link-agg"
+            <line id="link-acc2-a1-3" class="mpls-link mpls-link-agg"
                   x1="750" y1="268" x2="820" y2="335"
                   marker-end="url(#mpls-arrow-agg)"/>
 
             <!-- ACCESS ring: A1-1(250,367) ↔ A1-2(550,367) -->
-            <line class="mpls-link mpls-link-access"
-                  x1="320" y1="367" x2="480" y2="367"
+            <line id="link-a1-1-a1-2" class="mpls-link mpls-link-access"
+                  x1="282" y1="367" x2="518" y2="367"
                   marker-end="url(#mpls-arrow-access)" marker-start="url(#mpls-arrow-access)"/>
 
             <!-- ACCESS ring: A1-2(550,367) ↔ A1-3(820,367) -->
-            <line class="mpls-link mpls-link-access"
-                  x1="620" y1="367" x2="750" y2="367"
+            <line id="link-a1-2-a1-3" class="mpls-link mpls-link-access"
+                  x1="582" y1="367" x2="788" y2="367"
                   marker-end="url(#mpls-arrow-access)" marker-start="url(#mpls-arrow-access)"/>
 
             <!-- A1-2 port labels -->
-            <rect class="mpls-link-label-bg" x="380" y="354" width="100" height="14" rx="6"/>
-            <text class="mpls-link-label" x="430" y="364" text-anchor="middle">c1/1 ↔ c1/1</text>
-            <rect class="mpls-link-label-bg" x="668" y="354" width="100" height="14" rx="6"/>
-            <text class="mpls-link-label" x="718" y="364" text-anchor="middle">c2/1 ↔ c1/1</text>
+            <rect class="mpls-link-label-bg" x="350" y="354" width="100" height="14" rx="6"/>
+            <text class="mpls-link-label" x="400" y="364" text-anchor="middle">c1/1 ↔ c1/1</text>
+            <rect class="mpls-link-label-bg" x="635" y="354" width="100" height="14" rx="6"/>
+            <text class="mpls-link-label" x="685" y="364" text-anchor="middle">c2/1 ↔ c1/1</text>
 
-            <!-- A1-1 → RTU1: A1-1(250,400)→RTU1(250,468) -->
-            <line class="mpls-link mpls-link-rtu"
-                  x1="250" y1="400" x2="250" y2="440"
+            <!-- A1-1 → RTU1: A1-1(250,392)→RTU1(250,459) -->
+            <line id="link-a1-1-rtu1" class="mpls-link mpls-link-rtu"
+                  x1="250" y1="400" x2="250" y2="453"
                   marker-end="url(#mpls-arrow-access)"/>
 
-            <!-- A1-3 → RTU2: A1-3(820,400)→RTU2(820,468) -->
-            <line class="mpls-link mpls-link-rtu"
-                  x1="820" y1="400" x2="820" y2="440"
+            <!-- A1-3 → RTU2: A1-3(820,392)→RTU2(820,459) -->
+            <line id="link-a1-3-rtu2" class="mpls-link mpls-link-rtu"
+                  x1="820" y1="400" x2="820" y2="453"
                   marker-end="url(#mpls-arrow-access)"/>
 
             <!-- ========================================================== -->
-            <!-- MPLS DATA PACKETS (animated)                               -->
+            <!-- TRAFFIC FLOW — managed by initMplsTrafficFlow() in JS     -->
+            <!-- Path highlight segments drawn on top of link lines         -->
             <!-- ========================================================== -->
-            <!-- Core east packet -->
-            <circle class="mpls-packet mpls-packet-core" r="4">
-                <animateMotion dur="2.4s" repeatCount="indefinite"
-                               path="M 420 105 L 680 105"/>
-            </circle>
-            <!-- Core west packet -->
-            <circle class="mpls-packet mpls-packet-core" r="4" opacity="0.6">
-                <animateMotion dur="2.4s" repeatCount="indefinite" begin="1.2s"
-                               path="M 680 105 L 420 105"/>
-            </circle>
-
-            <!-- dc1 → ACC1 south packet -->
-            <circle class="mpls-packet mpls-packet-agg" r="3.5">
-                <animateMotion dur="1.8s" repeatCount="indefinite"
-                               path="M 360 138 L 360 202"/>
-            </circle>
-            <!-- dc2 → ACC2 south packet -->
-            <circle class="mpls-packet mpls-packet-agg" r="3.5">
-                <animateMotion dur="1.8s" repeatCount="indefinite" begin="0.9s"
-                               path="M 740 138 L 740 202"/>
-            </circle>
-
-            <!-- ACC1 ↔ ACC2 east -->
-            <circle class="mpls-packet mpls-packet-agg" r="3.5">
-                <animateMotion dur="2.4s" repeatCount="indefinite" begin="0.4s"
-                               path="M 420 235 L 680 235"/>
-            </circle>
-            <!-- ACC1 ↔ ACC2 west -->
-            <circle class="mpls-packet mpls-packet-agg" r="3" opacity="0.5">
-                <animateMotion dur="2.4s" repeatCount="indefinite" begin="1.6s"
-                               path="M 680 235 L 420 235"/>
-            </circle>
-
-            <!-- ACC1 → A1-1 -->
-            <circle class="mpls-packet mpls-packet-access" r="3">
-                <animateMotion dur="1.6s" repeatCount="indefinite" begin="0.3s"
-                               path="M 350 268 L 280 335"/>
-            </circle>
-            <!-- ACC2 → A1-3 -->
-            <circle class="mpls-packet mpls-packet-access" r="3">
-                <animateMotion dur="1.6s" repeatCount="indefinite" begin="1.1s"
-                               path="M 750 268 L 820 335"/>
-            </circle>
-
-            <!-- Access ring east -->
-            <circle class="mpls-packet mpls-packet-access" r="2.5">
-                <animateMotion dur="2s" repeatCount="indefinite" begin="0.6s"
-                               path="M 320 367 L 480 367"/>
-            </circle>
-            <circle class="mpls-packet mpls-packet-access" r="2.5">
-                <animateMotion dur="2s" repeatCount="indefinite" begin="1.4s"
-                               path="M 620 367 L 750 367"/>
-            </circle>
+            <g id="mpls-path-highlight" pointer-events="none"></g>
+            <!-- Animated IGP-path packets (created / destroyed by JS) -->
+            <g id="mpls-traffic-packets" pointer-events="none"></g>
+            <!-- SR-TE LSP overlay — drawn by initSrteLspOverlay() in smart-grid.js -->
+            <g id="mpls-srte-overlay" pointer-events="none"></g>
+            <!-- Status label (bottom of diagram) -->
+            <g id="mpls-path-status-group" visibility="hidden" pointer-events="none">
+                <rect id="mpls-path-status-bg" x="270" y="553" width="560" height="20" rx="6"/>
+                <text id="mpls-path-status-text" x="550" y="567"
+                      text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9">
+                </text>
+            </g>
 
             <!-- ========================================================== -->
             <!-- NODES — CORE LAYER                                          -->
             <!-- ========================================================== -->
-            <!-- dc1 at (360, 105) — CLICKABLE: opens live telemetry popup -->
+            <!-- dc1 at (360,105) — clickable -->
             <g id="mpls-node-mpls-dc1" class="mpls-node mpls-node-core mpls-node-clickable"
                transform="translate(360, 105)" role="button" tabindex="0"
                aria-label="dc1 — click to view live telemetry">
-                <!-- invisible hit area (larger than chassis for easier clicking) -->
-                <rect class="mpls-hit-area" x="-58" y="-44" width="116" height="80" rx="6" fill="transparent"/>
-                <!-- chassis silhouette -->
-                <rect class="mpls-chassis" x="-52" y="-28" width="104" height="56" rx="5"/>
-                <!-- Nokia logo bar (top edge accent) -->
-                <rect class="mpls-chassis-accent mpls-core-accent" x="-52" y="-28" width="104" height="5" rx="5"/>
-                <!-- Port row -->
-                <rect class="mpls-port-row" x="-40" y="-12" width="80" height="8" rx="2"/>
-                <!-- Port highlights (updated live from gnmic) -->
-                <rect class="mpls-port" id="dc1-svg-port-c1"   x="-36" y="-11" width="10" height="6" rx="1" fill="#3a6a4a"/>
-                <rect class="mpls-port" id="dc1-svg-port-c2"   x="-22" y="-11" width="10" height="6" rx="1" fill="#3a6a4a"/>
-                <rect class="mpls-port" id="dc1-svg-port-c3"   x="-8"  y="-11" width="10" height="6" rx="1" fill="#3a3a4a"/>
-                <rect class="mpls-port" id="dc1-svg-port-c4"   x="6"   y="-11" width="10" height="6" rx="1" fill="#3a3a4a"/>
-                <rect class="mpls-port" id="dc1-svg-port-c5"   x="20"  y="-11" width="10" height="6" rx="1" fill="#3a3a4a"/>
-                <!-- Status LED (driven by JS from gnmic state) -->
-                <circle class="mpls-status-led mpls-led-ok" id="dc1-svg-status-led" cx="36" cy="-8" r="4"/>
-                <!-- Fan vents -->
-                <line x1="-44" y1="4" x2="-44" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
-                <line x1="-40" y1="4" x2="-40" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
-                <line x1="-36" y1="4" x2="-36" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
-                <!-- Labels -->
-                <text class="mpls-node-label" x="0" y="-38" text-anchor="middle">dc1</text>
-                <text class="mpls-node-type"  x="0" y="40" text-anchor="middle">SR-1 · Nokia SR-OS</text>
-                <text class="mpls-node-ip"    x="0" y="53" text-anchor="middle">192.168.30.2</text>
-                <!-- Click hint badge -->
-                <g class="mpls-click-hint" transform="translate(0, 64)">
-                    <rect x="-24" y="-7" width="48" height="13" rx="6" fill="#005AFF" opacity="0.85"/>
-                    <text x="0" y="3" text-anchor="middle" fill="white"
-                          font-family="IBM Plex Mono,monospace" font-size="7" font-weight="600"
-                          letter-spacing="0.08em">▶ TELEMETRY</text>
+                <rect class="mpls-hit-area" x="-30" y="-28" width="60" height="60" rx="6" fill="transparent"/>
+                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="4"/>
+                <rect class="mpls-panel-cell" x="-16" y="-17" width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="2"   y="-17" width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="-16" y="-4"  width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="2"   y="-4"  width="14" height="10" rx="2"/>
+                <rect class="mpls-port" id="dc1-svg-port-c1" x="-26" y="13" width="8" height="6" rx="1" fill="#3a6a4a"/>
+                <rect class="mpls-port" id="dc1-svg-port-c2" x="-15" y="13" width="8" height="6" rx="1" fill="#3a6a4a"/>
+                <rect class="mpls-port" id="dc1-svg-port-c3" x="-4"  y="13" width="8" height="6" rx="1" fill="#3a3a4a"/>
+                <rect class="mpls-port" id="dc1-svg-port-c4" x="7"   y="13" width="8" height="6" rx="1" fill="#3a3a4a"/>
+                <rect class="mpls-port" id="dc1-svg-port-c5" x="18"  y="13" width="8" height="6" rx="1" fill="#3a3a4a"/>
+                <circle class="mpls-status-led mpls-led-ok" id="dc1-svg-status-led" cx="21" cy="-20" r="4"/>
+                <text class="mpls-node-label" x="-32" y="4" text-anchor="end">dc1</text>
+                <text class="mpls-node-ip"   x="-32" y="17" text-anchor="end">192.168.30.2</text>
+                <g class="mpls-click-hint" transform="translate(0, 58)">
+                    <text x="0" text-anchor="middle" font-family="IBM Plex Mono,monospace"
+                          font-size="7" fill="currentColor" opacity="0.5">▼ telemetry</text>
                 </g>
             </g>
 
-            <!-- dc2 at (740, 105) — clickable telemetry node -->
+            <!-- dc2 at (740,105) — clickable -->
             <g id="mpls-node-mpls-dc2" class="mpls-node mpls-node-core mpls-node-clickable"
                transform="translate(740, 105)" role="button" tabindex="0"
                aria-label="dc2 — click to view live telemetry">
-                <!-- invisible hit area -->
-                <rect class="mpls-hit-area" x="-58" y="-44" width="116" height="80" rx="6" fill="transparent"/>
-                <rect class="mpls-chassis" x="-52" y="-28" width="104" height="56" rx="5"/>
-                <rect class="mpls-chassis-accent mpls-core-accent" x="-52" y="-28" width="104" height="5" rx="5"/>
-                <rect class="mpls-port-row" x="-40" y="-12" width="80" height="8" rx="2"/>
-                <!-- Port highlights (updated live from gnmic) -->
-                <rect class="mpls-port" id="dc2-svg-port-c1"   x="-36" y="-11" width="10" height="6" rx="1" fill="#3a6a4a"/>
-                <rect class="mpls-port" id="dc2-svg-port-c2"   x="-22" y="-11" width="10" height="6" rx="1" fill="#3a6a4a"/>
-                <rect class="mpls-port" id="dc2-svg-port-c3"   x="-8"  y="-11" width="10" height="6" rx="1" fill="#3a3a4a"/>
-                <rect class="mpls-port" id="dc2-svg-port-c4"   x="6"   y="-11" width="10" height="6" rx="1" fill="#3a3a4a"/>
-                <rect class="mpls-port" id="dc2-svg-port-c5"   x="20"  y="-11" width="10" height="6" rx="1" fill="#3a3a4a"/>
-                <circle class="mpls-status-led mpls-led-ok" id="dc2-svg-status-led" cx="36" cy="-8" r="4"/>
-                <line x1="-44" y1="4" x2="-44" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
-                <line x1="-40" y1="4" x2="-40" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
-                <line x1="-36" y1="4" x2="-36" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
-                <text class="mpls-node-label" x="0" y="-38" text-anchor="middle">dc2</text>
-                <text class="mpls-node-type"  x="0" y="40" text-anchor="middle">SR-1 · Nokia SR-OS</text>
-                <text class="mpls-node-ip"    x="0" y="53" text-anchor="middle">192.168.30.3</text>
-                <!-- Click hint badge -->
-                <g class="mpls-click-hint" transform="translate(0, 64)">
-                    <rect x="-24" y="-7" width="48" height="13" rx="6" fill="#005AFF" opacity="0.85"/>
-                    <text x="0" y="3" text-anchor="middle" fill="white"
-                          font-family="IBM Plex Mono,monospace" font-size="7" font-weight="600"
-                          letter-spacing="0.08em">▶ TELEMETRY</text>
+                <rect class="mpls-hit-area" x="-30" y="-28" width="60" height="60" rx="6" fill="transparent"/>
+                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="4"/>
+                <rect class="mpls-panel-cell" x="-16" y="-17" width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="2"   y="-17" width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="-16" y="-4"  width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="2"   y="-4"  width="14" height="10" rx="2"/>
+                <rect class="mpls-port" id="dc2-svg-port-c1" x="-26" y="13" width="8" height="6" rx="1" fill="#3a6a4a"/>
+                <rect class="mpls-port" id="dc2-svg-port-c2" x="-15" y="13" width="8" height="6" rx="1" fill="#3a6a4a"/>
+                <rect class="mpls-port" id="dc2-svg-port-c3" x="-4"  y="13" width="8" height="6" rx="1" fill="#3a3a4a"/>
+                <rect class="mpls-port" id="dc2-svg-port-c4" x="7"   y="13" width="8" height="6" rx="1" fill="#3a3a4a"/>
+                <rect class="mpls-port" id="dc2-svg-port-c5" x="18"  y="13" width="8" height="6" rx="1" fill="#3a3a4a"/>
+                <circle class="mpls-status-led mpls-led-ok" id="dc2-svg-status-led" cx="21" cy="-20" r="4"/>
+                <text class="mpls-node-label" x="32" y="4" text-anchor="start">dc2</text>
+                <text class="mpls-node-ip"   x="32" y="17" text-anchor="start">192.168.30.3</text>
+                <g class="mpls-click-hint" transform="translate(0, 58)">
+                    <text x="0" text-anchor="middle" font-family="IBM Plex Mono,monospace"
+                          font-size="7" fill="currentColor" opacity="0.5">▼ telemetry</text>
                 </g>
             </g>
 
@@ -2610,97 +1735,97 @@
             <!-- ========================================================== -->
             <!-- SR1-ACC1 at (360, 235) -->
             <g id="mpls-node-mpls-acc1" class="mpls-node mpls-node-agg" transform="translate(360, 235)">
-                <rect class="mpls-chassis" x="-52" y="-28" width="104" height="56" rx="5"/>
-                <rect class="mpls-chassis-accent mpls-agg-accent" x="-52" y="-28" width="104" height="5" rx="5"/>
-                <rect class="mpls-port-row" x="-40" y="-12" width="80" height="8" rx="2"/>
-                <rect class="mpls-port mpls-port-active" x="-36" y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-active" x="-22" y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-active" x="-8"  y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="6"   y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="20"  y="-11" width="10" height="6" rx="1"/>
-                <circle class="mpls-status-led mpls-led-ok" cx="36" cy="-8" r="4"/>
-                <line x1="-44" y1="4" x2="-44" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
-                <line x1="-40" y1="4" x2="-40" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
-                <text class="mpls-node-label" x="0" y="-38" text-anchor="middle">SR1-ACC1</text>
-                <text class="mpls-node-type"  x="0" y="40" text-anchor="middle">SR-1 · PE/P router</text>
-                <text class="mpls-node-ip"    x="0" y="53" text-anchor="middle">192.168.30.4</text>
+                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="4"/>
+                <rect class="mpls-panel-cell" x="-16" y="-17" width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="2"   y="-17" width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="-16" y="-4"  width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="2"   y="-4"  width="14" height="10" rx="2"/>
+                <rect class="mpls-port mpls-port-active" x="-26" y="13" width="8" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-active" x="-15" y="13" width="8" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-active" x="-4"  y="13" width="8" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-idle"   x="7"   y="13" width="8" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-idle"   x="18"  y="13" width="8" height="6" rx="1"/>
+                <circle class="mpls-status-led mpls-led-ok" cx="21" cy="-20" r="4"/>
+                <text class="mpls-node-label" x="-32" y="4" text-anchor="end">SR1-ACC1</text>
+                <text class="mpls-node-ip"   x="-32" y="17" text-anchor="end">192.168.30.4</text>
             </g>
 
             <!-- SR1-ACC2 at (740, 235) -->
             <g id="mpls-node-mpls-acc2" class="mpls-node mpls-node-agg" transform="translate(740, 235)">
-                <rect class="mpls-chassis" x="-52" y="-28" width="104" height="56" rx="5"/>
-                <rect class="mpls-chassis-accent mpls-agg-accent" x="-52" y="-28" width="104" height="5" rx="5"/>
-                <rect class="mpls-port-row" x="-40" y="-12" width="80" height="8" rx="2"/>
-                <rect class="mpls-port mpls-port-active" x="-36" y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-active" x="-22" y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-active" x="-8"  y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="6"   y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="20"  y="-11" width="10" height="6" rx="1"/>
-                <circle class="mpls-status-led mpls-led-ok" cx="36" cy="-8" r="4"/>
-                <line x1="-44" y1="4" x2="-44" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
-                <line x1="-40" y1="4" x2="-40" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
-                <text class="mpls-node-label" x="0" y="-38" text-anchor="middle">SR1-ACC2</text>
-                <text class="mpls-node-type"  x="0" y="40" text-anchor="middle">SR-1 · PE/P router</text>
-                <text class="mpls-node-ip"    x="0" y="53" text-anchor="middle">192.168.30.5</text>
+                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="4"/>
+                <rect class="mpls-panel-cell" x="-16" y="-17" width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="2"   y="-17" width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="-16" y="-4"  width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="2"   y="-4"  width="14" height="10" rx="2"/>
+                <rect class="mpls-port mpls-port-active" x="-26" y="13" width="8" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-active" x="-15" y="13" width="8" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-active" x="-4"  y="13" width="8" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-idle"   x="7"   y="13" width="8" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-idle"   x="18"  y="13" width="8" height="6" rx="1"/>
+                <circle class="mpls-status-led mpls-led-ok" cx="21" cy="-20" r="4"/>
+                <text class="mpls-node-label" x="32" y="4" text-anchor="start">SR1-ACC2</text>
+                <text class="mpls-node-ip"   x="32" y="17" text-anchor="start">192.168.30.5</text>
             </g>
 
             <!-- ========================================================== -->
-            <!-- NODES — ACCESS LAYER (SR-1, same platform as AGG)          -->
-            <!-- network.yaml: kind=nokia_srsim type=sr-1 (updated Apr 2026)-->
+            <!-- NODES — ACCESS LAYER                                        -->
             <!-- ========================================================== -->
-            <!-- ACCESS1-1 at (250, 367) -->
-            <g id="mpls-node-mpls-a1-1" class="mpls-node mpls-node-access" transform="translate(250, 367)">
-                <rect class="mpls-chassis" x="-52" y="-28" width="104" height="56" rx="5"/>
-                <rect class="mpls-chassis-accent mpls-access-accent" x="-52" y="-28" width="104" height="5" rx="5"/>
-                <!-- Port row — 3 x 100G + 1 RTU ETH -->
-                <rect class="mpls-port-row" x="-40" y="-12" width="80" height="8" rx="2"/>
-                <rect class="mpls-port mpls-port-active" x="-36" y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-active" x="-22" y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-active" x="-8"  y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-rtu"    x="6"   y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="20"  y="-11" width="10" height="6" rx="1"/>
-                <circle class="mpls-status-led mpls-led-ok" cx="36" cy="-8" r="4"/>
-                <line x1="-44" y1="4" x2="-44" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
-                <line x1="-40" y1="4" x2="-40" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
-                <text class="mpls-node-label" x="0" y="-38" text-anchor="middle">ACCESS1-1</text>
-                <text class="mpls-node-type"  x="0" y="40" text-anchor="middle">SR-1 · Nokia SR-OS</text>
-                <text class="mpls-node-ip"    x="0" y="53" text-anchor="middle">192.168.30.11</text>
+            <!-- ACCESS1-1 at (250, 367) — clickable -->
+            <g id="mpls-node-mpls-a1-1" class="mpls-node mpls-node-access mpls-node-clickable"
+               transform="translate(250, 367)" role="button" tabindex="0"
+               aria-label="ACCESS1-1 — click to view live telemetry">
+                <rect class="mpls-hit-area" x="-30" y="-28" width="60" height="60" rx="6" fill="transparent"/>
+                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="4"/>
+                <rect class="mpls-panel-cell" x="-16" y="-17" width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="2"   y="-17" width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="-16" y="-4"  width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="2"   y="-4"  width="14" height="10" rx="2"/>
+                <rect class="mpls-port" id="a11-svg-port-c1" x="-26" y="13" width="8" height="6" rx="1" fill="#3a6a4a"/>
+                <rect class="mpls-port" id="a11-svg-port-c2" x="-15" y="13" width="8" height="6" rx="1" fill="#3a6a4a"/>
+                <rect class="mpls-port" id="a11-svg-port-c3" x="-4"  y="13" width="8" height="6" rx="1" fill="#3a6a4a"/>
+                <rect class="mpls-port" id="a11-svg-port-c4" x="7"   y="13" width="8" height="6" rx="1" fill="#8a4a2a"/>
+                <rect class="mpls-port" id="a11-svg-port-c5" x="18"  y="13" width="8" height="6" rx="1" fill="#3a3a4a"/>
+                <circle class="mpls-status-led mpls-led-ok" id="a11-svg-status-led" cx="21" cy="-20" r="4"/>
+                <text class="mpls-node-label" x="-32" y="4" text-anchor="end">ACCESS1-1</text>
+                <text class="mpls-node-ip"   x="-32" y="17" text-anchor="end">192.168.30.11</text>
+                <g class="mpls-click-hint" transform="translate(0, 58)">
+                    <text x="0" text-anchor="middle" font-family="IBM Plex Mono,monospace"
+                          font-size="7" fill="currentColor" opacity="0.5">▼ telemetry</text>
+                </g>
             </g>
 
             <!-- ACCESS1-2 at (550, 367) -->
             <g id="mpls-node-mpls-a1-2" class="mpls-node mpls-node-access" transform="translate(550, 367)">
-                <rect class="mpls-chassis" x="-52" y="-28" width="104" height="56" rx="5"/>
-                <rect class="mpls-chassis-accent mpls-access-accent" x="-52" y="-28" width="104" height="5" rx="5"/>
-                <rect class="mpls-port-row" x="-40" y="-12" width="80" height="8" rx="2"/>
-                <rect class="mpls-port mpls-port-active" x="-36" y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-active" x="-22" y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="-8"  y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="6"   y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="20"  y="-11" width="10" height="6" rx="1"/>
-                <circle class="mpls-status-led mpls-led-ok" cx="36" cy="-8" r="4"/>
-                <line x1="-44" y1="4" x2="-44" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
-                <line x1="-40" y1="4" x2="-40" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
-                <text class="mpls-node-label" x="0" y="-38" text-anchor="middle">ACCESS1-2</text>
-                <text class="mpls-node-type"  x="0" y="40" text-anchor="middle">SR-1 · Nokia SR-OS</text>
-                <text class="mpls-node-ip"    x="0" y="53" text-anchor="middle">192.168.30.12</text>
+                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="4"/>
+                <rect class="mpls-panel-cell" x="-16" y="-17" width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="2"   y="-17" width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="-16" y="-4"  width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="2"   y="-4"  width="14" height="10" rx="2"/>
+                <rect class="mpls-port mpls-port-active" x="-26" y="13" width="8" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-active" x="-15" y="13" width="8" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-idle"   x="-4"  y="13" width="8" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-idle"   x="7"   y="13" width="8" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-idle"   x="18"  y="13" width="8" height="6" rx="1"/>
+                <circle class="mpls-status-led mpls-led-ok" cx="21" cy="-20" r="4"/>
+                <text class="mpls-node-label" x="0" y="38" text-anchor="middle">ACCESS1-2</text>
+                <text class="mpls-node-ip"   x="0" y="49" text-anchor="middle">192.168.30.12</text>
             </g>
 
             <!-- ACCESS1-3 at (820, 367) -->
             <g id="mpls-node-mpls-a1-3" class="mpls-node mpls-node-access" transform="translate(820, 367)">
-                <rect class="mpls-chassis" x="-52" y="-28" width="104" height="56" rx="5"/>
-                <rect class="mpls-chassis-accent mpls-access-accent" x="-52" y="-28" width="104" height="5" rx="5"/>
-                <rect class="mpls-port-row" x="-40" y="-12" width="80" height="8" rx="2"/>
-                <rect class="mpls-port mpls-port-active" x="-36" y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-active" x="-22" y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-active" x="-8"  y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-rtu"    x="6"   y="-11" width="10" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="20"  y="-11" width="10" height="6" rx="1"/>
-                <circle class="mpls-status-led mpls-led-ok" cx="36" cy="-8" r="4"/>
-                <line x1="-44" y1="4" x2="-44" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
-                <line x1="-40" y1="4" x2="-40" y2="18" stroke="#4a4a5a" stroke-width="1.2"/>
-                <text class="mpls-node-label" x="0" y="-38" text-anchor="middle">ACCESS1-3</text>
-                <text class="mpls-node-type"  x="0" y="40" text-anchor="middle">SR-1 · Nokia SR-OS</text>
-                <text class="mpls-node-ip"    x="0" y="53" text-anchor="middle">192.168.30.13</text>
+                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="4"/>
+                <rect class="mpls-panel-cell" x="-16" y="-17" width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="2"   y="-17" width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="-16" y="-4"  width="14" height="10" rx="2"/>
+                <rect class="mpls-panel-cell" x="2"   y="-4"  width="14" height="10" rx="2"/>
+                <rect class="mpls-port mpls-port-active" x="-26" y="13" width="8" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-active" x="-15" y="13" width="8" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-active" x="-4"  y="13" width="8" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-rtu"    x="7"   y="13" width="8" height="6" rx="1"/>
+                <rect class="mpls-port mpls-port-idle"   x="18"  y="13" width="8" height="6" rx="1"/>
+                <circle class="mpls-status-led mpls-led-ok" cx="21" cy="-20" r="4"/>
+                <text class="mpls-node-label" x="32" y="4" text-anchor="start">ACCESS1-3</text>
+                <text class="mpls-node-ip"   x="32" y="17" text-anchor="start">192.168.30.13</text>
             </g>
 
             <!-- ========================================================== -->
@@ -2708,29 +1833,32 @@
             <!-- ========================================================== -->
             <!-- RTU1 at (250, 475) -->
             <g class="mpls-node mpls-node-rtu" transform="translate(250, 475)">
-                <rect class="mpls-chassis mpls-rtu-chassis" x="-30" y="-16" width="60" height="32" rx="3"/>
-                <rect class="mpls-chassis-accent mpls-rtu-accent" x="-30" y="-16" width="60" height="4" rx="3"/>
-                <!-- LED indicators -->
-                <circle class="mpls-status-led mpls-led-ok"   cx="-16" cy="3" r="3.5"/>
-                <circle class="mpls-status-led mpls-led-ok"   cx="-6"  cy="3" r="3.5"/>
-                <circle class="mpls-status-led mpls-led-idle" cx="4"   cy="3" r="3.5"/>
-                <!-- ETH port -->
-                <rect x="14" y="-4" width="10" height="8" fill="#5a5a6a" rx="1"/>
-                <text class="mpls-node-label" x="0" y="-25" text-anchor="middle">RTU1</text>
-                <text class="mpls-node-type"  x="0" y="26" text-anchor="middle">Linux container</text>
+                <rect class="mpls-chassis mpls-rtu-chassis" x="-26" y="-16" width="52" height="32" rx="4"/>
+                <circle class="mpls-status-led mpls-led-ok"   cx="-10" cy="-2" r="4"/>
+                <circle class="mpls-status-led mpls-led-ok"   cx="2"   cy="-2" r="4"/>
+                <circle class="mpls-status-led mpls-led-idle" cx="14"  cy="-2" r="4"/>
+                <rect x="-22" y="7" width="10" height="6" fill="#5a5a6a" rx="1"/>
+                <text class="mpls-node-label" x="-30" y="4" text-anchor="end">RTU1</text>
+                <text class="mpls-node-ip"   x="-30" y="17" text-anchor="end">192.168.30.7</text>
             </g>
 
             <!-- RTU2 at (820, 475) -->
             <g class="mpls-node mpls-node-rtu" transform="translate(820, 475)">
-                <rect class="mpls-chassis mpls-rtu-chassis" x="-30" y="-16" width="60" height="32" rx="3"/>
-                <rect class="mpls-chassis-accent mpls-rtu-accent" x="-30" y="-16" width="60" height="4" rx="3"/>
-                <circle class="mpls-status-led mpls-led-ok"   cx="-16" cy="3" r="3.5"/>
-                <circle class="mpls-status-led mpls-led-ok"   cx="-6"  cy="3" r="3.5"/>
-                <circle class="mpls-status-led mpls-led-idle" cx="4"   cy="3" r="3.5"/>
-                <rect x="14" y="-4" width="10" height="8" fill="#5a5a6a" rx="1"/>
-                <text class="mpls-node-label" x="0" y="-25" text-anchor="middle">RTU2</text>
-                <text class="mpls-node-type"  x="0" y="26" text-anchor="middle">Linux container</text>
+                <rect class="mpls-chassis mpls-rtu-chassis" x="-26" y="-16" width="52" height="32" rx="4"/>
+                <circle class="mpls-status-led mpls-led-ok"   cx="-10" cy="-2" r="4"/>
+                <circle class="mpls-status-led mpls-led-ok"   cx="2"   cy="-2" r="4"/>
+                <circle class="mpls-status-led mpls-led-idle" cx="14"  cy="-2" r="4"/>
+                <rect x="-22" y="7" width="10" height="6" fill="#5a5a6a" rx="1"/>
+                <text class="mpls-node-label" x="30" y="4" text-anchor="start">RTU2</text>
+                <text class="mpls-node-ip"   x="30" y="17" text-anchor="start">192.168.30.6</text>
             </g>
+
+            <!-- ========================================================== -->
+            <!-- RTU GOOSE CHANNEL: RTU1(250,475) ↔ RTU2(820,475)          -->
+            <!-- ========================================================== -->
+            <line class="rtu-goose-link" x1="278" y1="475" x2="792" y2="475"/>
+
+            <!-- GOOSE PDU packets removed — flow driven by initMplsTrafficFlow() -->
 
             <!-- ========================================================== -->
             <!-- PORT LABELS on inter-layer links                            -->
@@ -2765,77 +1893,6 @@
             </g>
 
             <!-- ========================================================== -->
-            <!-- MONITORING INFRASTRUCTURE ZONE                              -->
-            <!-- gnmic collector + gnmi-relay (from network.yaml)            -->
-            <!-- ========================================================== -->
-            <!-- Zone band -->
-            <rect x="10" y="512" width="1080" height="115" rx="6"
-                  fill="rgba(26,138,138,0.05)" stroke="#1a8a8a" stroke-width="0.8"
-                  stroke-dasharray="6 3"/>
-            <text font-family="IBM Plex Mono,monospace" font-size="8" font-weight="700"
-                  letter-spacing="0.18em" fill="#1a8a8a" opacity="0.7"
-                  x="28" y="527">MONITORING INFRASTRUCTURE</text>
-
-            <!-- Collector lines removed for readability -->
-
-            <!-- ── gnmic node at (380, 580) ── -->
-            <g class="mpls-node" transform="translate(380, 580)">
-                <!-- Server outline -->
-                <rect x="-62" y="-30" width="124" height="60" rx="6"
-                      fill="#0d1f2d" stroke="#1a8a8a" stroke-width="1.4"/>
-                <!-- Top accent -->
-                <rect x="-62" y="-30" width="124" height="5" rx="6" fill="#1a8a8a" opacity="0.7"/>
-                <!-- Screen/display area -->
-                <rect x="-50" y="-18" width="68" height="26" rx="3" fill="#0a2a2a" stroke="#1a8a8a" stroke-width="0.6"/>
-                <!-- Scrolling text lines in display -->
-                <text x="-46" y="-8" font-family="IBM Plex Mono,monospace" font-size="5" fill="#1aeeaa" opacity="0.9">▶ subscribing…</text>
-                <text x="-46" y="-1" font-family="IBM Plex Mono,monospace" font-size="4.5" fill="#1a8a8a" opacity="0.7">dc1 ✓ dc2 ✓ acc1 ✓</text>
-                <text x="-46" y="5"  font-family="IBM Plex Mono,monospace" font-size="4.5" fill="#1a8a8a" opacity="0.5">port :9804 ready</text>
-                <!-- Status LED -->
-                <circle cx="30" cy="-12" r="4" fill="#1aeeaa" opacity="0.9">
-                    <animate attributeName="opacity" values="0.9;0.4;0.9" dur="2s" repeatCount="indefinite"/>
-                </circle>
-                <!-- Port indicator -->
-                <rect x="20" y="2" width="18" height="8" rx="2" fill="#1a3a3a"/>
-                <text x="29" y="8.5" text-anchor="middle"
-                      font-family="IBM Plex Mono,monospace" font-size="4.5" fill="#1aeeaa">9804</text>
-                <!-- Labels -->
-                <text font-family="IBM Plex Mono,monospace" font-size="9" font-weight="700"
-                      fill="#1aeeaa" x="0" y="-38" text-anchor="middle">gnmic</text>
-                <text font-family="IBM Plex Mono,monospace" font-size="7" fill="#1a8a8a"
-                      x="0" y="40" text-anchor="middle">OpenConfig · gNMI collector</text>
-                <text font-family="IBM Plex Mono,monospace" font-size="7" fill="#1a6a6a"
-                      x="0" y="51" text-anchor="middle">192.168.30.10</text>
-            </g>
-
-            <!-- ── gnmi-relay node at (720, 580) ── -->
-            <g class="mpls-node" transform="translate(720, 580)">
-                <!-- Relay box -->
-                <rect x="-55" y="-26" width="110" height="52" rx="5"
-                      fill="#1f1a0d" stroke="#e07820" stroke-width="1.2"/>
-                <rect x="-55" y="-26" width="110" height="5" rx="5" fill="#e07820" opacity="0.6"/>
-                <!-- Two port ports (IN/OUT relay) -->
-                <rect x="-40" y="-10" width="20" height="14" rx="3" fill="#1a1400" stroke="#e07820" stroke-width="0.8"/>
-                <text x="-30" y="-0.5" text-anchor="middle"
-                      font-family="IBM Plex Mono,monospace" font-size="5" fill="#e07820">IN</text>
-                <!-- Arrow -->
-                <text x="0" y="-0.5" text-anchor="middle" font-size="10" fill="#e07820" opacity="0.6">→</text>
-                <!-- OUT port -->
-                <rect x="20" y="-10" width="20" height="14" rx="3" fill="#1a1400" stroke="#e07820" stroke-width="0.8"/>
-                <text x="30" y="-0.5" text-anchor="middle"
-                      font-family="IBM Plex Mono,monospace" font-size="5" fill="#e07820">OUT</text>
-                <!-- Port label band -->
-                <rect x="-44" y="10" width="88" height="10" rx="2" fill="#2a1a00" opacity="0.8"/>
-                <text x="0" y="17.5" text-anchor="middle"
-                      font-family="IBM Plex Mono,monospace" font-size="6" fill="#e07820">:57400 → dc1:57400</text>
-                <!-- Labels -->
-                <text font-family="IBM Plex Mono,monospace" font-size="9" font-weight="700"
-                      fill="#e07820" x="0" y="-34" text-anchor="middle">gnmi-relay</text>
-                <text font-family="IBM Plex Mono,monospace" font-size="7" fill="#a05010"
-                      x="0" y="36" text-anchor="middle">socat TCP relay · alpine/socat</text>
-                <text font-family="IBM Plex Mono,monospace" font-size="7" fill="#7a4010"
-                      x="0" y="47" text-anchor="middle">192.168.30.20</text>
-            </g>
         </svg>
 
         <!-- Protocol / node type info bar -->
@@ -2857,6 +1914,257 @@
                 <span class="mpls-info-desc">IEC 61850 GOOSE/MMS · Modbus TCP · field device</span>
             </div>
         </div>
+
+        <!-- IEC 61850 GOOSE Teleprotection Control Panel -->
+        <div class="tpt-panel">
+            <div class="tpt-panel-header">
+                <svg width="20" height="20" viewBox="0 0 24 24" class="tpt-panel-icon">
+                    <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="currentColor"/>
+                    <path d="M11 10V7l-4 5h3v3l4-5h-3z" fill="#1a1a2e"/>
+                </svg>
+                <span class="tpt-panel-title">IEC 61850 GOOSE &mdash; Teleprotection Channel</span>
+                <span class="tpt-panel-std">IEC 61850-8-1 &middot; IEC 61850-90-1</span>
+                <div class="tpt-controls">
+                    <button id="tpt-deploy-btn" class="tpt-btn tpt-btn-deploy" title="Copy daemon to RTU containers and start (install-tpt.sh)">&#8679; Deploy</button>
+                    <button id="tpt-start-btn"  class="tpt-btn tpt-btn-start">&#9654; Start</button>
+                    <button id="tpt-stop-btn"   class="tpt-btn tpt-btn-stop">&#9632; Stop</button>
+                    <button id="tpt-trip-btn"   class="tpt-btn tpt-btn-trip">&#9889; Trip RTU1</button>
+                    <button id="tpt-clear-btn"  class="tpt-btn tpt-btn-clear">&#10005; Clear</button>
+                </div>
+            </div>
+
+            <!-- Body: status column left, log right -->
+            <div class="tpt-body">
+            <!-- Status column: RTU1 / channel / RTU2 stacked -->
+            <div class="tpt-status-row">
+                <!-- RTU1 card -->
+                <div class="tpt-node-card" id="tpt-card-rtu1">
+                    <div class="tpt-node-header">
+                        <span class="tpt-node-dot" id="tpt-dot-rtu1"></span>
+                        <span class="tpt-node-name">RTU1</span>
+                        <span class="tpt-node-ip">192.168.30.7</span>
+                    </div>
+                    <div class="tpt-node-stats">
+                        <div class="tpt-stat"><span class="tpt-stat-val" id="tpt1-sent">—</span><span class="tpt-stat-lbl">TX PDUs</span></div>
+                        <div class="tpt-stat"><span class="tpt-stat-val" id="tpt1-stnum">—</span><span class="tpt-stat-lbl">stNum</span></div>
+                        <div class="tpt-stat"><span class="tpt-stat-val tpt-v" id="tpt1-v">—</span><span class="tpt-stat-lbl">V p.u.</span></div>
+                        <div class="tpt-stat"><span class="tpt-stat-val tpt-a" id="tpt1-i">—</span><span class="tpt-stat-lbl">I p.u.</span></div>
+                    </div>
+                    <!-- T₀ heartbeat countdown ring -->
+                    <div class="tpt-hb-row">
+                        <svg class="tpt-hb-ring" viewBox="0 0 56 56" width="56" height="56" aria-hidden="true">
+                            <circle class="tpt-hb-bg"  cx="28" cy="28" r="22"/>
+                            <circle class="tpt-hb-arc" id="tpt1-hb-arc" cx="28" cy="28" r="22"
+                                    transform="rotate(-90 28 28)"/>
+                            <text   class="tpt-hb-val" id="tpt1-hb-val" x="28" y="28">—</text>
+                        </svg>
+                        <div class="tpt-hb-info">
+                            <span class="tpt-hb-label">T₀ HEARTBEAT</span>
+                            <span class="tpt-hb-sub" id="tpt1-hb-sub">offline</span>
+                        </div>
+                    </div>
+                    <div class="tpt-trip-indicator" id="tpt1-trip-ind">
+                        <span class="tpt-trip-dot" id="tpt1-trip-dot"></span>
+                        <span id="tpt1-trip-label">ARMED</span>
+                    </div>
+                </div>
+
+                <!-- Animated channel -->
+                <div class="tpt-channel-vis">
+                    <div class="tpt-channel-line">
+                        <div class="tpt-pulse" id="tpt-pulse-fwd"></div>
+                    </div>
+                    <div class="tpt-channel-label">UDP :61850<br>GOOSE</div>
+                    <div class="tpt-channel-line">
+                        <div class="tpt-pulse tpt-pulse-rev" id="tpt-pulse-rev"></div>
+                    </div>
+                </div>
+
+                <!-- RTU2 card -->
+                <div class="tpt-node-card" id="tpt-card-rtu2">
+                    <div class="tpt-node-header">
+                        <span class="tpt-node-dot" id="tpt-dot-rtu2"></span>
+                        <span class="tpt-node-name">RTU2</span>
+                        <span class="tpt-node-ip">192.168.30.6</span>
+                    </div>
+                    <div class="tpt-node-stats">
+                        <div class="tpt-stat"><span class="tpt-stat-val" id="tpt2-sent">—</span><span class="tpt-stat-lbl">TX PDUs</span></div>
+                        <div class="tpt-stat"><span class="tpt-stat-val" id="tpt2-stnum">—</span><span class="tpt-stat-lbl">stNum</span></div>
+                        <div class="tpt-stat"><span class="tpt-stat-val tpt-v" id="tpt2-v">—</span><span class="tpt-stat-lbl">V p.u.</span></div>
+                        <div class="tpt-stat"><span class="tpt-stat-val tpt-a" id="tpt2-i">—</span><span class="tpt-stat-lbl">I p.u.</span></div>
+                    </div>
+                    <!-- T₀ heartbeat countdown ring -->
+                    <div class="tpt-hb-row">
+                        <svg class="tpt-hb-ring" viewBox="0 0 56 56" width="56" height="56" aria-hidden="true">
+                            <circle class="tpt-hb-bg"  cx="28" cy="28" r="22"/>
+                            <circle class="tpt-hb-arc" id="tpt2-hb-arc" cx="28" cy="28" r="22"
+                                    transform="rotate(-90 28 28)"/>
+                            <text   class="tpt-hb-val" id="tpt2-hb-val" x="28" y="28">—</text>
+                        </svg>
+                        <div class="tpt-hb-info">
+                            <span class="tpt-hb-label">T₀ HEARTBEAT</span>
+                            <span class="tpt-hb-sub" id="tpt2-hb-sub">offline</span>
+                        </div>
+                    </div>
+                    <div class="tpt-trip-indicator" id="tpt2-trip-ind">
+                        <span class="tpt-trip-dot" id="tpt2-trip-dot"></span>
+                        <span id="tpt2-trip-label">ARMED</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GOOSE exchange log — right of status column -->
+            <div class="tpt-log-wrap">
+                <div class="tpt-log-header">
+                    <span>GOOSE PDU Exchange Log</span>
+                    <span class="tpt-log-hint">Last 10 PDUs &middot; IEC 61850-8-1 APDU fields</span>
+                </div>
+                <!-- Retransmit burst pattern chart -->
+                <div class="tpt-burst-wrap">
+                    <div class="tpt-burst-hdr">
+                        <span>RETRANSMIT PATTERN</span>
+                        <span class="tpt-burst-legend">
+                            <span class="tpt-burst-leg tpt-burst-t1">T1 &#x2264;5ms</span>
+                            <span class="tpt-burst-leg tpt-burst-t2">T2 &#x2264;20ms</span>
+                            <span class="tpt-burst-leg tpt-burst-t3">T3 &#x2264;200ms</span>
+                            <span class="tpt-burst-leg tpt-burst-t0">T0 &gt;200ms</span>
+                        </span>
+                    </div>
+                    <svg class="tpt-burst-svg" id="tpt-burst-svg"
+                         viewBox="0 0 400 58" preserveAspectRatio="none" aria-hidden="true">
+                        <text x="200" y="29" text-anchor="middle"
+                              class="tpt-burst-empty">No PDU data yet</text>
+                    </svg>
+                </div>
+                <div class="tpt-log" id="tpt-log">
+                    <div class="tpt-log-idle">Daemon offline — run <code>./scripts/install-tpt.sh</code> to deploy</div>
+                </div>
+                <!-- Latency Sparkline + Stats -->
+                <div class="tpt-spark-wrap">
+                    <div class="tpt-spark-row">
+                        <svg class="tpt-spark-svg" id="tpt-spark-svg"
+                             viewBox="0 0 300 30" preserveAspectRatio="none" aria-hidden="true">
+                            <text x="150" y="15" text-anchor="middle" class="tpt-spark-empty">No PDU data</text>
+                        </svg>
+                        <div class="tpt-spark-stats">
+                            <div class="tpt-spark-pill tpt-spark-min">
+                                <span class="tpt-spark-pill-lbl">MIN</span>
+                                <span class="tpt-spark-pill-val" id="tpt-stat-min">—</span>
+                            </div>
+                            <div class="tpt-spark-pill tpt-spark-avg">
+                                <span class="tpt-spark-pill-lbl">AVG</span>
+                                <span class="tpt-spark-pill-val" id="tpt-stat-avg">—</span>
+                            </div>
+                            <div class="tpt-spark-pill tpt-spark-max">
+                                <span class="tpt-spark-pill-lbl">MAX</span>
+                                <span class="tpt-spark-pill-val" id="tpt-stat-max">—</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                <!-- StNum Event Strip — fault recorder, 3rd column in tpt-body -->
+                <div class="tpt-recorder-wrap" id="tpt-recorder-wrap">
+                    <div class="tpt-recorder-hdr">
+                        <svg width="12" height="12" viewBox="0 0 24 24" class="tpt-recorder-icon" aria-hidden="true">
+                            <rect x="2" y="6" width="20" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+                            <circle cx="8" cy="12" r="2.5" fill="currentColor"/>
+                            <line x1="14" y1="9" x2="20" y2="9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            <line x1="14" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            <line x1="14" y1="15" x2="18" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                        <span class="tpt-recorder-title">EVENT RECORDER</span>
+                        <button class="tpt-recorder-clear" id="tpt-recorder-clear" title="StNum state changes — auto-scroll newest right&#10;Click to clear history">&#10005;</button>
+                    </div>
+                    <div class="tpt-recorder-body">
+                        <div class="tpt-recorder-track-wrap">
+                            <div class="tpt-recorder-label">RTU1</div>
+                            <div class="tpt-recorder-track" id="tpt-strip-rtu1">
+                                <span class="tpt-recorder-idle">Waiting for events…</span>
+                            </div>
+                        </div>
+                        <div class="tpt-recorder-track-wrap">
+                            <div class="tpt-recorder-label">RTU2</div>
+                            <div class="tpt-recorder-track" id="tpt-strip-rtu2">
+                                <span class="tpt-recorder-idle">Waiting for events…</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div><!-- end tpt-body -->
+
+            <!-- Protocol description (educational) -->
+            <div class="tpt-description">
+                <p>
+                    <strong>GOOSE</strong> (Generic Object-Oriented Substation Event) is a publish/subscribe
+                    messaging protocol defined in <em>IEC&nbsp;61850-8-1</em> for real-time communication inside
+                    power substations. Unlike conventional network traffic, GOOSE frames are sent as <strong>multicast
+                    Ethernet packets</strong> — bypassing TCP/IP entirely — which enables event delivery
+                    in <strong>under 4&nbsp;ms</strong>, satisfying the strict timing requirements of
+                    protection systems (class P2/P3 per IEC&nbsp;61850-5).
+                </p>
+                <p>
+                    Each RTU continuously publishes its binary state (heartbeat). When a fault is detected
+                    (overcurrent, short-circuit, …) the publisher immediately re-transmits the GOOSE PDU
+                    at an <strong>exponentially increasing rate</strong>, ensuring all subscribers open the
+                    correct circuit breakers within milliseconds — a scheme known as
+                    <em>teleprotection</em> (IEC&nbsp;61850-90-1). The <em>StNum</em> counter increments
+                    on every state change; <em>SqNum</em> tracks retransmissions within the same event.
+                </p>
+                <p>
+                    <strong>What happens when you press Trip RTU1:</strong>
+                </p>
+                <ol class="tpt-trip-steps">
+                    <li>
+                        The dashboard sends <code>POST /api/tpt/trip</code> to the backend, which
+                        forwards it to the <em>tpt-daemon</em> running on RTU1
+                        (<code>192.168.30.7:8850</code>).
+                    </li>
+                    <li>
+                        The daemon sets <code>trip = True</code> on the dataset and increments
+                        <em>StNum</em> — the IEC&nbsp;61850 state-change counter. This single
+                        increment is the signal that tells every subscriber something has changed.
+                    </li>
+                    <li>
+                        RTU1 immediately fires a <strong>rapid-retransmit burst</strong> following
+                        the schedule mandated by the standard:
+                        <code>T1 (2 ms) × 2 → T2 (10 ms) → T3 (100 ms) × 2</code>, then falls
+                        back to the steady heartbeat at <code>T0 = 1 s</code>. Each retransmission
+                        increments <em>SqNum</em> while keeping <em>StNum</em> unchanged, so
+                        subscribers can distinguish retransmits from new events.
+                    </li>
+                    <li>
+                        The PDUs travel over the <strong>MPLS ACCESS layer</strong>
+                        (RTU1 → ACCESS1-1 → SR1-ACC1 → … → ACCESS1-3 → RTU2). RTU2's subscriber
+                        receives the burst, reads <code>trip = True</code>, logs the entry, and
+                        would assert its own relay output in a real substation.
+                    </li>
+                    <li>
+                        The panel updates within 1.5 s (next poll): RTU1's card turns red
+                        (<em>TRIPPED</em>), <em>StNum</em> is one higher than before, and the PDU
+                        log shows a burst of <strong>⚡ TRIP</strong> rows with sequential
+                        <em>SqNum</em> values close together in time.
+                    </li>
+                    <li>
+                        If the MPLS path is broken while the trip is active, RTU2 stops receiving
+                        heartbeats; after 5 × T0 (5 s) the dashboard raises a
+                        <strong>COMM LOSS</strong> banner and the main-dashboard teleprotection
+                        state changes to <em>open</em>.
+                    </li>
+                </ol>
+                <p class="tpt-desc-note">
+                    &#9432;&nbsp;Press <strong>Clear</strong> to de-assert the trip signal
+                    (another <em>StNum</em> increment, new retransmit burst, <code>trip = False</code>).
+                    Press <strong>Stop</strong> to halt both daemons; when RTU2 detects the
+                    heartbeat timeout it will raise COMM LOSS on its own.
+                </p>
+            </div>
+        <!-- PDU Detail Popover — shown on click of a log row (Option 5) -->
+        <div id="tpt-pdu-backdrop" class="tpt-pdu-backdrop" style="display:none;" aria-hidden="true"></div>
+        <div id="tpt-pdu-popover"  class="tpt-pdu-popover"  style="display:none;" role="dialog"
+             aria-label="GOOSE PDU detail" aria-modal="false"></div>
+
+        </div><!-- end tpt-panel -->
 
     </div><!-- end mpls-section -->
 
@@ -3147,6 +2455,142 @@
             </div><!-- end body -->
         </div><!-- end card -->
     </div><!-- end dc2 overlay -->
+
+    <!-- ================================================================= -->
+    <!-- ACCESS1-1 LIVE TELEMETRY POPUP                                    -->
+    <!-- Opened when user clicks the ACCESS1-1 SVG node in MPLS NETWORK    -->
+    <!-- ================================================================= -->
+    <div id="a11-popup-overlay" class="dc1-popup-overlay" role="dialog" aria-modal="true" aria-label="ACCESS1-1 telemetry" style="display:none">
+        <div class="dc1-popup-card">
+
+            <!-- Header -->
+            <div class="dc1-popup-header">
+                <div class="dc1-popup-header-left">
+                    <svg class="dc1-popup-nokia-logo" width="28" height="28" viewBox="0 0 28 28">
+                        <rect width="28" height="28" rx="4" fill="#005AFF"/>
+                        <text x="14" y="20" text-anchor="middle" fill="white"
+                              font-family="sans-serif" font-size="11" font-weight="700">N</text>
+                    </svg>
+                    <div class="dc1-popup-title-group">
+                        <span class="dc1-popup-node-name">ACCESS1-1</span>
+                        <span class="dc1-popup-node-sub">SR-1 · Nokia SR-OS · Access Layer · 192.168.30.11</span>
+                    </div>
+                </div>
+                <div class="dc1-popup-header-right">
+                    <span class="dc1-popup-ts-badge" id="a11-popup-ts">—</span>
+                    <button class="dc1-popup-refresh-btn" id="a11-popup-refresh-btn" title="Refresh live data">
+                        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 3a5 5 0 0 0-4.546 2.916L2.1 4.563A6.5 6.5 0 1 1 1.5 8H3a5 5 0 1 0 5-5z"/>
+                        </svg>
+                        Refresh
+                    </button>
+                    <button class="dc1-popup-close-btn" id="a11-popup-close-btn" aria-label="Close">✕</button>
+                </div>
+            </div>
+
+            <!-- Loading state -->
+            <div class="dc1-popup-loading" id="a11-popup-loading">
+                <div class="dc1-popup-spinner"></div>
+                <span>Fetching live data from 192.168.30.11…</span>
+            </div>
+
+            <!-- Error state -->
+            <div class="dc1-popup-error" id="a11-popup-error" style="display:none">
+                <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm.93 6.588l-.288 4.3a.562.562 0 0 1-1.118 0l-.288-4.3a.562.562 0 0 1 1.118 0zm-.549 6.069a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8z"/>
+                </svg>
+                <span id="a11-popup-error-text">Could not reach gnmic service</span>
+            </div>
+
+            <!-- Body -->
+            <div class="dc1-popup-body" id="a11-popup-body" style="display:none">
+
+                <!-- Physical Ports -->
+                <div class="dc1-popup-section">
+                    <div class="dc1-popup-section-hdr">
+                        <span class="dc1-popup-section-title">PHYSICAL PORTS</span>
+                        <span class="dc1-popup-section-count" id="a11-popup-ports-count">—</span>
+                    </div>
+                    <div class="dc1-chassis-panel">
+                        <div class="dc1-chassis-label">SR-1</div>
+                        <div class="dc1-port-grid" id="a11-popup-port-grid"></div>
+                    </div>
+                </div>
+
+                <!-- Router Interfaces -->
+                <div class="dc1-popup-section">
+                    <div class="dc1-popup-section-hdr">
+                        <span class="dc1-popup-section-title">ROUTER INTERFACES</span>
+                        <span class="dc1-popup-section-count" id="a11-popup-ifaces-count">—</span>
+                    </div>
+                    <table class="dc1-popup-table">
+                        <thead>
+                            <tr>
+                                <th>Router</th><th>Interface</th><th>State</th>
+                                <th>Primary IPv4</th><th>In pkts</th><th>Out pkts</th>
+                            </tr>
+                        </thead>
+                        <tbody id="a11-popup-ifaces-body"></tbody>
+                    </table>
+                </div>
+
+                <!-- IS-IS -->
+                <div class="dc1-popup-section">
+                    <div class="dc1-popup-section-hdr">
+                        <span class="dc1-popup-section-title">
+                            <span class="dc1-popup-proto-led" id="a11-popup-isis-led"></span>
+                            IS-IS
+                        </span>
+                        <span class="dc1-popup-section-count" id="a11-popup-isis-state">—</span>
+                    </div>
+                    <div class="dc1-popup-isis-levels" id="a11-popup-isis-levels"></div>
+                    <table class="dc1-popup-table">
+                        <thead>
+                            <tr>
+                                <th>Interface</th><th>Neighbor IP</th><th>Level</th>
+                                <th>State</th><th>Uptime</th>
+                            </tr>
+                        </thead>
+                        <tbody id="a11-popup-isis-body"></tbody>
+                    </table>
+                </div>
+
+                <!-- Segment Routing -->
+                <div class="dc1-popup-section">
+                    <div class="dc1-popup-section-hdr">
+                        <span class="dc1-popup-section-title">
+                            <span class="dc1-popup-proto-led" id="a11-popup-sr-led"></span>
+                            SEGMENT ROUTING
+                        </span>
+                        <span class="dc1-popup-section-count" id="a11-popup-sr-state">—</span>
+                    </div>
+                    <div class="dc-sr-summary" id="a11-popup-sr-summary"></div>
+                    <table class="dc1-popup-table">
+                        <thead>
+                            <tr>
+                                <th>Interface</th><th>Adj-SID</th>
+                                <th>Type</th><th>Protected</th><th>LFA Backup IP</th>
+                            </tr>
+                        </thead>
+                        <tbody id="a11-popup-sr-body"></tbody>
+                    </table>
+                </div>
+
+                <!-- SR-TE LSP ─────────────────────────────── -->
+                <div class="dc1-popup-section">
+                    <div class="dc1-popup-section-header">
+                        <span class="dc1-popup-section-title">
+                            <span class="dc1-popup-proto-led" id="a11-popup-lsp-led"></span>
+                            SR-TE LSP
+                        </span>
+                        <span class="dc1-popup-section-count" id="a11-popup-lsp-state">—</span>
+                    </div>
+                    <div class="dc-sr-summary" id="a11-popup-lsp-summary"></div>
+                </div>
+
+            </div><!-- end body -->
+        </div><!-- end card -->
+    </div><!-- end a11 overlay -->
 
     <script src="smart-grid.js"></script>
     <script src="turbine-control.js"></script>

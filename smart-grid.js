@@ -19,56 +19,27 @@ class SmartGrid {
         };
 
         this.transmissionUnits = {
-            transmission1: {
-                ip: '172.20.20.20',
-                alive: true,
-                lastCheck: null
-            },
-            transmission2: {
-                ip: '172.20.20.21',
-                alive: true,
-                lastCheck: null
-            },
-            transmission3: {
-                ip: '172.20.20.22',
-                alive: true,
-                lastCheck: null
-            },
-            transmission4: {
-                ip: '172.20.20.23',
-                alive: true,
-                lastCheck: null
-            }
+            transmission1: { ip: null, alive: true, lastCheck: null },
+            transmission2: { ip: null, alive: true, lastCheck: null },
+            transmission3: { ip: null, alive: true, lastCheck: null },
+            transmission4: { ip: null, alive: true, lastCheck: null }
         };
 
-        this.routers = {
-            dc1: { name: 'DC-1', status: 'unknown', metrics: null, type: 'spine', host: '172.20.20.5' },
-            dc2: { name: 'DC-2', status: 'unknown', metrics: null, type: 'spine', host: '172.20.20.8' },
-            leaf1: { name: 'Leaf-1', status: 'unknown', metrics: null, type: 'leaf', host: '172.20.20.4' },
-            leaf2: { name: 'Leaf-2', status: 'unknown', metrics: null, type: 'leaf', host: '172.20.20.3' },
-            leaf3: { name: 'Leaf-3', status: 'unknown', metrics: null, type: 'leaf', host: '172.20.20.6' },
-            leaf4: { name: 'Leaf-4', status: 'unknown', metrics: null, type: 'leaf', host: '172.20.20.2' }
-        };
 
-        this.rtus = {
-            rtu1: { name: 'RTU-1', status: 'unknown', host: '172.20.20.20' },
-            rtu2: { name: 'RTU-2', status: 'unknown', host: '172.20.20.21' },
-            rtu3: { name: 'RTU-3', status: 'unknown', host: '172.20.20.22' },
-            rtu4: { name: 'RTU-4', status: 'unknown', host: '172.20.20.23' }
-        };
-
-        this.gnmiServiceUrl = 'http://localhost:3001';
         this.pingServiceUrl = 'http://localhost:3000';
-        this.config = null; // Hydrated from /api/config after init().
+        this.config = null;
         this.activeTooltip = null;
         this.activePanel = null;
 
-        // Teleprotection state (T1-T2 differential protection)
+        // Teleprotection state — driven by MPLS GOOSE comm-loss
         this.teleprotection = {
-            closed: true, // Default state is closed
-            dc1Reachable: true,
-            dc2Reachable: true
+            closed: true
         };
+
+        // true when RTU1↔RTU2 GOOSE channel is down (no IGP path or comm-loss).
+        // Used to force Grid Status and Distribution Network offline independent
+        // of the user's network.active switch.
+        this.mplsCommLoss = false;
 
         this.manualOverride = false;
 
@@ -77,6 +48,9 @@ class SmartGrid {
         this.transmissionPowerMultiplier = 1.0;
 
         this.init();
+        // Expose instance globally so IIFEs (TPT poll, mplsTrafficFlow, popups)
+        // can reach updateMplsTeleprotectionStatus, mplsCommLoss, etc.
+        window.smartGrid = this;
     }
 
     init() {
@@ -116,12 +90,9 @@ class SmartGrid {
 
         // Start transmission units monitoring
         this.startTransmissionMonitoring();
+        this.startLinkMonitoring();
 
-        // Initialize router nodes event listeners
-        this.initializeRouterNodes();
 
-        // Start router monitoring
-        this.startRouterMonitoring();
 
         // Manual override toggle
         const overrideToggle = document.getElementById('manual-override-toggle');
@@ -129,73 +100,26 @@ class SmartGrid {
             overrideToggle.addEventListener('change', () => this.toggleManualOverride());
         }
 
-        // Fault injection panel
-        this.initFaultInjectionUI();
 
         // Fetch centralized config and overlay hardcoded defaults.
         // If the backend is down we keep the baked-in fallback — app still boots.
         this.loadConfig();
     }
 
-    initFaultInjectionUI() {
-        const kindSel = document.getElementById('fault-kind');
-        const idSel   = document.getElementById('fault-id');
-        if (!kindSel || !idSel) return;
-
-        const repopulate = () => {
-            const kind = kindSel.value;
-            let ids = [];
-            if (kind === 'router') ids = Object.keys(this.routers);
-            else if (kind === 'rtu') ids = Object.keys(this.rtus);
-            else if (kind === 'link') ids = Object.keys(this.config?.links || {});
-            idSel.innerHTML = ids.map(id => `<option value="${id}">${id}</option>`).join('');
-        };
-        kindSel.addEventListener('change', repopulate);
-        // Repopulate after config arrives (link list becomes known).
-        setTimeout(repopulate, 500);
-        setTimeout(repopulate, 2000);
-        repopulate();
-
-        document.getElementById('fault-down-btn')?.addEventListener('click', () => {
-            const kind = kindSel.value;
-            const id = idSel.value;
-            const state = kind === 'rtu' ? 'offline' : 'down';
-            this.injectFault(kind, id, state);
-        });
-        document.getElementById('fault-up-btn')?.addEventListener('click', () => {
-            const kind = kindSel.value;
-            const id = idSel.value;
-            const state = kind === 'rtu' ? 'online' : 'up';
-            this.injectFault(kind, id, state);
-        });
-        document.getElementById('fault-clear-btn')?.addEventListener('click', () => this.clearFaults());
-    }
 
     async loadConfig() {
         try {
-            const res = await fetch(`${this.gnmiServiceUrl}/api/config`);
+            const res = await fetch(`${this.pingServiceUrl}/api/config`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const cfg = await res.json();
             this.config = cfg;
-
-            // Overlay router hosts from config (leaf IPs change after lab redeploy).
-            for (const [id, r] of Object.entries(cfg.routers || {})) {
-                if (this.routers[id]) this.routers[id].host = r.host;
-            }
-            for (const [id, r] of Object.entries(cfg.rtus || {})) {
-                if (this.rtus[id]) this.rtus[id].host = r.host;
-            }
             if (cfg.grid?.cityDemandMW) this.city.demand = cfg.grid.cityDemandMW;
-            // Keep transmission-unit IP slots aligned with RTU IPs (used for ping-based monitoring).
-            const rtuHosts = Object.values(cfg.rtus || {}).map(r => r.host);
-            ['transmission1','transmission2','transmission3','transmission4'].forEach((k, i) => {
-                if (this.transmissionUnits[k] && rtuHosts[i]) this.transmissionUnits[k].ip = rtuHosts[i];
-            });
             console.log('[SmartGrid] Config loaded from /api/config');
         } catch (err) {
             console.warn('[SmartGrid] /api/config unavailable, using built-in defaults:', err.message);
         }
     }
+
 
     togglePlant(plantId) {
         const plant = this.plants[plantId];
@@ -287,18 +211,6 @@ class SmartGrid {
         const warningEl = document.getElementById('override-warning');
 
         if (this.manualOverride) {
-            // Force all routers to connected
-            Object.keys(this.routers).forEach(routerId => {
-                this.routers[routerId].status = 'connected';
-                this.updateRouterVisualization(routerId, { status: 'connected' });
-            });
-
-            // Force all RTUs to online
-            Object.keys(this.rtus).forEach(rtuId => {
-                this.rtus[rtuId].status = 'online';
-                this.updateRtuVisualization(rtuId, { status: 'online' });
-            });
-
             // Force all links to up
             document.querySelectorAll('.router-connection[data-link]').forEach(connection => {
                 connection.classList.remove('link-down');
@@ -336,21 +248,11 @@ class SmartGrid {
             // Refresh city power display
             this.updateDisplay();
 
-            // Update teleprotection as all-up
-            this.updateTeleprotectionStatus();
-            const allUpLinks = {};
-            document.querySelectorAll('.router-connection[data-link]').forEach(el => {
-                allUpLinks[el.dataset.link] = 'up';
-            });
-            this.updateTeleprotectionFromLinks(allUpLinks);
+            // Force MPLS teleprotection to closed (GOOSE comm healthy)
+            this.updateMplsTeleprotectionStatus(false);
 
             // Update stats
             this.updateInfographicStats();
-
-            // Add orange dashed outline to all router/RTU nodes
-            document.querySelectorAll('.router-node').forEach(node => {
-                node.classList.add('manual-override');
-            });
 
             // Show warning and update status text
             if (statusEl) {
@@ -389,20 +291,11 @@ class SmartGrid {
 
             this.updateDisplay();
 
-            // Remove override styling
-            document.querySelectorAll('.router-node').forEach(node => {
-                node.classList.remove('manual-override');
-            });
-
             if (statusEl) {
                 statusEl.textContent = 'Inactive';
                 statusEl.className = 'override-status inactive';
             }
             if (warningEl) warningEl.classList.remove('visible');
-
-            // Re-poll real status immediately
-            this.checkAllRouters();
-            this.checkAllLinks();
         }
     }
 
@@ -508,12 +401,14 @@ class SmartGrid {
         // Update total output
         document.getElementById('totalOutput').textContent = Math.round(totalOutput);
 
-        // Update grid status
+        // Update grid status — offline when comm-loss even if network switch is on
         const gridStatus = document.getElementById('gridStatus');
-        if (this.network.active && totalOutput > 0) {
+        if (this.network.active && totalOutput > 0 && !this.mplsCommLoss) {
             gridStatus.textContent = 'online';
+            gridStatus.className   = '';
         } else {
             gridStatus.textContent = 'offline';
+            gridStatus.className   = this.mplsCommLoss ? 'stat-value-fault' : '';
         }
 
         // Update individual plant outputs
@@ -526,9 +421,9 @@ class SmartGrid {
             }
         });
 
-        // Calculate city power
+        // Calculate city power — zero when MPLS comm-loss regardless of user switches
         let cityPower = 0;
-        if (this.network.active) {
+        if (this.network.active && !this.mplsCommLoss) {
             cityPower = totalOutput * this.network.efficiency;
 
             // Apply transmission units reduction (25% per offline unit)
@@ -722,88 +617,114 @@ class SmartGrid {
     }
 
     startTransmissionMonitoring() {
-        // Check all transmission units status every 10 seconds
-        this.checkTransmissionUnit('transmission1');
-        this.checkTransmissionUnit('transmission2');
-        this.checkTransmissionUnit('transmission3');
-        this.checkTransmissionUnit('transmission4');
-
-        setInterval(() => {
-            this.checkTransmissionUnit('transmission1');
-            this.checkTransmissionUnit('transmission2');
-            this.checkTransmissionUnit('transmission3');
-            this.checkTransmissionUnit('transmission4');
-        }, 10000);
+        // MPLS-based check: transmission is healthy when ACCESS1-1 and ACCESS1-3 are
+        // reachable AND the GOOSE channel between RTU1 and RTU2 is active.
+        this._mplsAccessAlive = null;  // null = no data yet; don't touch initial alive:true state
+        this._checkMplsAccess();
+        setInterval(() => this._checkMplsAccess(), 10000);
     }
 
-    async checkTransmissionUnit(unitId) {
+    async _checkMplsAccess() {
         if (this.manualOverride) return;
-        const unit = this.transmissionUnits[unitId];
-        if (!unit) return;
-
         try {
-            // Call the ping service to check if host is reachable
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            const ctrl = new AbortController();
+            const tid  = setTimeout(() => ctrl.abort(), 12000);
+            const res  = await fetch(`${this.pingServiceUrl}/api/mpls/access-health`, { signal: ctrl.signal });
+            clearTimeout(tid);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            this._mplsAccessAlive = {
+                access1: !!(data.access1?.healthy),
+                access3: !!(data.access3?.healthy),
+            };
+            this._mplsAccessDetail = data;
+        } catch (err) {
+            console.warn('[MPLS] access-health check failed:', err.message);
+            // On error keep previous state — don't flip to dead on transient failure
+        }
+        this._applyMplsTransmissionState();
+        this._updateTpFaultIndicators();
+    }
 
-            const response = await fetch(`http://localhost:3001/api/ping?ip=${unit.ip}`, {
-                method: 'GET',
-                signal: controller.signal
-            });
+    _updateTpFaultIndicators() {
+        const a1RtuFault = this._mplsAccessDetail?.access1?.rtuPortUp === false;
+        const lineA  = document.getElementById('tp-comm-line-a');
+        const faultA = document.getElementById('tp-fault-a11-rtu');
+        const pulseA1 = document.getElementById('tp-pulse-a1');
+        const pulseA2 = document.getElementById('tp-pulse-a2');
+        if (lineA)   lineA.classList.toggle('tp-comm-line-fault', a1RtuFault);
+        if (faultA)  faultA.setAttribute('display', a1RtuFault ? 'block' : 'none');
+        if (pulseA1) pulseA1.style.visibility = a1RtuFault ? 'hidden' : '';
+        if (pulseA2) pulseA2.style.visibility = a1RtuFault ? 'hidden' : '';
+    }
 
-            clearTimeout(timeoutId);
+    startLinkMonitoring() {
+        this._checkLinkHealth();
+        // Stagger from access-health (10 s) to avoid burst; re-check every 15 s.
+        setInterval(() => this._checkLinkHealth(), 15000);
+    }
 
-            if (!response.ok) {
-                throw new Error('Ping service error');
-            }
-
-            const result = await response.json();
-
-            // Update status based on ping result
-            const wasDown = !unit.alive;
-            unit.alive = result.alive;
-            unit.lastCheck = new Date();
-
-            if (result.alive && wasDown) {
-                // Host came back online
-                this.clearTransmissionAlert(unitId);
-                this.updateTransmissionStatus(unitId, true);
-            } else if (!result.alive && unit.alive !== false) {
-                // Host went offline
-                this.showTransmissionAlert(unitId);
-                this.updateTransmissionStatus(unitId, false);
-            } else if (result.alive) {
-                // Host still online
-                this.updateTransmissionStatus(unitId, true);
-            } else {
-                // Host still offline
-                this.updateTransmissionStatus(unitId, false);
-            }
-
-        } catch (error) {
-            // Ping service unavailable or error
-            console.error(`Error checking ${unitId}:`, error);
-
-            // Mark as offline if we can't check
-            const wasAlive = unit.alive;
-            unit.alive = false;
-            unit.lastCheck = new Date();
-
-            if (wasAlive) {
-                this.showTransmissionAlert(unitId);
-            }
-
-            this.updateTransmissionStatus(unitId, false);
+    async _checkLinkHealth() {
+        if (this.manualOverride) return;
+        try {
+            const ctrl = new AbortController();
+            const tid  = setTimeout(() => ctrl.abort(), 14000);
+            const res  = await fetch(`${this.pingServiceUrl}/api/mpls/link-health`, { signal: ctrl.signal });
+            clearTimeout(tid);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            this._applyLinkHealth(data.links || {});
+        } catch (err) {
+            console.warn('[MPLS] link-health check failed:', err.message);
         }
     }
 
+    _applyLinkHealth(links) {
+        const faultSet = new Set();
+        for (const [linkId, info] of Object.entries(links)) {
+            const el = document.getElementById(linkId);
+            if (!el) continue;
+            const fault = info.status === 'down';
+            el.classList.toggle('mpls-link-fault', fault);
+            if (fault) faultSet.add(linkId);
+        }
+        // Notify traffic-flow module so it can reroute (or signal comm-loss)
+        window.mplsTrafficFlow?.onLinkHealthUpdate(faultSet);
+    }
+
+    _applyMplsTransmissionState() {
+        // No data yet — preserve initial alive:true state from constructor.
+        if (this._mplsAccessAlive === null) return;
+
+        // All three conditions must hold for the grid to receive full energy.
+        const healthy = (this._mplsAccessAlive?.access1 ?? false)
+                     && (this._mplsAccessAlive?.access3 ?? false)
+                     && (this.teleprotection.closed);
+
+        Object.keys(this.transmissionUnits).forEach(unitId => {
+            const wasAlive = this.transmissionUnits[unitId].alive;
+            this.transmissionUnits[unitId].alive      = healthy;
+            this.transmissionUnits[unitId].lastCheck  = new Date();
+            if (!wasAlive && healthy)  this.clearTransmissionAlert(unitId);
+            if (wasAlive  && !healthy) this.showTransmissionAlert(unitId);
+            this.updateTransmissionStatus(unitId, healthy);
+        });
+    }
+
     showTransmissionAlert(unitId) {
-        const unit = this.transmissionUnits[unitId];
         const unitName = unitId.replace('transmission', 'T');
 
         // Remove existing alert if present
         const existingAlert = document.getElementById(`alert-${unitId}`);
         if (existingAlert) existingAlert.remove();
+
+        const a1 = this._mplsAccessAlive?.access1;
+        const a3 = this._mplsAccessAlive?.access3;
+        const goose = this.teleprotection.closed;
+        const reason = !goose  ? 'GOOSE comm-loss — RTU1↔RTU2 channel down'
+                     : !a1    ? 'ACCESS1-1 (192.168.30.11) unreachable'
+                     : !a3    ? 'ACCESS1-3 (192.168.30.13) unreachable'
+                     :          'MPLS path degraded';
 
         // Create alert element
         const alertDiv = document.createElement('div');
@@ -813,8 +734,8 @@ class SmartGrid {
             <div class="alert-content">
                 <span class="alert-icon">⚠</span>
                 <div class="alert-text">
-                    <strong>Transmission Unit ${unitName} Offline</strong>
-                    <span>IP: ${unit.ip} - Connection failed</span>
+                    <strong>Transmission Unit ${unitName} — MPLS Path Lost</strong>
+                    <span>${reason}</span>
                 </div>
                 <button class="alert-close" onclick="this.parentElement.parentElement.remove()">×</button>
             </div>
@@ -918,344 +839,47 @@ class SmartGrid {
 
     // ===== ROUTER MONITORING METHODS =====
 
-    initializeRouterNodes() {
-        // Attach event listeners to all router nodes
-        const routerNodes = document.querySelectorAll('[data-router]');
-
-        routerNodes.forEach(node => {
-            const routerId = node.getAttribute('data-router');
-
-            // Hover to show tooltip
-            node.addEventListener('mouseenter', (e) => {
-                this.showRouterTooltip(routerId, e);
-            });
-
-            node.addEventListener('mouseleave', () => {
-                this.hideRouterTooltip();
-            });
-
-            // Click to show detail panel
-            node.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.showRouterPanel(routerId);
-            });
-        });
-    }
-
-    startRouterMonitoring() {
-        // Prefer Server-Sent Events for real-time updates; fall back to polling.
-        this.startEventStream();
-
-        // Initial fetch so UI has data even before first SSE snapshot arrives.
-        this.checkAllRouters();
-        this.checkAllLinks();
-
-        // Safety-net poll at 30s (was 10s) — SSE is authoritative when connected.
-        setInterval(() => {
-            if (!this._sseConnected) {
-                this.checkAllRouters();
-                this.checkAllLinks();
-            }
-        }, 30000);
-    }
-
-    startEventStream() {
-        try {
-            const es = new EventSource(`${this.gnmiServiceUrl}/api/events`);
-            this._sseConnected = false;
-
-            es.addEventListener('snapshot', (e) => {
-                this._sseConnected = true;
-                try { this.applySnapshot(JSON.parse(e.data)); } catch (err) { console.warn('snapshot parse', err); }
-            });
-            es.addEventListener('event', (e) => {
-                try { this.appendTimelineEvent(JSON.parse(e.data)); } catch (err) {}
-            });
-            es.onerror = () => {
-                this._sseConnected = false;
-                // EventSource auto-reconnects; no manual retry needed.
-            };
-            this._eventSource = es;
-        } catch (err) {
-            console.warn('[SmartGrid] SSE unavailable, using polling fallback:', err.message);
-        }
-    }
-
-    applySnapshot(snap) {
-        if (this.manualOverride) return;
-        // Routers
-        if (snap.routers) {
-            for (const [id, r] of Object.entries(snap.routers)) {
-                if (this.routers[id]) {
-                    this.routers[id].status = r.status;
-                    this.routers[id].lastUpdate = r.lastUpdate;
-                    this.updateRouterVisualization(id, r);
-                }
-            }
-        }
-        // RTUs
-        if (snap.rtus) {
-            for (const [id, r] of Object.entries(snap.rtus)) {
-                if (this.rtus[id]) {
-                    this.rtus[id].status = r.status;
-                    this.updateRtuVisualization?.(id, r);
-                }
-            }
-        }
-        // Links — reuse existing rendering path.
-        if (snap.links) this.renderLinkStates?.(snap.links) || this._applyLinkStates(snap.links);
-        // Teleprotection FSM state
-        if (snap.teleprotection) this.applyTeleprotectionFsm(snap.teleprotection);
-        this.updateInfographicStats();
-    }
-
-    _applyLinkStates(links) {
-        // Fallback renderer: toggle .link-up/.link-down on [data-link] elements.
-        Object.entries(links).forEach(([linkId, info]) => {
-            document.querySelectorAll(`[data-link="${linkId}"]`).forEach(el => {
-                el.classList.toggle('link-up', info.status === 'up');
-                el.classList.toggle('link-down', info.status !== 'up');
-                el.classList.toggle('link-faulted', !!info.faulted);
-            });
-        });
-        // Defer breaker/teleprotection derivation to backend FSM (applyTeleprotectionFsm).
-    }
-
-    applyTeleprotectionFsm(tp) {
-        // Mirror backend FSM into existing visual indicators. Visual rule:
-        // ARMED → closed/green; PICKUP → warning; TRIP → open/red.
-        const breakerState = tp.state === 'TRIP' ? 'open' : 'closed';
-        this.teleprotection.closed = breakerState === 'closed';
-        this.teleprotection.fsm = tp;
-        // Reuse existing rendering if available.
-        if (typeof this.updateTeleprotectionVisual === 'function') {
-            this.updateTeleprotectionVisual(breakerState, tp);
-        } else {
-            document.querySelectorAll('[data-teleprotection-state]').forEach(el => {
-                el.setAttribute('data-teleprotection-state', tp.state.toLowerCase());
-            });
-        }
-    }
-
-    appendTimelineEvent(entry) {
-        const list = document.getElementById('event-timeline-list');
-        if (!list) return;
-        const li = document.createElement('li');
-        li.className = `timeline-entry kind-${entry.kind}`;
-        const ts = new Date(entry.ts).toLocaleTimeString();
-        let desc = '';
-        switch (entry.kind) {
-            case 'teleprotection': desc = `Teleprotezione: ${entry.from} → ${entry.to} (${entry.reason})`; break;
-            case 'router-status':  desc = `Router ${entry.id}: ${entry.from} → ${entry.to}`; break;
-            case 'rtu-status':     desc = `RTU ${entry.id}: ${entry.from} → ${entry.to}`; break;
-            case 'fault-inject':   desc = `Fault inject: ${entry.kind || ''} ${entry.id} = ${entry.state}`; break;
-            case 'fault-clear':    desc = 'Fault overrides cleared'; break;
-            default: desc = entry.kind;
-        }
-        li.innerHTML = `<span class="ts">${ts}</span> <span class="desc">${desc}</span>`;
-        list.insertBefore(li, list.firstChild);
-        // Cap visible list to 50 entries.
-        while (list.children.length > 50) list.removeChild(list.lastChild);
-    }
-
-    async injectFault(kind, id, state) {
-        try {
-            const res = await fetch(`${this.gnmiServiceUrl}/api/fault`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ kind, id, state })
-            });
-            if (!res.ok) console.warn('[SmartGrid] fault inject failed', await res.text());
-        } catch (err) {
-            console.warn('[SmartGrid] fault inject error', err);
-        }
-    }
-
-    async clearFaults() {
-        try {
-            await fetch(`${this.gnmiServiceUrl}/api/fault`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clear: true })
-            });
-        } catch (err) { console.warn(err); }
-    }
-
-    async checkAllRouters() {
-        if (this.manualOverride) return;
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-            const response = await fetch(`${this.gnmiServiceUrl}/api/routers`, {
-                method: 'GET',
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                throw new Error('gNMI service unavailable');
-            }
-
-            const data = await response.json();
-
-            // Update router statuses
-            Object.keys(data.routers).forEach(routerId => {
-                const routerData = data.routers[routerId];
-                if (this.routers[routerId]) {
-                    this.routers[routerId].status = routerData.status;
-                    this.routers[routerId].lastUpdate = routerData.lastUpdate;
-                    this.updateRouterVisualization(routerId, routerData);
-                }
-            });
-
-            // Update teleprotection status based on DC1 and DC2 reachability
-            this.updateTeleprotectionStatus();
-
-            // Check RTUs and update statistics
-            await this.checkAllRtus();
-            this.updateInfographicStats();
-
-        } catch (error) {
-            console.error('Error checking routers:', error);
-
-            // Mark all routers as unknown if service unavailable
-            Object.keys(this.routers).forEach(routerId => {
-                this.routers[routerId].status = 'unknown';
-                this.updateRouterVisualization(routerId, { status: 'unknown' });
-            });
-
-            // Update teleprotection status (will be open if routers unreachable)
-            this.updateTeleprotectionStatus();
-            this.updateInfographicStats();
-        }
-    }
-
-    async checkAllRtus() {
-        if (this.manualOverride) return;
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-            const response = await fetch(`${this.gnmiServiceUrl}/api/rtus`, {
-                method: 'GET',
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                throw new Error('RTU service unavailable');
-            }
-
-            const data = await response.json();
-
-            // Update RTU statuses
-            Object.keys(data.rtus).forEach(rtuId => {
-                const rtuData = data.rtus[rtuId];
-                if (this.rtus[rtuId]) {
-                    this.rtus[rtuId].status = rtuData.status;
-                    this.rtus[rtuId].lastCheck = rtuData.lastCheck;
-                    this.updateRtuVisualization(rtuId, rtuData);
-                }
-            });
-
-        } catch (error) {
-            console.error('Error checking RTUs:', error);
-            // Mark all RTUs as unknown if service unavailable
-            Object.keys(this.rtus).forEach(rtuId => {
-                this.rtus[rtuId].status = 'unknown';
-                this.updateRtuVisualization(rtuId, { status: 'unknown' });
-            });
-        }
-    }
-
-    updateRtuVisualization(rtuId, statusData) {
-        const node = document.querySelector(`[data-router="${rtuId}"]`);
-        if (!node) {
-            console.warn(`RTU node not found: ${rtuId}`);
-            return;
-        }
-
-        const status = statusData.status || 'unknown';
-        console.log(`Updating RTU ${rtuId} to status: ${status}`);
-
-        // Update node class for visual styling
-        node.classList.remove('rtu-online', 'rtu-offline', 'rtu-unknown');
-        node.classList.add(`rtu-${status}`);
-
-        // Update LED colors
-        const leds = node.querySelectorAll('.rtu-led');
-        console.log(`Found ${leds.length} LEDs for ${rtuId}`);
-        leds.forEach(led => {
-            led.classList.remove('led-online', 'led-offline', 'led-unknown');
-            led.classList.add(`led-${status}`);
-        });
-    }
 
     updateInfographicStats() {
-        // Count active routers
-        const totalRouters = Object.keys(this.routers).length;
-        let activeRouters = 0;
-        Object.values(this.routers).forEach(router => {
-            if (router.status === 'connected' || router.status === 'online') {
-                activeRouters++;
-            }
-        });
+        // Count MPLS network nodes from config
+        const mplsNodes = Object.values(this.config?.mplsNetwork?.nodes || {});
+        const totalNodes = mplsNodes.length || 7;
+        const activeNodes = totalNodes; // MPLS node liveness driven by gnmic separately
 
-        // Count active RTUs
-        const totalRtus = Object.keys(this.rtus).length;
-        let activeRtus = 0;
-        Object.values(this.rtus).forEach(rtu => {
-            if (rtu.status === 'online') {
-                activeRtus++;
-            }
-        });
+        // Count MPLS RTUs
+        const mplsRtus = Object.values(this.config?.mplsRtus || {});
+        const totalRtus = mplsRtus.length || 2;
+        const activeRtus = this.teleprotection.closed ? totalRtus : 0;
 
-        // Calculate percentages
-        const routersPercentage = totalRouters > 0 ? Math.round((activeRouters / totalRouters) * 100) : 0;
-        const rtusPercentage = totalRtus > 0 ? Math.round((activeRtus / totalRtus) * 100) : 0;
-        const totalDevices = totalRouters + totalRtus;
-        const activeDevices = activeRouters + activeRtus;
-        const overallPercentage = totalDevices > 0 ? Math.round((activeDevices / totalDevices) * 100) : 0;
+        const totalDevices = totalNodes + totalRtus;
+        const activeDevices = activeNodes + activeRtus;
 
-        // Update ring values
+        const nodesPercentage    = 100;
+        const rtusPercentage     = totalRtus > 0 ? Math.round((activeRtus / totalRtus) * 100) : 0;
+        const overallPercentage  = totalDevices > 0 ? Math.round((activeDevices / totalDevices) * 100) : 0;
+
         const activeRoutersEl = document.getElementById('active-routers');
-        const totalRoutersEl = document.getElementById('total-routers');
-        const activeRtusEl = document.getElementById('active-rtus');
-        const totalRtusEl = document.getElementById('total-rtus');
+        const totalRoutersEl  = document.getElementById('total-routers');
+        const activeRtusEl    = document.getElementById('active-rtus');
+        const totalRtusEl     = document.getElementById('total-rtus');
         const activeDevicesEl = document.getElementById('active-devices');
-        const totalDevicesEl = document.getElementById('total-devices');
+        const totalDevicesEl  = document.getElementById('total-devices');
 
-        if (activeRoutersEl) activeRoutersEl.textContent = activeRouters;
-        if (totalRoutersEl) totalRoutersEl.textContent = totalRouters;
-        if (activeRtusEl) activeRtusEl.textContent = activeRtus;
-        if (totalRtusEl) totalRtusEl.textContent = totalRtus;
+        if (activeRoutersEl) activeRoutersEl.textContent = activeNodes;
+        if (totalRoutersEl)  totalRoutersEl.textContent  = totalNodes;
+        if (activeRtusEl)    activeRtusEl.textContent    = activeRtus;
+        if (totalRtusEl)     totalRtusEl.textContent     = totalRtus;
         if (activeDevicesEl) activeDevicesEl.textContent = activeDevices;
-        if (totalDevicesEl) totalDevicesEl.textContent = totalDevices;
+        if (totalDevicesEl)  totalDevicesEl.textContent  = totalDevices;
 
-        // Update rings with gradient colors
-        this.updateRing('routers-ring', routersPercentage);
+        this.updateRing('routers-ring', nodesPercentage);
         this.updateRing('rtus-ring', rtusPercentage);
         this.updateRing('overall-ring', overallPercentage);
 
-        // Update status text
-        const routersStatusText = document.getElementById('routers-status-text');
-        const rtusStatusText = document.getElementById('rtus-status-text');
+        const rtusStatusText    = document.getElementById('rtus-status-text');
         const overallStatusText = document.getElementById('overall-status-text');
-
-        if (routersStatusText) {
-            routersStatusText.textContent = this.getStatusText(routersPercentage);
-            routersStatusText.className = `stats-sublabel ${this.getPercentageClass(routersPercentage)}`;
-        }
-        if (rtusStatusText) {
-            rtusStatusText.textContent = this.getStatusText(rtusPercentage);
-            rtusStatusText.className = `stats-sublabel ${this.getPercentageClass(rtusPercentage)}`;
-        }
-        if (overallStatusText) {
-            overallStatusText.textContent = this.getStatusText(overallPercentage);
-            overallStatusText.className = `stats-sublabel ${this.getPercentageClass(overallPercentage)}`;
-        }
+        if (rtusStatusText)    { rtusStatusText.textContent    = this.getStatusText(rtusPercentage);    rtusStatusText.className    = `stats-sublabel ${this.getPercentageClass(rtusPercentage)}`;    }
+        if (overallStatusText) { overallStatusText.textContent = this.getStatusText(overallPercentage); overallStatusText.className = `stats-sublabel ${this.getPercentageClass(overallPercentage)}`; }
     }
 
     updateRing(ringId, percentage) {
@@ -1329,713 +953,98 @@ class SmartGrid {
         return 'status-critical';
     }
 
-    updateTeleprotectionStatus() {
-        // Check DC1 and DC2 reachability
-        const dc1Reachable = this.routers.dc1 && (this.routers.dc1.status === 'connected' || this.routers.dc1.status === 'online');
-        const dc2Reachable = this.routers.dc2 && (this.routers.dc2.status === 'connected' || this.routers.dc2.status === 'online');
+    // ── MPLS Teleprotection ─────────────────────────────────────────────
+    // Called by the TPT poll loop or mplsTrafficFlow whenever GOOSE comm-loss
+    // state changes.  Drives:
+    //   • teleprotection SVG icon (closed / open)
+    //   • Grid Status header (online / offline)
+    //   • Distribution Network card status text
+    //   • City power (forced to 0 on comm-loss)
+    updateMplsTeleprotectionStatus(commLoss) {
+        const changed = this.teleprotection.closed === commLoss; // closed XOR commLoss
+        this.teleprotection.closed = !commLoss;
 
-        // Update teleprotection state
-        this.teleprotection.dc1Reachable = dc1Reachable;
-        this.teleprotection.dc2Reachable = dc2Reachable;
-        this.teleprotection.closed = dc1Reachable && dc2Reachable;
+        // ── 1. Persist comm-loss flag for updateDisplay() ─────────────────
+        this.mplsCommLoss = commLoss;
 
-        // Update DOM elements
+        // ── 2. Distribution Network card: reflect forced offline state ─────
+        const distCard = document.querySelector('[data-network="distribution"]');
+        if (distCard) {
+            distCard.classList.toggle('mpls-forced-offline', commLoss);
+            const st = distCard.querySelector('.status-text');
+            if (st) {
+                st.textContent = commLoss ? 'offline'
+                               : (this.network.active ? 'online' : 'offline');
+                st.classList.toggle('status-fault', commLoss);
+            }
+        }
+
+        // ── 3. Force all transmission units offline on comm-loss ───────────
+        //    (belt-and-suspenders: _applyMplsTransmissionState may return early
+        //     if _mplsAccessAlive is still null during startup)
+        if (commLoss) {
+            Object.keys(this.transmissionUnits).forEach(unitId => {
+                const wasAlive = this.transmissionUnits[unitId].alive;
+                this.transmissionUnits[unitId].alive = false;
+                if (wasAlive) this.showTransmissionAlert(unitId);
+                this.updateTransmissionStatus(unitId, false);
+            });
+        }
+
+        // ── 4. Re-evaluate via normal MPLS state machine too ─────────────
+        // When GOOSE state changes, immediately re-evaluate transmission health
+        // (don't wait for the next 10s ping cycle).
+        if (changed) this._applyMplsTransmissionState();
+
         const closedIcon = document.getElementById('teleprotection-closed');
-        const openIcon = document.getElementById('teleprotection-open');
-        const stateText = document.getElementById('teleprotection-state-text');
-        const dc1StatusElement = document.getElementById('router-dc1-status');
-        const dc2StatusElement = document.getElementById('router-dc2-status');
+        const openIcon   = document.getElementById('teleprotection-open');
+        const stateText  = document.getElementById('teleprotection-state-text');
 
-        if (!closedIcon || !openIcon || !stateText || !dc1StatusElement || !dc2StatusElement) {
-            return; // Elements not found
-        }
-
-        // Update teleprotection icon and state text
-        if (this.teleprotection.closed) {
-            // Show closed icon
-            closedIcon.style.display = 'block';
-            openIcon.style.display = 'none';
-            stateText.textContent = 'CHIUSO / CLOSED';
-            stateText.className = 'teleprotection-state closed';
+        if (commLoss) {
+            if (closedIcon) closedIcon.style.display = 'none';
+            if (openIcon)   openIcon.style.display   = 'block';
+            if (stateText)  { stateText.textContent = 'COMM LOSS / APERTO'; stateText.className = 'teleprotection-state open'; }
         } else {
-            // Show open icon
-            closedIcon.style.display = 'none';
-            openIcon.style.display = 'block';
-            stateText.textContent = 'APERTO / OPEN';
-            stateText.className = 'teleprotection-state open';
+            if (closedIcon) closedIcon.style.display = 'block';
+            if (openIcon)   openIcon.style.display   = 'none';
+            if (stateText)  { stateText.textContent = 'CHIUSO / CLOSED'; stateText.className = 'teleprotection-state closed'; }
         }
 
-        // Update DC1 status indicator
-        if (dc1Reachable) {
-            dc1StatusElement.innerHTML = 'DC1: <span class="status-dot ok"></span>Raggiungibile / Reachable';
-        } else {
-            dc1StatusElement.innerHTML = 'DC1: <span class="status-dot fault"></span>Non raggiungibile / Unreachable';
+        // Update MPLS RTU GOOSE status indicators
+        const rtu1El = document.getElementById('mpls-rtu1-status');
+        const rtu2El = document.getElementById('mpls-rtu2-status');
+        const dot1 = commLoss ? '<span class="status-dot fault"></span>' : '<span class="status-dot ok"></span>';
+        const dot2 = commLoss ? '<span class="status-dot fault"></span>' : '<span class="status-dot ok"></span>';
+        if (rtu1El) rtu1El.innerHTML = commLoss ? `RTU1: ${dot1}Comm Loss` : `RTU1: ${dot1}GOOSE Active`;
+        if (rtu2El) rtu2El.innerHTML = commLoss ? `RTU2: ${dot2}Comm Loss` : `RTU2: ${dot2}GOOSE Active`;
+
+        // Update teleprotection diagram LEDs if elements exist
+        const tpEquipA = document.querySelector('.tp-equip-a');
+        const tpEquipB = document.querySelector('.tp-equip-b');
+        if (tpEquipA) {
+            tpEquipA.querySelectorAll('.tp-led').forEach(led => led.setAttribute('fill', commLoss ? '#dc3545' : '#4caf50'));
+            tpEquipA.classList.toggle('tp-fault', commLoss);
+        }
+        if (tpEquipB) {
+            tpEquipB.querySelectorAll('.tp-led').forEach(led => led.setAttribute('fill', commLoss ? '#dc3545' : '#4caf50'));
+            tpEquipB.classList.toggle('tp-fault', commLoss);
         }
 
-        // Update DC2 status indicator
-        if (dc2Reachable) {
-            dc2StatusElement.innerHTML = 'DC2: <span class="status-dot ok"></span>Raggiungibile / Reachable';
-        } else {
-            dc2StatusElement.innerHTML = 'DC2: <span class="status-dot fault"></span>Non raggiungibile / Unreachable';
-        }
-    }
+        this.updateInfographicStats();
 
-    async fetchRouterMetrics(routerId) {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-            const [interfacesRes, systemRes, bgpRes] = await Promise.all([
-                fetch(`${this.gnmiServiceUrl}/api/routers/${routerId}/interfaces`, { signal: controller.signal }),
-                fetch(`${this.gnmiServiceUrl}/api/routers/${routerId}/system`, { signal: controller.signal }),
-                fetch(`${this.gnmiServiceUrl}/api/routers/${routerId}/bgp`, { signal: controller.signal })
-            ]);
-
-            clearTimeout(timeoutId);
-
-            const interfaces = interfacesRes.ok ? await interfacesRes.json() : { interfaces: [] };
-            const system = systemRes.ok ? await systemRes.json() : { cpu: {}, memory: {} };
-            const bgp = bgpRes.ok ? await bgpRes.json() : { totalPeers: 0, activePeers: 0, neighbors: [] };
-
-            return {
-                interfaces: interfaces.interfaces || [],
-                system: system,
-                bgp: bgp
-            };
-
-        } catch (error) {
-            console.error(`Error fetching metrics for ${routerId}:`, error);
-            return null;
-        }
-    }
-
-    updateRouterVisualization(routerId, statusData) {
-        const node = document.querySelector(`[data-router="${routerId}"]`);
-        if (!node) return;
-
-        // Remove all status classes
-        node.classList.remove('router-connected', 'router-disconnected', 'router-stale', 'router-unknown');
-
-        // Add appropriate class based on status
-        const status = statusData.status || 'unknown';
-        node.classList.add(`router-${status}`);
-    }
-
-    showRouterTooltip(routerId, event) {
-        // Remove existing tooltip
-        this.hideRouterTooltip();
-
-        const router = this.routers[routerId];
-        if (!router) return;
-
-        // Fetch metrics asynchronously
-        this.fetchRouterMetrics(routerId).then(metrics => {
-            if (!metrics) {
-                this.renderTooltip(routerId, router, null, event);
-                return;
-            }
-
-            router.metrics = metrics;
-            this.renderTooltip(routerId, router, metrics, event);
+        // ── 5. Alarm / restore Generation plant cards ─────────────────────
+        document.querySelectorAll('.plant-card').forEach(card => {
+            card.classList.toggle('plant-alarmed', commLoss);
         });
 
-        // Show loading tooltip immediately
-        this.renderTooltip(routerId, router, null, event);
-    }
-
-    renderTooltip(routerId, router, metrics, event) {
-        // Remove old tooltip if exists
-        if (this.activeTooltip) {
-            this.activeTooltip.remove();
-        }
-
-        const tooltip = document.createElement('div');
-        tooltip.className = 'router-tooltip';
-
-        // Position tooltip near cursor
-        tooltip.style.left = (event.pageX + 15) + 'px';
-        tooltip.style.top = (event.pageY + 15) + 'px';
-
-        let content = `
-            <div class="tooltip-header">
-                <span class="router-name">${router.name}</span>
-                <span class="status-badge status-${router.status}">${router.status}</span>
-            </div>
-        `;
-
-        if (!metrics) {
-            content += '<div class="tooltip-body"><p class="loading-text">Loading metrics...</p></div>';
-        } else {
-            // Calculate summary metrics
-            const interfaceCount = metrics.interfaces.length;
-            const interfacesUp = metrics.interfaces.filter(iface => iface.operState === 'up').length;
-            const interfacesDown = interfaceCount - interfacesUp;
-
-            const cpuUsage = metrics.system.cpu?.total || 0;
-            const memUsage = metrics.system.memory?.utilization || 0;
-
-            const bgpPeersActive = metrics.bgp.activePeers || 0;
-            const bgpPeersTotal = metrics.bgp.totalPeers || 0;
-
-            const cpuClass = cpuUsage > 80 ? 'metric-critical' : cpuUsage > 60 ? 'metric-warning' : '';
-            const memClass = memUsage > 80 ? 'metric-critical' : memUsage > 60 ? 'metric-warning' : '';
-
-            content += `
-                <div class="tooltip-body">
-                    <div class="metric-row">
-                        <span class="metric-label">Interfaces:</span>
-                        <span class="metric-value">${interfacesUp} UP / ${interfacesDown} DOWN</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">CPU:</span>
-                        <span class="metric-value ${cpuClass}">${cpuUsage.toFixed(1)}%</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">Memory:</span>
-                        <span class="metric-value ${memClass}">${memUsage.toFixed(1)}%</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">BGP Peers:</span>
-                        <span class="metric-value">${bgpPeersActive} / ${bgpPeersTotal}</span>
-                    </div>
-                </div>
-                <div class="tooltip-footer">Click for details</div>
-            `;
-        }
-
-        tooltip.innerHTML = content;
-        document.body.appendChild(tooltip);
-        this.activeTooltip = tooltip;
-    }
-
-    hideRouterTooltip() {
-        if (this.activeTooltip) {
-            this.activeTooltip.remove();
-            this.activeTooltip = null;
-        }
-    }
-
-    showRouterPanel(routerId) {
-        const router = this.routers[routerId];
-        if (!router) return;
-
-        // Fetch fresh metrics
-        this.fetchRouterMetrics(routerId).then(metrics => {
-            if (!metrics) {
-                this.renderPanel(routerId, router, null);
-                return;
-            }
-
-            router.metrics = metrics;
-            this.renderPanel(routerId, router, metrics);
-        });
-
-        // Show loading panel immediately
-        this.renderPanel(routerId, router, null);
-    }
-
-    // ── helpers ─────────────────────────────────────────────────────────────
-    _bgpStateClass(state) {
-        switch ((state || '').toLowerCase()) {
-            case 'established': return 'bgp-established';
-            case 'active':      return 'bgp-active';
-            case 'connect':     return 'bgp-connect';
-            case 'opensent':
-            case 'openconfirm': return 'bgp-open';
-            case 'idle':
-            default:            return 'bgp-idle';
-        }
-    }
-    _bgpStateIcon(state) {
-        switch ((state || '').toLowerCase()) {
-            case 'established': return '●';
-            case 'active':      return '◑';
-            case 'connect':     return '◔';
-            case 'opensent':
-            case 'openconfirm': return '◕';
-            case 'idle':
-            default:            return '○';
-        }
-    }
-    _ifStateClass(state) {
-        return state === 'up' ? 'if-up' : 'if-down';
-    }
-    _gaugeArc(pct, color) {
-        // 180° arc (half-circle), r=40 centered at 50,50
-        const r = 40, cx = 50, cy = 54;
-        const angle = Math.min(pct, 100) / 100 * Math.PI;
-        const x = cx + r * Math.cos(Math.PI - angle);
-        const y = cy - r * Math.sin(Math.PI - angle);
-        const large = angle > Math.PI / 2 ? 1 : 0;
-        return `M${cx - r},${cy} A${r},${r} 0 ${large} 1 ${x.toFixed(2)},${y.toFixed(2)}`;
-    }
-    _arcGauge(pct, label, colorClass) {
-        const d = this._gaugeArc(pct, colorClass);
-        return `
-        <div class="arc-gauge-wrap ${colorClass}">
-          <svg viewBox="0 0 100 60" class="arc-gauge-svg">
-            <path d="M10,54 A40,40 0 0 1 90,54" fill="none" stroke="#2a2a2a" stroke-width="10" stroke-linecap="round"/>
-            <path d="${d}" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round"/>
-          </svg>
-          <div class="arc-gauge-value">${pct.toFixed(1)}<span class="arc-unit">%</span></div>
-          <div class="arc-gauge-label">${label}</div>
-        </div>`;
-    }
-
-    // ── main render ─────────────────────────────────────────────────────────
-    renderPanel(routerId, router, metrics) {
-        if (this.activePanel) this.activePanel.remove();
-
-        const panel = document.createElement('div');
-        panel.className = 'router-panel';
-
-        const isLoading = !metrics;
-        const isDC = router.type === 'spine';
-        const statusDot = router.status === 'connected' ? '🟢' :
-                          router.status === 'disconnected' ? '🔴' : '🟡';
-        const typeLabel = router.type === 'spine' ? 'SPINE' : 'LEAF';
-
-        // ── header ──────────────────────────────────────────────────────────
-        let html = `
-        <div class="panel-overlay"></div>
-        <div class="panel-content rp2">
-          <div class="rp2-header">
-            <div class="rp2-header-left">
-              <div class="rp2-router-icon">${router.type === 'spine' ? '◈' : '◇'}</div>
-              <div>
-                <div class="rp2-title">${router.name}</div>
-                <div class="rp2-subtitle">
-                  <span class="rp2-type-badge rp2-type-${router.type}">${typeLabel}</span>
-                  <span class="rp2-host">${router.host || ''}</span>
-                </div>
-              </div>
-            </div>
-            <div class="rp2-header-right">
-              <span class="rp2-conn-badge rp2-conn-${router.status}">${statusDot} ${router.status}</span>
-              ${router.lastUpdate ? `<span class="rp2-lastseen">updated ${new Date(router.lastUpdate).toLocaleTimeString()}</span>` : ''}
-              <button class="panel-close" aria-label="Chiudi">&times;</button>
-            </div>
-          </div>`;
-
-        if (isLoading) {
-            html += `
-          <div class="rp2-loading">
-            <div class="rp2-spinner"></div>
-            <span>Caricamento metriche…</span>
-          </div>
-        </div>`;
-            panel.innerHTML = html;
-            document.body.appendChild(panel);
-            this.activePanel = panel;
-            this._bindPanelClose(panel);
-            return;
-        }
-
-        // ── computed values ──────────────────────────────────────────────────
-        const cpu  = metrics.system.cpu?.total || 0;
-        const mem  = metrics.system.memory?.utilization || 0;
-        const sysIP = metrics.system.system0IP || '—';
-        const cpuClass = cpu > 80 ? 'arc-critical' : cpu > 60 ? 'arc-warning' : 'arc-normal';
-        const memClass = mem > 80 ? 'arc-critical' : mem > 60 ? 'arc-warning' : 'arc-normal';
-
-        const allIfaces = metrics.interfaces || [];
-        const ifUp   = allIfaces.filter(i => i.operState === 'up').length;
-        const ifDown = allIfaces.length - ifUp;
-
-        const bgpTotal  = metrics.bgp?.totalPeers  || 0;
-        const bgpActive = metrics.bgp?.activePeers || 0;
-        const neighbors = metrics.bgp?.neighbors   || [];
-        const maxRoutes = Math.max(...neighbors.map(n => n.routesReceived || 0), 1);
-
-        // Teleprotection FSM from backend snapshot (if available)
-        const fsm = this.teleprotection?.fsm;
-        const fsmState = fsm?.state || (this.teleprotection?.closed ? 'ARMED' : 'TRIP');
-        const fsmStateClass = fsmState === 'ARMED' ? 'fsm-armed' : fsmState === 'PICKUP' ? 'fsm-pickup' : 'fsm-trip';
-        const fsmLabel  = fsmState === 'ARMED' ? '✓ ARMED — tutto OK' :
-                          fsmState === 'PICKUP' ? '⚠ PICKUP — guasto rilevato' : '✕ TRIP — breaker aperto';
-
-        // ── tabs ─────────────────────────────────────────────────────────────
-        const tabs = ['overview','interfaces','bgp'];
-        if (isDC) tabs.push('teleprotection');
-
-        html += `
-          <div class="rp2-tabs">
-            ${tabs.map((t, i) => `<button class="rp2-tab${i===0?' active':''}" data-tab="${t}">${
-              t === 'overview' ? '📊 Panoramica' :
-              t === 'interfaces' ? `🔌 Interfacce <span class="tab-badge">${allIfaces.length}</span>` :
-              t === 'bgp' ? `🌐 BGP <span class="tab-badge ${bgpActive===bgpTotal&&bgpTotal>0?'badge-ok':'badge-warn'}">${bgpActive}/${bgpTotal}</span>` :
-              '🛡 Teleprotezione'
-            }</button>`).join('')}
-          </div>`;
-
-        // ══ TAB: OVERVIEW ════════════════════════════════════════════════════
-        html += `<div class="rp2-tab-body tab-overview active">
-          <div class="rp2-overview-grid">
-            <div class="rp2-kpi-card">
-              <div class="kpi-label">System0 IP</div>
-              <div class="kpi-mono">${sysIP}</div>
-            </div>
-            <div class="rp2-kpi-card">
-              <div class="kpi-label">Interfacce attive</div>
-              <div class="kpi-large kpi-${ifDown>0?'warn':'ok'}">${ifUp}<span class="kpi-denom">/${allIfaces.length}</span></div>
-            </div>
-            <div class="rp2-kpi-card">
-              <div class="kpi-label">BGP Peers attivi</div>
-              <div class="kpi-large kpi-${bgpActive<bgpTotal?'warn':'ok'}">${bgpActive}<span class="kpi-denom">/${bgpTotal}</span></div>
-            </div>
-          </div>
-          <div class="rp2-gauge-row">
-            ${this._arcGauge(cpu, 'CPU', cpuClass)}
-            ${this._arcGauge(mem, 'Memoria', memClass)}
-          </div>
-        </div>`;
-
-        // ══ TAB: INTERFACES ══════════════════════════════════════════════════
-        html += `<div class="rp2-tab-body tab-interfaces">`;
-        if (allIfaces.length === 0) {
-            html += `<p class="rp2-empty">Nessuna interfaccia disponibile.</p>`;
-        } else {
-            // Sort: up first, then by name
-            const sorted = [...allIfaces].sort((a, b) => {
-                if (a.operState === b.operState) return a.name.localeCompare(b.name);
-                return a.operState === 'up' ? -1 : 1;
-            });
-            html += `<div class="rp2-iface-list">`;
-            sorted.forEach(iface => {
-                const st = iface.operState;
-                const ip = iface.ipAddresses?.length ? iface.ipAddresses[0] : '—';
-                const inR  = this.formatRate(iface.inRate  || 0);
-                const outR = this.formatRate(iface.outRate || 0);
-                const maxR = Math.max(iface.inRate||0, iface.outRate||0, 1);
-                const inPct  = Math.min((iface.inRate  || 0) / maxR * 100, 100);
-                const outPct = Math.min((iface.outRate || 0) / maxR * 100, 100);
-                html += `
-                <div class="rp2-iface-row ${this._ifStateClass(st)}">
-                  <div class="iface-led ${st === 'up' ? 'led-up' : 'led-down'}"></div>
-                  <div class="iface-name">${iface.name}</div>
-                  <div class="iface-state">
-                    <span class="iface-badge ${st === 'up' ? 'ibadge-up' : 'ibadge-down'}">${st.toUpperCase()}</span>
-                  </div>
-                  <div class="iface-ip">${ip}</div>
-                  <div class="iface-traffic">
-                    <div class="traffic-bar-row">
-                      <span class="traffic-dir">▼</span>
-                      <div class="traffic-bar"><div class="tbar-fill tbar-in" style="width:${inPct}%"></div></div>
-                      <span class="traffic-val">${inR}</span>
-                    </div>
-                    <div class="traffic-bar-row">
-                      <span class="traffic-dir">▲</span>
-                      <div class="traffic-bar"><div class="tbar-fill tbar-out" style="width:${outPct}%"></div></div>
-                      <span class="traffic-val">${outR}</span>
-                    </div>
-                  </div>
-                </div>`;
-            });
-            html += `</div>`;
-        }
-        html += `</div>`;
-
-        // ══ TAB: BGP ═════════════════════════════════════════════════════════
-        html += `<div class="rp2-tab-body tab-bgp">`;
-        if (bgpTotal === 0) {
-            html += `<p class="rp2-empty">Nessun peer BGP configurato.</p>`;
-        } else {
-            const bgpPct = bgpTotal > 0 ? (bgpActive / bgpTotal) * 100 : 0;
-            const bgpCircum = 2 * Math.PI * 28;
-            const bgpDash = (bgpPct / 100) * bgpCircum;
-            html += `
-            <div class="rp2-bgp-header">
-              <div class="bgp-donut-wrap">
-                <svg viewBox="0 0 70 70" class="bgp-donut">
-                  <circle cx="35" cy="35" r="28" fill="none" stroke="#2a2a2a" stroke-width="8"/>
-                  <circle cx="35" cy="35" r="28" fill="none"
-                    stroke="${bgpActive === bgpTotal ? 'var(--accent-success)' : 'var(--accent-warning)'}"
-                    stroke-width="8" stroke-linecap="round"
-                    stroke-dasharray="${bgpDash.toFixed(1)} ${bgpCircum.toFixed(1)}"
-                    transform="rotate(-90 35 35)"/>
-                  <text x="35" y="39" text-anchor="middle" class="donut-text">${bgpActive}/${bgpTotal}</text>
-                </svg>
-                <div class="bgp-donut-label">Peers<br>attivi</div>
-              </div>
-              <div class="bgp-legend">
-                <div class="bgp-legend-item"><span class="bgp-dot bgp-established"></span>Established</div>
-                <div class="bgp-legend-item"><span class="bgp-dot bgp-active"></span>Active</div>
-                <div class="bgp-legend-item"><span class="bgp-dot bgp-connect"></span>Connect</div>
-                <div class="bgp-legend-item"><span class="bgp-dot bgp-idle"></span>Idle</div>
-              </div>
-            </div>
-            <div class="rp2-peer-grid">`;
-
-            neighbors.forEach(n => {
-                const sc  = this._bgpStateClass(n.sessionState);
-                const ico = this._bgpStateIcon(n.sessionState);
-                const routes = n.routesReceived || 0;
-                const routePct = Math.round(routes / maxRoutes * 100);
-                html += `
-              <div class="rp2-peer-card ${sc}">
-                <div class="peer-state-icon">${ico}</div>
-                <div class="peer-info">
-                  <div class="peer-addr">${n.peerAddress || '—'}</div>
-                  <div class="peer-state-badge ${sc}">${(n.sessionState || 'unknown').toUpperCase()}</div>
-                </div>
-                <div class="peer-routes">
-                  <div class="peer-routes-label">Routes ricevute</div>
-                  <div class="peer-routes-bar">
-                    <div class="peer-routes-fill ${sc}" style="width:${routePct}%"></div>
-                  </div>
-                  <div class="peer-routes-val">${routes}</div>
-                </div>
-              </div>`;
-            });
-
-            html += `</div>`;
-        }
-        html += `</div>`;
-
-        // ══ TAB: TELEPROTECTION (DC only) ════════════════════════════════════
-        if (isDC) {
-            const isolated = fsm?.isolatedLeaves || [];
-            const breakerClosed = fsmState !== 'TRIP';
-            html += `
-            <div class="rp2-tab-body tab-teleprotection">
-              <div class="tpt-panel">
-                <div class="tpt-fsm-badge ${fsmStateClass}">
-                  <div class="tpt-fsm-state">${fsmState}</div>
-                  <div class="tpt-fsm-label">${fsmLabel}</div>
-                  ${fsm?.reason ? `<div class="tpt-fsm-reason">${fsm.reason}</div>` : ''}
-                </div>
-                <div class="tpt-breaker-wrap">
-                  <div class="tpt-breaker-label">Circuit Breaker</div>
-                  <div class="tpt-breaker ${breakerClosed ? 'breaker-closed' : 'breaker-open'}">
-                    <div class="breaker-arm"></div>
-                    <div class="breaker-state">${breakerClosed ? 'CHIUSO' : 'APERTO'}</div>
-                  </div>
-                </div>
-                <div class="tpt-leaves">
-                  <div class="tpt-leaves-label">Stato Leaf</div>
-                  ${['leaf1','leaf2','leaf3','leaf4'].map(l => {
-                    const iso = isolated.includes(l);
-                    return `<div class="tpt-leaf ${iso?'leaf-isolated':'leaf-ok'}">
-                      <span>${iso?'✕':'✓'}</span> ${l.toUpperCase()}
-                    </div>`;
-                  }).join('')}
-                </div>
-              </div>
-              <div class="tpt-edu-note">
-                <b>Come funziona:</b> la teleprotezione differenziale usa il canale di comunicazione
-                (DC-1 ↔ DC-2) per confrontare le correnti ai due estremi della linea HV. Se un Leaf
-                perde <em>entrambi</em> i link verso i DC spine, il circuito è isolato e il breaker scatta
-                (stato TRIP). Con un solo link attivo la protezione rimane armata (ARMED).
-              </div>
-            </div>`;
-        }
-
-        html += `</div>`; // panel-content
-
-        panel.innerHTML = html;
-        document.body.appendChild(panel);
-        this.activePanel = panel;
-
-        // ── tab switching ────────────────────────────────────────────────────
-        panel.querySelectorAll('.rp2-tab').forEach(btn => {
-            btn.addEventListener('click', () => {
-                panel.querySelectorAll('.rp2-tab').forEach(b => b.classList.remove('active'));
-                panel.querySelectorAll('.rp2-tab-body').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                const target = panel.querySelector(`.tab-${btn.dataset.tab}`);
-                if (target) target.classList.add('active');
-            });
-        });
-
-        this._bindPanelClose(panel);
-    }
-
-    _bindPanelClose(panel) {
-        const closePanel = () => {
-            if (this.activePanel) {
-                this.activePanel.remove();
-                this.activePanel = null;
-            }
-        };
-        panel.querySelector('.panel-close')?.addEventListener('click', closePanel);
-        panel.querySelector('.panel-overlay')?.addEventListener('click', closePanel);
-        const esc = (e) => { if (e.key === 'Escape') { closePanel(); document.removeEventListener('keydown', esc); } };
-        document.addEventListener('keydown', esc);
-    }
-
-    formatRate(bitsPerSecond) {
-        if (bitsPerSecond >= 1e9) {
-            return (bitsPerSecond / 1e9).toFixed(2) + ' Gbps';
-        } else if (bitsPerSecond >= 1e6) {
-            return (bitsPerSecond / 1e6).toFixed(2) + ' Mbps';
-        } else if (bitsPerSecond >= 1e3) {
-            return (bitsPerSecond / 1e3).toFixed(2) + ' Kbps';
-        } else {
-            return bitsPerSecond.toFixed(0) + ' bps';
-        }
-    }
-
-    // Check link status based on interface operational state
-    async checkAllLinks() {
-        if (this.manualOverride) return;
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-            const response = await fetch(`${this.gnmiServiceUrl}/api/links`, {
-                method: 'GET',
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                throw new Error('Links service unavailable');
-            }
-
-            const data = await response.json();
-            console.log('[Links] Received link status:', data.links);
-
-            // Track link states for teleprotection logic
-            const linkStates = {};
-
-            // Update each link visualization
-            Object.entries(data.links).forEach(([linkId, linkData]) => {
-                linkStates[linkId] = linkData.status;
-
-                const connection = document.querySelector(`[data-link="${linkId}"]`);
-                console.log(`[Links] ${linkId}: status=${linkData.status}, element found=${!!connection}`);
-                if (connection) {
-                    if (linkData.status === 'up') {
-                        connection.classList.remove('link-down');
-                        connection.classList.add('link-up');
-                        console.log(`[Links] ${linkId} set to UP (green)`);
-                    } else {
-                        connection.classList.remove('link-up');
-                        connection.classList.add('link-down');
-                        console.log(`[Links] ${linkId} set to DOWN (red)`);
-                    }
-                }
-            });
-
-            // Update Teleprotection System based on link states
-            this.updateTeleprotectionFromLinks(linkStates);
-
-        } catch (error) {
-            console.error('Error checking links:', error);
-            // On error, remove status classes from all links
-            document.querySelectorAll('.router-connection[data-link]').forEach(connection => {
-                connection.classList.remove('link-up', 'link-down');
-            });
-        }
-    }
-
-    // Update Teleprotection System visualization based on link states
-    updateTeleprotectionFromLinks(linkStates) {
-        // Check if Leaf-1 has lost both connections to DCs (isolates Substation A / RTU-1)
-        const leaf1Isolated = linkStates['dc1-leaf1'] === 'down' && linkStates['dc2-leaf1'] === 'down';
-
-        // Check if Leaf-2 has lost both connections to DCs (isolates Substation B / RTU-2)
-        const leaf2Isolated = linkStates['dc1-leaf2'] === 'down' && linkStates['dc2-leaf2'] === 'down';
-
-        // Check if Leaf-3 has lost both connections to DCs (isolates RTU-3)
-        const leaf3Isolated = linkStates['dc1-leaf3'] === 'down' && linkStates['dc2-leaf3'] === 'down';
-
-        // Check if Leaf-4 has lost both connections to DCs (isolates RTU-4)
-        const leaf4Isolated = linkStates['dc1-leaf4'] === 'down' && linkStates['dc2-leaf4'] === 'down';
-
-        console.log(`[Teleprotection] Leaf-1 isolated: ${leaf1Isolated}, Leaf-2 isolated: ${leaf2Isolated}, Leaf-3 isolated: ${leaf3Isolated}, Leaf-4 isolated: ${leaf4Isolated}`);
-
-        // Get teleprotection SVG elements
-        const tpDiagram = document.querySelector('.teleprotection-diagram');
-        if (!tpDiagram) return;
-
-        // Update Teleprotection Equipment A (RTU-1) - connected to Leaf-1
-        const tpEquipA = tpDiagram.querySelector('.tp-equip-a');
-        const tpEquipALeds = tpEquipA ? tpEquipA.querySelectorAll('.tp-led') : [];
-
-        // Update Teleprotection Equipment B (RTU-4) - connected to Leaf-2
-        const tpEquipB = tpDiagram.querySelector('.tp-equip-b');
-        const tpEquipBLeds = tpEquipB ? tpEquipB.querySelectorAll('.tp-led') : [];
-
-        // Update LEDs and add/remove fault class
-        if (leaf1Isolated) {
-            tpEquipALeds.forEach(led => led.setAttribute('fill', '#dc3545')); // Red
-            if (tpEquipA) tpEquipA.classList.add('tp-fault');
-        } else {
-            tpEquipALeds.forEach(led => led.setAttribute('fill', '#4caf50')); // Green
-            if (tpEquipA) tpEquipA.classList.remove('tp-fault');
-        }
-
-        if (leaf2Isolated) {
-            tpEquipBLeds.forEach(led => led.setAttribute('fill', '#dc3545')); // Red
-            if (tpEquipB) tpEquipB.classList.add('tp-fault');
-        } else {
-            tpEquipBLeds.forEach(led => led.setAttribute('fill', '#4caf50')); // Green
-            if (tpEquipB) tpEquipB.classList.remove('tp-fault');
-        }
-
-        // Update connection lines in teleprotection diagram
-        const tpConnections = tpDiagram.querySelector('.teleprotection-connections');
-        if (tpConnections) {
-            const lines = tpConnections.querySelectorAll('line');
-
-            // First two lines are Substation A side, last two are Substation B side
-            lines.forEach((line, index) => {
-                if (index < 2 && leaf1Isolated) {
-                    line.setAttribute('stroke', '#dc3545');
-                    line.setAttribute('stroke-dasharray', '5,5');
-                } else if (index < 2) {
-                    line.setAttribute('stroke', index === 0 ? '#2196f3' : '#00bcd4');
-                    line.removeAttribute('stroke-dasharray');
-                }
-
-                if (index >= 2 && leaf2Isolated) {
-                    line.setAttribute('stroke', '#dc3545');
-                    line.setAttribute('stroke-dasharray', '5,5');
-                } else if (index >= 2) {
-                    line.setAttribute('stroke', index === 3 ? '#2196f3' : '#00bcd4');
-                    line.removeAttribute('stroke-dasharray');
-                }
-            });
-        }
-
-        // Show/hide signal animations based on fault state
-        const signalAnimations = tpDiagram.querySelectorAll('.teleprotection-connections circle');
-        signalAnimations.forEach((circle, index) => {
-            // First half of animations are for left side, second half for right side
-            if (index < signalAnimations.length / 2) {
-                circle.style.display = leaf1Isolated ? 'none' : '';
-            } else {
-                circle.style.display = leaf2Isolated ? 'none' : '';
-            }
-        });
-
-        // Update the main teleprotection status based on network state
-        const closedIcon = document.getElementById('teleprotection-closed');
-        const openIcon = document.getElementById('teleprotection-open');
-        const stateText = document.getElementById('teleprotection-state-text');
-
-        if (leaf1Isolated || leaf2Isolated || leaf3Isolated || leaf4Isolated) {
-            // Network fault affects teleprotection
-            if (closedIcon && openIcon && stateText) {
-                closedIcon.style.display = 'none';
-                openIcon.style.display = 'block';
-                stateText.textContent = 'FAULT DI RETE / NETWORK FAULT';
-                stateText.className = 'teleprotection-state open';
-            }
-        } else {
-            // Network is healthy - restore teleprotection status
-            if (closedIcon && openIcon && stateText) {
-                closedIcon.style.display = 'block';
-                openIcon.style.display = 'none';
-                stateText.textContent = 'CLOSED / CHIUSO';
-                stateText.className = 'teleprotection-state closed';
-            }
-        }
+        // ── 6. MPLS section offline visual indicator ──────────────────────
+        const mplsSection = document.querySelector('.mpls-section');
+        if (mplsSection) mplsSection.classList.toggle('mpls-comm-loss', commLoss);
+
+        // ── 7. Refresh Grid Status header and city power immediately ───────
+        this.updateDisplay();
     }
 }
-
 // Draggable Topology Nodes
 class DraggableTopology {
     constructor() {
@@ -2433,201 +1442,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- gNMI Service Controller ---------------------------------------
     // Single controller that drives BOTH UIs simultaneously:
-    //   1) Header pill button (#gnmi-control / #gnmi-toggle-btn)        — quick toggle
-    //   2) Detailed control panel below the topology (#gnmiActionBtn …) — with PID + log viewer
-    // Both reflect the same backend state from ping-service:3000.
-    // ping-service probes port 3001 directly so we also detect EXTERNAL
-    // gNMI instances started outside the dashboard (e.g. via start-gnmi.sh).
-    (function initGnmiController() {
-        const PING_BASE       = 'http://localhost:3000';
-        const POLL_MS         = 5000;
-        const FAST_POLL_MS    = 600;
-        const FAST_POLL_LIMIT = 12;
+    (function initPingServiceStatus() {
+        const container = document.getElementById('ping-svc-status');
+        const label     = document.getElementById('ping-svc-text');
+        if (!container) return;
 
-        // --- UI #1: detailed panel (existing) -----------------------------
-        const dot      = document.getElementById('gnmiDot');
-        const lbl      = document.getElementById('gnmiStatusLabel');
-        const pidLbl   = document.getElementById('gnmiPidLabel');
-        const actBtn   = document.getElementById('gnmiActionBtn');
-        const actIcon  = document.getElementById('gnmiActionIcon');
-        const actLbl   = document.getElementById('gnmiActionLabel');
-        const logPanel = document.getElementById('gnmiLogPanel');
-        const logBody  = document.getElementById('gnmiLogBody');
-
-        // --- UI #2: header pill button (new) ------------------------------
-        const pillRoot = document.getElementById('gnmi-control');
-        const pillBtn  = document.getElementById('gnmi-toggle-btn');
-        const pillTxt  = document.getElementById('gnmi-state-text');
-
-        if (!actBtn && !pillBtn) return; // nothing to drive on this page
-
-        let currentState = 'unknown';   // running | stopped | external | unknown | error
-        let lastPid = null;
-        let busy = false;
-
-        // ---- Renderers ---------------------------------------------------
-        function renderPill(state, label, title) {
-            if (!pillRoot) return;
-            pillRoot.dataset.state = state;
-            if (pillTxt) pillTxt.textContent = label;
-            if (pillBtn) pillBtn.disabled = (state === 'unknown' || state === 'error' || busy);
-            if (title)   pillRoot.title = title;
-        }
-
-        function renderPanel(data) {
-            if (!dot) return;
-            if (data.running) {
-                dot.className   = 'gnmi-dot running';
-                lbl.className   = 'gnmi-status-label running';
-                lbl.textContent = data.external ? 'In esecuzione (esterno)' : 'In esecuzione';
-                pidLbl.textContent = data.pid ? `PID ${data.pid}` : (data.external ? 'extern' : '');
-                actBtn.className = 'gnmi-action-btn stop';
-                actIcon.textContent = '⏹';
-                actLbl.textContent  = 'Ferma Servizio';
-            } else {
-                dot.className   = 'gnmi-dot stopped';
-                lbl.className   = 'gnmi-status-label stopped';
-                lbl.textContent = 'Fermo';
-                pidLbl.textContent = '';
-                actBtn.className = 'gnmi-action-btn start';
-                actIcon.textContent = '▶';
-                actLbl.textContent  = 'Avvia Servizio';
-            }
-            actBtn.disabled = busy;
-            // refresh logs if panel is open
-            if (logPanel && logPanel.style.display !== 'none') {
-                renderLogs(data.logs || []);
-            }
-        }
-
-        function setPanelLoading() {
-            if (!dot) return;
-            dot.className   = 'gnmi-dot loading';
-            lbl.className   = 'gnmi-status-label loading';
-            lbl.textContent = 'In corso...';
-            actBtn.className = 'gnmi-action-btn loading-state';
-            actIcon.textContent = '⏳';
-            actLbl.textContent  = 'Attendere...';
-            actBtn.disabled = true;
-        }
-
-        function setPanelError(msg) {
-            if (!dot) return;
-            dot.className   = 'gnmi-dot stopped';
-            lbl.className   = 'gnmi-status-label stopped';
-            lbl.textContent = msg;
-            pidLbl.textContent = '';
-            actBtn.className = 'gnmi-action-btn loading-state';
-            actBtn.disabled = true;
-            actIcon.textContent = '⚠';
-            actLbl.textContent  = 'Servizio N/D';
-        }
-
-        function renderLogs(logs) {
-            if (!logBody) return;
-            if (!logs || logs.length === 0) {
-                logBody.innerHTML = '<span class="gnmi-log-empty">Nessun log disponibile.</span>';
-                return;
-            }
-            logBody.innerHTML = logs.map(entry => {
-                const isErr = entry.msg && entry.msg.startsWith('[ERR]');
-                const ts = entry.ts ? entry.ts.substring(11, 19) : '';
-                return `<div class="gnmi-log-line">
-                    <span class="gnmi-log-ts">${ts}</span>
-                    <span class="gnmi-log-msg${isErr ? ' error' : ''}">${entry.msg || ''}</span>
-                </div>`;
-            }).join('');
-            logBody.scrollTop = logBody.scrollHeight;
-        }
-
-        // ---- State sync (single source of truth) -------------------------
-        function applyStatus(data) {
-            // data: { running, managed, external, pid, port, logs }
-            lastPid = data.pid;
-            if (data.external) {
-                currentState = 'external';
-                renderPill('external', 'Stop (external)',
-                    `External gNMI listening on port ${data.port}. Click to stop it.`);
-            } else if (data.running) {
-                currentState = 'running';
-                renderPill('running', `Stop${data.pid ? ' · pid ' + data.pid : ''}`,
-                    'gNMI service running (managed by dashboard)');
-            } else {
-                currentState = 'stopped';
-                renderPill('stopped', 'Start', 'gNMI service is stopped — click to start');
-            }
-            renderPanel(data);
-        }
-
-        async function fetchStatus() {
+        async function check() {
             try {
-                const res = await fetch(`${PING_BASE}/gnmi/status`, { cache: 'no-store' });
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                applyStatus(await res.json());
-            } catch (e) {
-                currentState = 'error';
-                renderPill('error', 'ping-svc offline',
-                    'Cannot reach ping-service on port 3000');
-                setPanelError('Ping-service offline');
+                const r = await fetch('http://localhost:3000/health',
+                                      { signal: AbortSignal.timeout(4000) });
+                if (r.ok) {
+                    container.dataset.state = 'running';
+                    label.textContent = 'RUNNING · :3000';
+                } else throw new Error();
+            } catch {
+                container.dataset.state = 'offline';
+                label.textContent = 'OFFLINE';
             }
         }
-
-        async function toggle() {
-            if (busy) return;
-            busy = true;
-            const goingToStart = currentState === 'stopped';
-            setPanelLoading();
-            renderPill(currentState, goingToStart ? 'starting…' : 'stopping…');
-            const endpoint = goingToStart ? '/gnmi/start' : '/gnmi/stop';
-            try {
-                const res  = await fetch(`${PING_BASE}${endpoint}`, { cache: 'no-store' });
-                const data = await res.json();
-                console.log('[gNMI Control]', data.message || data);
-                if (!res.ok && data.message && pillRoot) pillRoot.title = data.message;
-            } catch (e) {
-                console.error('[gNMI Control] toggle error:', e);
-            }
-            // Chase the new state with a fast burst, then resume slow polling.
-            let attempts = 0;
-            const fast = setInterval(async () => {
-                await fetchStatus();
-                attempts++;
-                if (attempts >= FAST_POLL_LIMIT) {
-                    clearInterval(fast);
-                    busy = false;
-                    if (currentState !== 'error') {
-                        if (actBtn)  actBtn.disabled  = false;
-                        if (pillBtn) pillBtn.disabled = false;
-                    }
-                }
-            }, FAST_POLL_MS);
-        }
-
-        // ---- Public toggle handlers (called by both UIs) ---------------
-        // The detailed panel uses these via inline `onclick="window.gnmi…()"`.
-        window.gnmiToggleService = toggle;
-        window.gnmiToggleLogs = async function() {
-            if (!logPanel) return;
-            const isHidden = logPanel.style.display === 'none';
-            logPanel.style.display = isHidden ? 'block' : 'none';
-            if (isHidden) {
-                try {
-                    const res = await fetch(`${PING_BASE}/gnmi/status`, { cache: 'no-store' });
-                    renderLogs((await res.json()).logs || []);
-                } catch { renderLogs([]); }
-            }
-        };
-
-        // Header pill: same handler
-        if (pillBtn) pillBtn.addEventListener('click', toggle);
-
-        // Initial fetch + background poll
-        fetchStatus();
-        setInterval(fetchStatus, POLL_MS);
-
-        // Console helpers
-        window.gnmiRefresh = fetchStatus;
-        window.gnmiToggle  = toggle;
+        check();
+        setInterval(check, 10000);
     })();
 
     // ================================================================
@@ -3199,6 +2033,1438 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         window.dc2Popup = { open: openPopup, close: closePopup, refresh: loadData };
+    })();
+
+    // ================================================================
+    // ACCESS1-1 LIVE TELEMETRY POPUP
+    // Triggered by clicking ACCESS1-1 in the MPLS topology SVG.
+    // Fetches /gnmic/node/mpls-a1-1 from ping-service (port 3000).
+    // ================================================================
+    (function initA11Popup() {
+        const PING_BASE = 'http://localhost:3000';
+        const NODE_ID   = 'mpls-a1-1';
+
+        const overlay    = document.getElementById('a11-popup-overlay');
+        const closeBtn   = document.getElementById('a11-popup-close-btn');
+        const refreshBtn = document.getElementById('a11-popup-refresh-btn');
+        const loading    = document.getElementById('a11-popup-loading');
+        const errorBox   = document.getElementById('a11-popup-error');
+        const errorText  = document.getElementById('a11-popup-error-text');
+        const body       = document.getElementById('a11-popup-body');
+        const tsEl       = document.getElementById('a11-popup-ts');
+        const portGrid   = document.getElementById('a11-popup-port-grid');
+        const portsCount = document.getElementById('a11-popup-ports-count');
+        const ifacesBody = document.getElementById('a11-popup-ifaces-body');
+        const ifacesCount= document.getElementById('a11-popup-ifaces-count');
+        const isisLed    = document.getElementById('a11-popup-isis-led');
+        const isisState  = document.getElementById('a11-popup-isis-state');
+        const isisLevels = document.getElementById('a11-popup-isis-levels');
+        const isisBody   = document.getElementById('a11-popup-isis-body');
+        const srLed      = document.getElementById('a11-popup-sr-led');
+        const srState    = document.getElementById('a11-popup-sr-state');
+        const srSummary  = document.getElementById('a11-popup-sr-summary');
+        const srBody     = document.getElementById('a11-popup-sr-body');
+        const lspLed     = document.getElementById('a11-popup-lsp-led');
+        const lspState   = document.getElementById('a11-popup-lsp-state');
+        const lspSummary = document.getElementById('a11-popup-lsp-summary');
+        const svgNode    = document.getElementById('mpls-node-mpls-a1-1');
+        const svgPortMap = {
+            '1/1/c1': document.getElementById('a11-svg-port-c1'),
+            '1/1/c2': document.getElementById('a11-svg-port-c2'),
+            '1/1/c3': document.getElementById('a11-svg-port-c3'),
+            '1/1/c4': document.getElementById('a11-svg-port-c4'),
+            '1/1/c5': document.getElementById('a11-svg-port-c5'),
+        };
+
+        if (!overlay) return;
+
+        function fmt0(n) {
+            if (n == null) return '—';
+            if (n >= 1e9) return (n/1e9).toFixed(1)+'G';
+            if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
+            if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+            return String(n);
+        }
+
+        function stateHtml(s) {
+            const lo = (s || '').toLowerCase();
+            const cls = (lo === 'up' || lo === 'inservice') ? 'state-up'
+                      : (lo === 'down' || lo === 'outofservice') ? 'state-down'
+                      : 'state-unknown';
+            const label = lo === 'inservice' ? 'UP' : lo === 'outofservice' ? 'DOWN' : (s||'?').toUpperCase();
+            return `<span class="dc1-iface-state ${cls}"><span class="dc1-iface-led"></span>${label}</span>`;
+        }
+
+        function formatUptime(secs) {
+            if (secs == null || secs === 0) return '—';
+            if (secs < 60)   return `${secs}s`;
+            if (secs < 3600) return `${Math.floor(secs / 60)}m ${secs % 60}s`;
+            const h = Math.floor(secs / 3600);
+            const m = Math.floor((secs % 3600) / 60);
+            return `${h}h ${m}m`;
+        }
+
+        function renderPortGrid(ports) {
+            if (!portGrid) return;
+            portGrid.innerHTML = '';
+            const upCount = ports.filter(p => p.operState === 'up').length;
+            if (portsCount) portsCount.textContent = `${upCount}/${ports.length} up`;
+            ports.forEach(p => {
+                const isUp       = p.operState === 'up';
+                const isBreakout = /\/\d+$/.test(p.portId) && p.portId.includes('/c');
+                const isMgmt     = p.portId.startsWith('A/') || p.portId.startsWith('B/');
+                const tileClass  = isMgmt ? 'port-mgmt' : isBreakout ? 'port-breakout' : 'port-connector';
+                const tile = document.createElement('div');
+                tile.className = `dc1-port-tile ${tileClass}`;
+                tile.title     = `${p.portId}: ${p.operState.toUpperCase()}`;
+                tile.innerHTML = `
+                    <div class="dc1-port-tile-led ${isUp ? 'port-up' : 'port-down'}"></div>
+                    <span class="dc1-port-tile-id">${p.portId.replace('1/1/', '')}</span>`;
+                portGrid.appendChild(tile);
+                const svgPort = svgPortMap[p.portId];
+                if (svgPort) svgPort.setAttribute('fill', isUp ? '#3a6a4a' : '#3a3a4a');
+            });
+        }
+
+        function renderIfaceTable(ifaces) {
+            if (!ifacesBody) return;
+            if (!ifaces || ifaces.length === 0) {
+                ifacesBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;padding:16px">no interface data</td></tr>';
+                return;
+            }
+            const sorted = [...ifaces].sort((a, b) => {
+                if (a.router !== b.router) return a.router === 'Base' ? -1 : 1;
+                return a.name.localeCompare(b.name);
+            });
+            const upCount = sorted.filter(i => i.operState === 'up').length;
+            if (ifacesCount) ifacesCount.textContent = `${upCount}/${sorted.length} up`;
+            ifacesBody.innerHTML = sorted.map(i => {
+                const isMgmt   = i.router !== 'Base';
+                const rdgBadge = isMgmt
+                    ? `<span class="dc1-router-badge badge-mgmt">${i.router}</span>`
+                    : `<span class="dc1-router-badge">Base</span>`;
+                const ipHtml = i.ipv4
+                    ? `<span class="dc1-ip-addr">${i.ipv4}</span>`
+                    : `<span class="dc1-ip-addr empty">—</span>`;
+                return `<tr>
+                    <td>${rdgBadge}</td>
+                    <td>${i.name}</td>
+                    <td>${stateHtml(i.operState)}</td>
+                    <td>${ipHtml}</td>
+                    <td>${fmt0(i.inPkts)}</td>
+                    <td>${fmt0(i.outPkts)}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderIsisSection(isis) {
+            if (!isis) return;
+            const isUp = isis.operState === 'up';
+            if (isisLed)   isisLed.setAttribute('data-state', isUp ? 'up' : 'down');
+            if (isisState) isisState.textContent = isis.operState ? isis.operState.toUpperCase() : '—';
+            if (isisLevels) {
+                const levels = isis.levels || [];
+                isisLevels.innerHTML = levels.length === 0 ? '' : levels.map(l => {
+                    const overloaded = l.overload && l.overload !== 'not-in-overload';
+                    return `<span class="dc1-isis-level-badge${overloaded ? ' overloaded' : ''}">L${l.level} · ${l.lsps} LSP${l.lsps !== 1 ? 's' : ''}${overloaded ? ' ⚠' : ''}</span>`;
+                }).join('');
+            }
+            if (isisBody) {
+                const rows = [];
+                (isis.interfaces || []).forEach(iface => {
+                    if (iface.name === 'system') return;
+                    (iface.adjacencies || []).forEach(adj => rows.push({ ifaceName: iface.name, ...adj }));
+                });
+                isisBody.innerHTML = rows.length === 0
+                    ? '<tr><td colspan="5" style="text-align:center;color:#888;padding:14px 0">no active adjacencies</td></tr>'
+                    : rows.map(r => `<tr>
+                        <td>${r.ifaceName}</td>
+                        <td class="dc1-ip-addr">${r.neighborIp}</td>
+                        <td><span class="dc1-isis-level-tag">${r.level}</span></td>
+                        <td>${stateHtml(r.operState)}</td>
+                        <td class="dc1-isis-uptime">${formatUptime(r.uptime)}</td>
+                    </tr>`).join('');
+            }
+        }
+
+        function renderSrSection(sr) {
+            if (!sr) return;
+            const adjSids  = sr.adjSids  || [];
+            const pol      = sr.policies || {};
+            const srActive = adjSids.length > 0;
+            if (srLed)   srLed.setAttribute('data-state', srActive ? 'up' : 'down');
+            if (srState) srState.textContent = `${adjSids.length} adj-SID${adjSids.length !== 1 ? 's' : ''}`;
+            if (srSummary) {
+                srSummary.innerHTML = [
+                    { v: adjSids.length,                          l: 'Adj-SIDs' },
+                    { v: pol.bindingSidsAllocated  ?? '—',        l: 'Binding SIDs' },
+                    { v: pol.ttmPreferences        ?? '—',        l: 'TTM Prefs' },
+                    { v: pol.activeBgpPolicies     ?? '—',        l: 'Active BGP Pol' },
+                    { v: pol.activeStaticLocalPolicies ?? '—',    l: 'Static Pol' }
+                ].map(s => `<div class="dc-sr-stat">
+                    <span class="dc-sr-stat-value">${s.v}</span>
+                    <span class="dc-sr-stat-label">${s.l}</span>
+                </div>`).join('');
+            }
+            if (srBody) {
+                srBody.innerHTML = adjSids.length === 0
+                    ? '<tr><td colspan="5" style="text-align:center;color:#888;padding:14px 0">no adjacency SIDs</td></tr>'
+                    : adjSids.map(s => `<tr>
+                        <td>${s.ifaceName}</td>
+                        <td><span class="dc-sr-sid-badge">${s.sidValue ?? '—'}</span></td>
+                        <td><span class="dc-sr-type-chip">${(s.sidType || '').replace('mpls-label', 'MPLS')}</span></td>
+                        <td>${s.sidProtected ? '<span class="dc-sr-protected">Protected</span>' : '<span class="dc-sr-unprotected">—</span>'}</td>
+                        <td class="dc-sr-backup-ip">${s.backupIp}</td>
+                    </tr>`).join('');
+            }
+        }
+
+        function renderLspSection(lsp) {
+            if (!lsp) {
+                if (lspLed)     lspLed.setAttribute('data-state', 'unknown');
+                if (lspState)   lspState.textContent = '—';
+                if (lspSummary) lspSummary.innerHTML = '';
+                return;
+            }
+            const isUp = lsp.operState === 'up';
+            const isDn = lsp.operState === 'down';
+            if (lspLed)   lspLed.setAttribute('data-state', isUp ? 'up' : isDn ? 'down' : 'unknown');
+            if (lspState) lspState.textContent = lsp.operState ? lsp.operState.toUpperCase() : '—';
+
+            function pathBadge(type) {
+                if (type === 'primary')   return '<span class="a11-lsp-path-badge primary">PRIMARY</span>';
+                if (type === 'secondary') return '<span class="a11-lsp-path-badge secondary">SECONDARY</span>';
+                return '';
+            }
+
+            // Build path rows table (primary first, then secondaries)
+            const pathRows = (lsp.paths || []).map(p => {
+                const isActive  = p.name === lsp.activePath;
+                const stateCls  = p.operState === 'up'   ? 'state-up'
+                                : p.operState === 'down' ? 'state-down' : 'state-unknown';
+                const stateLabel = (p.operState || '?').toUpperCase();
+                return `<tr${isActive ? ' class="a11-lsp-active-row"' : ''}>
+                    <td class="mono">${p.name}${isActive ? ' <span class="a11-lsp-active-marker">▶ active</span>' : ''}</td>
+                    <td>${pathBadge(p.type)}</td>
+                    <td><span class="dc1-iface-state ${stateCls}"><span class="dc1-iface-led"></span>${stateLabel}</span></td>
+                    <td class="a11-lsp-path-state">${p.pathState || '—'}</td>
+                </tr>`;
+            }).join('');
+
+            if (lspSummary) {
+                lspSummary.innerHTML = `
+                <div class="a11-lsp-grid">
+                    <div class="a11-lsp-row">
+                        <span class="a11-lsp-key">LSP Name</span>
+                        <span class="a11-lsp-val mono">${lsp.lspName || '—'}</span>
+                    </div>
+                    <div class="a11-lsp-row">
+                        <span class="a11-lsp-key">Headend → Tailend</span>
+                        <span class="a11-lsp-val">${lsp.headend || '—'} → ${lsp.tailend || '—'}</span>
+                    </div>
+                    <div class="a11-lsp-row">
+                        <span class="a11-lsp-key">Paths (cfg / oper)</span>
+                        <span class="a11-lsp-val">${lsp.configuredPaths ?? '—'} / ${lsp.operationalPaths ?? '—'}</span>
+                    </div>
+                </div>
+                ${pathRows.length ? `
+                <table class="dc1-popup-table a11-lsp-table" style="margin-top:8px">
+                    <thead><tr>
+                        <th>Path Name</th><th>Type</th><th>State</th><th>Status</th>
+                    </tr></thead>
+                    <tbody>${pathRows}</tbody>
+                </table>` : ''}`;
+            }
+        }
+
+        async function loadData() {
+            if (loading)    loading.style.display  = 'flex';
+            if (errorBox)   errorBox.style.display = 'none';
+            if (body)       body.style.display     = 'none';
+            if (refreshBtn) refreshBtn.disabled    = true;
+            try {
+                // Fetch node telemetry and SR-TE LSP state in parallel
+                const [res, lspRes] = await Promise.all([
+                    fetch(`${PING_BASE}/gnmic/node/${NODE_ID}`, { cache: 'no-store' }),
+                    fetch(`${PING_BASE}/api/mpls/srte-lsp`,     { cache: 'no-store' }).catch(() => null)
+                ]);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data    = await res.json();
+                const lspData = lspRes ? await lspRes.json().catch(() => null) : null;
+                if (data.error) throw new Error(data.error);
+                if (tsEl) {
+                    const t = new Date(data.ts);
+                    tsEl.textContent = `${t.toLocaleTimeString()} · gnmic`;
+                }
+                renderPortGrid(data.ports || []);
+                renderIfaceTable(data.interfaces || []);
+                renderIsisSection(data.isis || null);
+                renderSrSection(data.sr || null);
+                renderLspSection(lspData || null);
+                if (loading) loading.style.display = 'none';
+                if (body)    body.style.display    = 'block';
+            } catch (err) {
+                if (loading)   loading.style.display = 'none';
+                if (errorBox)  errorBox.style.display = 'flex';
+                if (errorText) errorText.textContent =
+                    `gnmic unreachable: ${err.message} — is ping-service.js running?`;
+            } finally {
+                if (refreshBtn) refreshBtn.disabled = false;
+            }
+        }
+
+        function openPopup()  { overlay.style.display = 'flex'; document.body.style.overflow = 'hidden'; loadData(); }
+        function closePopup() { overlay.style.display = 'none'; document.body.style.overflow = ''; }
+
+        if (svgNode) {
+            svgNode.addEventListener('click', openPopup);
+            svgNode.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPopup(); }
+            });
+        }
+        if (closeBtn)   closeBtn.addEventListener('click', closePopup);
+        if (refreshBtn) refreshBtn.addEventListener('click', loadData);
+        overlay.addEventListener('click', e => { if (e.target === overlay) closePopup(); });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && overlay.style.display !== 'none') closePopup();
+        });
+
+        window.a11Popup = { open: openPopup, close: closePopup, refresh: loadData };
+    })();
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // IEC 61850 GOOSE — TPT Control Panel
+    // Polls /api/tpt/status and /api/tpt/log every 1.5 s while running.
+    // ═══════════════════════════════════════════════════════════════════════
+    (() => {
+        const API = 'http://localhost:3000';
+        let _pollTimer = null;
+
+        // ── DOM refs ─────────────────────────────────────────────────────
+        const deployBtn = document.getElementById('tpt-deploy-btn');
+        const startBtn  = document.getElementById('tpt-start-btn');
+        const stopBtn   = document.getElementById('tpt-stop-btn');
+        const tripBtn   = document.getElementById('tpt-trip-btn');
+        const clearBtn  = document.getElementById('tpt-clear-btn');
+        const logEl     = document.getElementById('tpt-log');
+        const chanVis   = document.querySelector('.tpt-channel-vis');
+
+        // per-node refs (rtu1 / rtu2)
+        const nodes = ['rtu1', 'rtu2'].map(id => {
+            const n = id === 'rtu1' ? '1' : '2';
+            return {
+                id,
+                card:     document.getElementById(`tpt-card-${id}`),
+                dot:      document.getElementById(`tpt-dot-${id}`),
+                sent:     document.getElementById(`tpt${n}-sent`),
+                stnum:    document.getElementById(`tpt${n}-stnum`),
+                v:        document.getElementById(`tpt${n}-v`),
+                i:        document.getElementById(`tpt${n}-i`),
+                tripInd:  document.getElementById(`tpt${n}-trip-ind`),
+                tripDot:  document.getElementById(`tpt${n}-trip-dot`),
+                tripLbl:  document.getElementById(`tpt${n}-trip-label`),
+            };
+        });
+
+        // ── Helpers ──────────────────────────────────────────────────────
+        const PEER_TIMEOUT_MS = 5000;   // 5 × T0 heartbeat
+
+        // ── PDU popover — last rendered entries, needed for click handler ───
+        let _lastLogEntries = [];
+
+        // ── Heartbeat ring state ──────────────────────────────────────────
+        // Written by updateNodeCard() (poll thread), read by RAF loop.
+        const CIRC = 2 * Math.PI * 22;  // stroke circumference for r=22 ≈ 138.2
+        const tptHbState = {
+            rtu1: { lastTsMs: null, commLoss: false, running: false },
+            rtu2: { lastTsMs: null, commLoss: false, running: false },
+        };
+
+        // RAF-based ring ticker — runs at ~12 fps, very cheap
+        let _hbRafId   = null;
+        let _hbLastTick = 0;
+        const HB_TICK_MS = 80;
+
+        function tickHeartbeatRings(now) {
+            _hbRafId = requestAnimationFrame(tickHeartbeatRings);
+            if (now - _hbLastTick < HB_TICK_MS) return;
+            _hbLastTick = now;
+
+            ['rtu1', 'rtu2'].forEach((id, idx) => {
+                const n   = idx + 1;
+                const arc = document.getElementById(`tpt${n}-hb-arc`);
+                const val = document.getElementById(`tpt${n}-hb-val`);
+                const sub = document.getElementById(`tpt${n}-hb-sub`);
+                const st  = tptHbState[id];
+                if (!arc) return;
+
+                // Daemon offline or never connected
+                if (!st.running || st.lastTsMs === null) {
+                    arc.setAttribute('stroke-dasharray', `0 ${CIRC}`);
+                    arc.style.stroke = '#ccc';
+                    if (val) { val.textContent = '—'; val.style.fill = '#bbb'; }
+                    if (sub) sub.textContent = 'offline';
+                    return;
+                }
+
+                // COMM LOSS — freeze ring red with × marker
+                if (st.commLoss) {
+                    arc.setAttribute('stroke-dasharray', `${CIRC} ${CIRC}`);
+                    arc.style.stroke = '#c0392b';
+                    if (val) { val.textContent = '✕'; val.style.fill = '#c0392b'; }
+                    if (sub) sub.textContent = 'COMM LOSS';
+                    return;
+                }
+
+                // Normal countdown
+                const age      = Date.now() - st.lastTsMs;
+                const fraction = Math.max(0, 1 - age / PEER_TIMEOUT_MS);
+                const dash     = (fraction * CIRC).toFixed(2);
+                const secsLeft = Math.max(0, (PEER_TIMEOUT_MS - age) / 1000);
+                const color    = age < 2500 ? '#2a8a50' : age < 4000 ? '#b07800' : '#c0392b';
+
+                arc.setAttribute('stroke-dasharray', `${dash} ${CIRC}`);
+                arc.style.stroke = color;
+                if (val) { val.textContent = secsLeft.toFixed(1); val.style.fill = color; }
+                if (sub) sub.textContent = age < 1200 ? 'fresh' :
+                                           age < 3000 ? 'ok'    :
+                                           age < 4500 ? 'stale…' : 'timeout!';
+            });
+        }
+        // Start the RAF loop immediately (it's cheap and self-throttled)
+        _hbRafId = requestAnimationFrame(tickHeartbeatRings);
+
+        function apiFetch(endpoint, method = 'GET') {
+            return fetch(`${API}${endpoint}`, { method })
+                .then(r => r.json())
+                .catch(() => null);
+        }
+
+        function fmtTime(isoStr) {
+            if (!isoStr) return '—';
+            try { return new Date(isoStr).toLocaleTimeString('en-GB', { hour12: false, fractionalSecondDigits: 1 }); }
+            catch { return isoStr.slice(11, 22); }
+        }
+
+        // Returns true if the peer's last heartbeat is stale (MPLS path broken).
+        // Works with both old daemons (peer_last_ts only) and new ones (peer_alive).
+        function isPeerStale(status) {
+            if (!status) return false;
+            const hasReceived = (status.sub_recv ?? 0) > 0;
+            if (!hasReceived) return false;                     // never connected — not a loss event
+            if ('peer_alive' in status) return !status.peer_alive;  // new daemon: use explicit flag
+            if (!status.peer_last_ts) return true;             // old daemon: never got any message
+            return (Date.now() - new Date(status.peer_last_ts).getTime()) > PEER_TIMEOUT_MS;
+        }
+
+        function updateNodeCard(ref, status) {
+            if (!status || !ref.card) return;
+            const isOnline = status.pub_running != null;
+            const running  = status.pub_running;
+            const tripped  = status.trip_asserted;
+            const commLoss = isOnline && isPeerStale(status);
+
+            ref.card.className = 'tpt-node-card' +
+                (tripped   ? ' tpt-tripped'   : '') +
+                (commLoss  ? ' tpt-comm-loss' : '') +
+                (!isOnline ? ' tpt-offline'   : '');
+
+            if (ref.dot) {
+                ref.dot.className = 'tpt-node-dot ' +
+                    (!isOnline ? 'offline' : tripped ? 'tripped' : commLoss ? 'commloss' : running ? 'running' : 'offline');
+            }
+            if (ref.sent)  ref.sent.textContent = status.pub_sent ?? '—';
+            if (ref.stnum) ref.stnum.textContent = status.st_num  ?? '—';
+            if (ref.v && status.voltage_pu != null)
+                ref.v.textContent = status.voltage_pu.toFixed(3);
+            if (ref.i && status.current_pu != null)
+                ref.i.textContent = status.current_pu.toFixed(3);
+
+            if (ref.tripInd) {
+                ref.tripInd.className = 'tpt-trip-indicator' +
+                    (tripped  ? ' tripped'   : '') +
+                    (commLoss ? ' comm-loss' : '');
+                if (ref.tripLbl) ref.tripLbl.textContent =
+                    tripped ? '⚡ TRIPPED' : commLoss ? '⚠ LINK DOWN' : 'ARMED';
+            }
+
+            // Feed heartbeat ring state (read by RAF loop every ~80 ms)
+            if (tptHbState[ref.id]) {
+                tptHbState[ref.id].running  = !!running;
+                tptHbState[ref.id].commLoss = commLoss;
+                tptHbState[ref.id].lastTsMs = status.peer_last_ts
+                    ? new Date(status.peer_last_ts).getTime() : null;
+            }
+        }
+
+        function fmtAge(isoStr) {
+            if (!isoStr) return null;
+            const s = Math.round((Date.now() - new Date(isoStr).getTime()) / 1000);
+            if (s < 60)  return `${s}s ago`;
+            if (s < 3600) return `${Math.floor(s/60)}m ${s%60}s ago`;
+            return `${Math.floor(s/3600)}h ago`;
+        }
+
+        // ── Latency sparkline + MIN/AVG/MAX stats ────────────────────────
+        // Polyline of inter-arrival intervals on a log-Y axis so the full
+        // T1(2 ms) → T0(1000 ms) range is visible without clipping.
+        // Up to 40 most-recent intervals; newest point on the right.
+        function updateSparkline(entries) {
+            const svg    = document.getElementById('tpt-spark-svg');
+            const elMin  = document.getElementById('tpt-stat-min');
+            const elAvg  = document.getElementById('tpt-stat-avg');
+            const elMax  = document.getElementById('tpt-stat-max');
+            if (!svg) return;
+
+            // entries arrive newest-first; collect valid ΔT values oldest→newest
+            const vals = entries.slice().reverse()
+                .map(e => e._intervalMs)
+                .filter(v => v != null && v > 0);
+
+            const reset = () => {
+                svg.innerHTML = `<text x="150" y="15" text-anchor="middle" class="tpt-spark-empty">No PDU data</text>`;
+                [elMin, elAvg, elMax].forEach(el => { if (el) el.textContent = '—'; });
+            };
+            if (vals.length < 2) { reset(); return; }
+
+            // ── stats ────────────────────────────────────────────────────
+            const minV = Math.min(...vals);
+            const maxV = Math.max(...vals);
+            const avgV = vals.reduce((a, b) => a + b, 0) / vals.length;
+            const fmtMs = v => v < 10 ? v.toFixed(1) + 'ms' : Math.round(v) + 'ms';
+            if (elMin) elMin.textContent = fmtMs(minV);
+            if (elAvg) elAvg.textContent = fmtMs(avgV);
+            if (elMax) elMax.textContent = fmtMs(maxV);
+
+            // ── sparkline ────────────────────────────────────────────────
+            const VW = 300, VH = 30, PAD = 3;
+            const MAX_PTS  = 40;
+            const MAX_LOG  = Math.log10(2001);   // Y headroom above 1000 ms
+            const pts      = vals.slice(-MAX_PTS);
+            const n        = pts.length;
+            const xStep    = (VW - PAD * 2) / Math.max(1, n - 1);
+
+            const logY = ms =>
+                VH - PAD - (Math.log10(Math.max(1, ms)) / MAX_LOG) * (VH - PAD * 2);
+
+            const ptColor = ms => {
+                if (ms <=   5) return '#c0392b';   // T1
+                if (ms <=  20) return '#c05010';   // T2
+                if (ms <= 200) return '#906800';   // T3
+                return '#2a7848';                  // T0 heartbeat
+            };
+
+            const points = pts.map((v, i) => ({ x: PAD + i * xStep, y: logY(v), v }));
+
+            // reference line at T0 = 1000 ms
+            const refY = logY(1000).toFixed(1);
+
+            // coloured segments
+            let segs = '';
+            for (let i = 0; i < points.length - 1; i++) {
+                const a = points[i], b = points[i + 1];
+                segs += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}"
+                               x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"
+                               stroke="${ptColor(b.v)}" stroke-width="1.5"
+                               stroke-linecap="round"/>`;
+            }
+
+            // dots at each point
+            const dots = points.map(p =>
+                `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}"
+                         r="2" fill="${ptColor(p.v)}" opacity="0.85"/>`
+            ).join('');
+
+            svg.innerHTML =
+                `<line x1="${PAD}" y1="${refY}" x2="${VW - PAD}" y2="${refY}"
+                       stroke="rgba(42,120,72,0.2)" stroke-width="1" stroke-dasharray="3 3"/>` +
+                segs + dots;
+        }
+
+        // ── Burst retransmit chart ────────────────────────────────────────
+        // Renders a log-scale bar chart of PDU inter-arrival times, making the
+        // IEC 61850 retransmit burst pattern (T1→T2→T3→T0) visually obvious.
+        function updateBurstChart(entries) {
+            const svg = document.getElementById('tpt-burst-svg');
+            if (!svg) return;
+
+            const H       = 58;             // viewBox height
+            const VW      = 400;            // viewBox width
+            const MAX_BARS = 20;
+            const MAX_LOG  = Math.log10(5001); // log10(max expected interval + 1) ≈ 3.70
+
+            // Filter entries that have a measured interval, oldest → newest
+            const bars = entries.slice().reverse().filter(e => e._intervalMs > 0);
+
+            if (!bars.length) {
+                svg.innerHTML = `<text x="200" y="29" text-anchor="middle" class="tpt-burst-empty">No PDU data yet</text>`;
+                return;
+            }
+
+            const visible = bars.slice(-MAX_BARS);
+            const count   = visible.length;
+            const barW    = Math.floor(VW / MAX_BARS) - 1;          // bar width (~19px)
+            const totalW  = count * (barW + 1) - 1;
+            const offsetX = Math.floor((VW - totalW) / 2);          // center the group
+
+            // Reference lines (T1, T2, T3, T0) — dashed horizontals
+            const refs = [
+                { ms: 1000, label: 'T0', stroke: 'rgba(42,138,80,0.40)'   },
+                { ms: 100,  label: 'T3', stroke: 'rgba(160,120,0,0.40)'   },
+                { ms: 10,   label: 'T2', stroke: 'rgba(200,100,0,0.40)'   },
+                { ms: 2,    label: 'T1', stroke: 'rgba(192,57,43,0.50)'   },
+            ];
+
+            let out = '';
+
+            refs.forEach(({ ms, label, stroke }) => {
+                const logH = Math.log10(ms + 1) / MAX_LOG * H;
+                const y    = (H - logH).toFixed(1);
+                const labelColor = stroke.replace(/[\d.]+\)$/, '0.80)');
+                out += `<line x1="0" y1="${y}" x2="${VW}" y2="${y}" stroke="${stroke}" stroke-width="0.8" stroke-dasharray="4 3"/>`;
+                out += `<text x="3" y="${(parseFloat(y) - 1.5).toFixed(1)}" fill="${labelColor}" font-size="5.5" font-family="IBM Plex Mono,monospace">${label}</text>`;
+            });
+
+            // Bars
+            visible.forEach((e, i) => {
+                const ms   = e._intervalMs;
+                const logH = Math.log10(ms + 1) / MAX_LOG * H;
+                const barH = Math.max(2, logH).toFixed(1);
+                const x    = offsetX + i * (barW + 1);
+                const y    = (H - parseFloat(barH)).toFixed(1);
+                const col  = ms <= 5   ? '#c0392b'   // T1 — red
+                           : ms <= 20  ? '#c05010'   // T2 — orange
+                           : ms <= 200 ? '#a07800'   // T3 — amber
+                                       : '#2a8a50';  // T0 — green
+                const op   = e.trip ? '0.95' : '0.72';
+                out += `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" fill="${col}" opacity="${op}" rx="1"/>`;
+            });
+
+            svg.innerHTML = out;
+        }
+
+        // ── StNum Event Strip — fault recorder ───────────────────────────
+        // Maintains a per-RTU history of (stNum, trip, commLoss) state changes
+        // and renders them as a scrollable strip of colored segment pills.
+        const EV_MAX = 30;   // max events retained per RTU
+        const _evStrip = { rtu1: [], rtu2: [] };
+        const _evLast  = { rtu1: null, rtu2: null };
+
+        function fmtDur(ms) {
+            if (ms < 500)   return `${ms}ms`;
+            if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+            const m = Math.floor(ms / 60000);
+            const s = Math.floor((ms % 60000) / 1000);
+            return `${m}m ${s}s`;
+        }
+
+        function fmtTs(epochMs) {
+            try { return new Date(epochMs).toLocaleTimeString('en-GB', { hour12: false, fractionalSecondDigits: 1 }); }
+            catch { return '—'; }
+        }
+
+        function updateEventStrip(id, status, commLoss) {
+            if (!status) return;
+            const stNum = status.st_num  ?? null;
+            const trip  = !!status.trip_asserted;
+            const now   = Date.now();
+            const last  = _evLast[id];
+            const arr   = _evStrip[id];
+
+            // Helper: close the currently open event
+            function closeOpen() {
+                if (arr.length && arr[arr.length - 1].endTs === null) {
+                    arr[arr.length - 1].endTs = now;
+                }
+            }
+
+            if (last === null) {
+                // First observation — seed the strip
+                _evLast[id] = { stNum, trip, commLoss };
+                if (stNum != null || commLoss) {
+                    arr.push({ stNum, trip, commLoss, ts: now, endTs: null });
+                }
+            } else {
+                const stNumChanged  = stNum !== null && stNum !== last.stNum;
+                const commLossGained = commLoss && !last.commLoss;
+                const commLossCleared = !commLoss && last.commLoss;
+
+                if (commLossGained || commLossCleared || stNumChanged) {
+                    closeOpen();
+                    arr.push({ stNum, trip, commLoss, ts: now, endTs: null });
+                }
+                _evLast[id] = { stNum, trip, commLoss };
+            }
+
+            // Trim to max
+            if (arr.length > EV_MAX) _evStrip[id] = arr.slice(-EV_MAX);
+        }
+
+        function renderEventStrip() {
+            ['rtu1', 'rtu2'].forEach(id => {
+                const track = document.getElementById(`tpt-strip-${id}`);
+                if (!track) return;
+                const events = _evStrip[id];
+
+                if (!events.length) {
+                    track.innerHTML = '<span class="tpt-recorder-idle">No events — start daemon and wait for heartbeat</span>';
+                    return;
+                }
+
+                const now = Date.now();
+                const html = events.map(ev => {
+                    const dur   = ev.endTs ? ev.endTs - ev.ts : now - ev.ts;
+                    const isOpen = ev.endTs === null;
+                    const cls   = ev.commLoss ? 'tpt-seg-commloss' : ev.trip ? 'tpt-seg-trip' : 'tpt-seg-armed';
+                    const icon  = ev.commLoss ? '⚠' : ev.trip ? '⚡' : '●';
+                    const lbl   = ev.commLoss ? 'COMM LOSS' : ev.trip ? 'TRIP' : 'ARMED';
+                    const title = `stNum ${ev.stNum ?? '?'} · ${fmtTs(ev.ts)}${ev.endTs ? ' → ' + fmtTs(ev.endTs) : ' (live)'} · ${fmtDur(dur)}`;
+                    return `<div class="tpt-strip-seg ${cls}${isOpen ? ' tpt-seg-open' : ''}" title="${title}">
+                        <span class="tpt-seg-icon">${icon}</span>
+                        <span class="tpt-seg-label">${lbl}</span>
+                        <span class="tpt-seg-snum">stNum ${ev.stNum ?? '?'}</span>
+                        <span class="tpt-seg-ts">${fmtTs(ev.ts)}</span>
+                        <span class="tpt-seg-dur">${fmtDur(dur)}</span>
+                    </div>`;
+                }).join('');
+
+                track.innerHTML = html;
+                // Auto-scroll to newest (bottom, track is now vertical)
+                requestAnimationFrame(() => { track.scrollTop = track.scrollHeight; });
+            });
+        }
+
+        // Clear history button
+        const recorderClearBtn = document.getElementById('tpt-recorder-clear');
+        if (recorderClearBtn) {
+            recorderClearBtn.addEventListener('click', () => {
+                _evStrip.rtu1 = [];
+                _evStrip.rtu2 = [];
+                _evLast.rtu1 = null;
+                _evLast.rtu2 = null;
+                renderEventStrip();
+            });
+        }
+
+        // ── PDU Detail Popover ────────────────────────────────────────────
+        // Shown on click of a .tpt-log-entry row; decoded Wireshark-style.
+
+        function retransmitInfo(ms) {
+            if (ms == null || ms <= 0) return null;
+            if (ms <= 5)   return { label: 'T1', desc: 'first retransmit burst',  cls: 'pop-val-t1' };
+            if (ms <= 20)  return { label: 'T2', desc: 'rapid retransmit',        cls: 'pop-val-t2' };
+            if (ms <= 200) return { label: 'T3', desc: 'slow retransmit',         cls: 'pop-val-t3' };
+            return           { label: 'T0', desc: 'steady heartbeat',            cls: 'pop-val-t0' };
+        }
+
+        function popRow(key, val, note = '', valCls = '') {
+            const noteHtml = note ? `<span class="tpt-pop-note">${note}</span>` : '';
+            return `<div class="tpt-pop-row">
+                <span class="tpt-pop-key">${key}</span>
+                <span class="tpt-pop-val${valCls ? ' ' + valCls : ''}">${val}</span>
+                ${noteHtml}
+            </div>`;
+        }
+
+        function buildPopoverHtml(e) {
+            // Infer source details
+            const srcLabel = e._src || (e.from?.includes('30.7') ? 'RTU1' : e.from?.includes('30.6') ? 'RTU2' : '');
+            const appid    = srcLabel === 'RTU1' ? '0x0001' : srcLabel === 'RTU2' ? '0x0002' : '0x0001';
+            const gocbRef  = srcLabel === 'RTU1' ? 'RTU1/LLN0$GO$XCBR1'
+                           : srcLabel === 'RTU2' ? 'RTU2/LLN0$GO$XCBR2' : '—';
+
+            // Network delay (received – PDU timestamp)
+            const netDelay = (e.t_iso && e.ts)
+                ? Math.round(new Date(e.ts).getTime() - new Date(e.t_iso).getTime())
+                : null;
+            const netDelayCls = netDelay == null ? '' : netDelay < 10 ? 'pop-val-good' : netDelay < 50 ? 'pop-val-warn' : 'pop-val-bad';
+            const netDelayNote = netDelay == null ? '' : netDelay < 10 ? '← excellent' : netDelay < 50 ? '← acceptable' : '← degraded';
+
+            // Retransmit info
+            const rt = retransmitInfo(e._intervalMs);
+
+            // timeAllowedToLive — estimate: 2.5 × tx_interval, min 1000ms
+            const tal = e._intervalMs > 0
+                ? Math.max(1000, Math.round(e._intervalMs * 2.5))
+                : 10000;
+
+            // State badge
+            const stateBadge = `<span class="tpt-pop-state ${e.trip ? 'pop-trip' : 'pop-armed'}">${e.trip ? '⚡ TRIP' : '● ARMED'}</span>`;
+
+            const titlebar = `<div class="tpt-pop-titlebar">
+                <span class="tpt-pop-proto">▼ IEC&nbsp;61850-8-1&nbsp;GOOSE&nbsp;PDU</span>
+                ${stateBadge}
+                <button class="tpt-pop-close" id="tpt-pop-close-btn" aria-label="Close">&#xD7;</button>
+            </div>`;
+
+            const secHdr = `<div class="tpt-pop-sec-hdr">PROTOCOL HEADER</div>`;
+            const hdrRows =
+                popRow('APPID', appid, 'application identifier') +
+                popRow('gocbRef', gocbRef, 'GOOSE control block ref') +
+                popRow('goID', e.goID ?? '—', 'GOOSE identifier') +
+                popRow('confRev', '1', 'configuration revision') +
+                popRow('ndsCom', 'false', 'needs commissioning') +
+                popRow('numDatSetEntries', '4', 'dataset member count') +
+                popRow('timeAllowedToLive', `${tal} ms`, 'max subscriber silence before alarm');
+
+            const seqHdr = `<div class="tpt-pop-sec-hdr">SEQUENCE NUMBERS</div>`;
+            const seqRows =
+                popRow('stNum', `${e.stNum ?? '—'}`, 'increments on each state change') +
+                popRow('sqNum', `${e.sqNum ?? '—'}`, 'retransmit counter within burst') +
+                (e._intervalMs > 0
+                    ? popRow('Δt from prev PDU',
+                        `${e._intervalMs} ms${rt ? ' &nbsp;←&nbsp;' + rt.label : ''}`,
+                        rt ? rt.desc : '',
+                        rt ? rt.cls : '')
+                    : popRow('Δt from prev PDU', '—', 'first entry in window')) +
+                (e._jitterMs != null
+                    ? popRow('jitter vs T0', `${Math.round(e._jitterMs)} ms`,
+                        Math.round(e._jitterMs) < 20 ? '← normal' : '← high jitter')
+                    : '');
+
+            const dsHdr = `<div class="tpt-pop-sec-hdr">DATASET &nbsp;·&nbsp; XCBR1$ST$Pos (4 entries)</div>`;
+            const dsRows =
+                popRow('[0] trip', e.trip ? 'TRUE ⚡' : 'FALSE ●', 'circuit breaker state',
+                    e.trip ? 'pop-val-trip' : 'pop-val-armed') +
+                popRow('[1] voltage_pu', e.voltage != null ? e.voltage.toFixed(4) : '—', 'p.u. (nominal = 1.0)') +
+                popRow('[2] current_pu', e.current != null ? e.current.toFixed(4) : '—', 'p.u. (nominal = 0.0)') +
+                popRow('[3] reserved', '—', '');
+
+            const tsHdr = `<div class="tpt-pop-sec-hdr">TIMESTAMPS &amp; ROUTING</div>`;
+            const tsRows =
+                (e.t_iso ? popRow('PDU T₀ (embedded)', fmtTime(e.t_iso), 'IEC 61850 UTC timestamp in PDU') : '') +
+                popRow('Received at', fmtTime(e.ts), 'subscriber wall-clock') +
+                (netDelay != null
+                    ? popRow('Network delay', `${netDelay} ms`, netDelayNote, netDelayCls)
+                    : '') +
+                popRow('Source IP', e.from ?? '—', srcLabel ? `(${srcLabel})` : '');
+
+            return titlebar +
+                `<div class="tpt-pop-section">${secHdr}${hdrRows}</div>` +
+                `<div class="tpt-pop-section">${seqHdr}${seqRows}</div>` +
+                `<div class="tpt-pop-section">${dsHdr}${dsRows}</div>` +
+                `<div class="tpt-pop-section">${tsHdr}${tsRows}</div>`;
+        }
+
+        function showPduPopover(entry, clientX, clientY) {
+            const popover  = document.getElementById('tpt-pdu-popover');
+            const backdrop = document.getElementById('tpt-pdu-backdrop');
+            if (!popover) return;
+
+            popover.innerHTML = buildPopoverHtml(entry);
+            popover.style.display = 'block';
+            if (backdrop) backdrop.style.display = 'block';
+
+            // Position near click, keep within viewport
+            const PW = 368, PH = 440;
+            let x = clientX + 14;
+            let y = clientY + 8;
+            if (x + PW > window.innerWidth  - 8) x = clientX - PW - 14;
+            if (y + PH > window.innerHeight - 8) y = clientY - PH;
+            if (y < 8) y = 8;
+            if (x < 8) x = 8;
+            popover.style.left = `${x}px`;
+            popover.style.top  = `${y}px`;
+
+            // Close button inside the popover
+            const closeBtn = document.getElementById('tpt-pop-close-btn');
+            if (closeBtn) closeBtn.addEventListener('click', hidePduPopover);
+        }
+
+        function hidePduPopover() {
+            const popover  = document.getElementById('tpt-pdu-popover');
+            const backdrop = document.getElementById('tpt-pdu-backdrop');
+            if (popover)  popover.style.display  = 'none';
+            if (backdrop) backdrop.style.display = 'none';
+            // Remove active highlight from any log row
+            logEl?.querySelectorAll('.tpt-pop-active')
+                 .forEach(el => el.classList.remove('tpt-pop-active'));
+        }
+
+        // Click on backdrop → close
+        const popBackdrop = document.getElementById('tpt-pdu-backdrop');
+        if (popBackdrop) popBackdrop.addEventListener('click', hidePduPopover);
+
+        // ESC key → close
+        document.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Escape') hidePduPopover();
+        });
+
+        // Delegate clicks on log entries
+        if (logEl) {
+            logEl.addEventListener('click', (ev) => {
+                const row = ev.target.closest('[data-entry-idx]');
+                if (!row) return;
+                const idx   = parseInt(row.dataset.entryIdx, 10);
+                const entry = _lastLogEntries[idx];
+                if (!entry) return;
+                // Highlight selected row
+                logEl.querySelectorAll('.tpt-pop-active')
+                     .forEach(el => el.classList.remove('tpt-pop-active'));
+                row.classList.add('tpt-pop-active');
+                showPduPopover(entry, ev.clientX, ev.clientY);
+            });
+        }
+
+        function renderLog(rtu1Log, rtu2Log, commLoss) {
+            if (!logEl) return;
+
+            // Merge and sort by timestamp descending (newest first)
+            const entries = [
+                ...(rtu1Log?.entries || []).map(e => ({ ...e, _src: 'RTU1' })),
+                ...(rtu2Log?.entries || []).map(e => ({ ...e, _src: 'RTU2' })),
+            ].sort((a, b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, 10);
+
+            if (!entries.length) {
+                updateBurstChart([]);
+                updateSparkline([]);
+                logEl.innerHTML = '<div class="tpt-log-idle">No GOOSE messages received yet</div>';
+                return;
+            }
+
+            // Compute inter-arrival interval per source (newest-first, so prev is at higher index)
+            const T0_MS = 1000;
+            const prevTsBySource = {};
+            entries.forEach(e => {
+                const prev = prevTsBySource[e._src];
+                if (prev !== undefined) {
+                    e._intervalMs = new Date(prev).getTime() - new Date(e.ts).getTime();
+                    e._jitterMs   = Math.abs(e._intervalMs - T0_MS);
+                }
+                prevTsBySource[e._src] = e.ts;
+            });
+
+            const colHdr = `<div class="tpt-log-cols">
+                <span>Time</span><span>From</span>
+                <span>stNum</span><span>sqNum</span>
+                <span>V p.u.</span><span>I p.u.</span>
+                <span>Delay ms</span><span>Jitter ms</span><span>Status</span>
+            </div>`;
+
+            // Banner shown above rows when path is broken
+            const lastTs = entries[0]?.ts;
+            const commBanner = commLoss
+                ? `<div class="tpt-log-comm-banner">&#9888; COMM LOSS — MPLS path down — last PDU ${fmtAge(lastTs)}</div>`
+                : '';
+
+            // Store for popover click handler
+            _lastLogEntries = entries;
+
+            const rows = entries.map((e, idx) => {
+                const tripClass = e.trip ? 'tpt-entry-trip' : 'tpt-entry-trip armed';
+                const tripTxt   = e.trip ? '⚡ TRIP' : 'ARMED';
+                const rowClass  = e.trip ? 'tpt-log-entry tpt-entry-trip' : 'tpt-log-entry';
+                const delayMs   = (e.t_iso && e.ts)
+                    ? Math.round(new Date(e.ts).getTime() - new Date(e.t_iso).getTime())
+                    : null;
+                const jitterTxt = e._jitterMs != null ? Math.round(e._jitterMs) : '—';
+                return `<div class="${rowClass}" data-entry-idx="${idx}" title="Click to inspect PDU">
+                    <span class="tpt-entry-ts">${fmtTime(e.ts)}</span>
+                    <span class="tpt-entry-from">${e.from || e._src}</span>
+                    <span class="tpt-entry-st">${e.stNum ?? '—'}</span>
+                    <span class="tpt-entry-sq">${e.sqNum ?? '—'}</span>
+                    <span class="tpt-entry-v">${e.voltage != null ? e.voltage.toFixed(3) : '—'}</span>
+                    <span class="tpt-entry-i">${e.current != null ? e.current.toFixed(3) : '—'}</span>
+                    <span class="tpt-entry-delay">${delayMs != null ? delayMs : '—'}</span>
+                    <span class="tpt-entry-jitter">${jitterTxt}</span>
+                    <span class="${tripClass}">${tripTxt}</span>
+                </div>`;
+            }).join('');
+
+            updateBurstChart(entries);
+            updateSparkline(entries);
+            logEl.innerHTML = commBanner + colHdr + rows;
+        }
+
+        // ── Poll loop ─────────────────────────────────────────────────────
+        async function poll() {
+            const [status, logData] = await Promise.all([
+                apiFetch('/api/tpt/status'),
+                apiFetch('/api/tpt/log'),
+            ]);
+
+            if (status) {
+                const rtu1 = status.RTU1?.data;
+                const rtu2 = status.RTU2?.data;
+                updateNodeCard(nodes[0], rtu1);
+                updateNodeCard(nodes[1], rtu2);
+
+                // Channel: broken if either side has a stale peer heartbeat
+                const commLoss = isPeerStale(rtu1) || isPeerStale(rtu2);
+                const active   = (rtu1?.pub_running || rtu2?.pub_running) && !commLoss;
+                // Keep traffic-flow visualiser in sync with GOOSE state
+                window.mplsTrafficFlow?.onTptStateChange(active);
+                if (chanVis) {
+                    chanVis.className = 'tpt-channel-vis' +
+                        (commLoss ? ' comm-loss' : active ? '' : ' inactive');
+                    const lbl = chanVis.querySelector('.tpt-channel-label');
+                    if (lbl) lbl.innerHTML = commLoss ? '&#9888; LINK<br>DOWN' : 'UDP :61850<br>GOOSE';
+                }
+
+                if (logData) renderLog(logData.RTU1?.data, logData.RTU2?.data, commLoss);
+
+                // Update event recorder (per-RTU commLoss computed individually)
+                const cl1 = rtu1 ? (rtu1.pub_running != null) && isPeerStale(rtu1) : false;
+                const cl2 = rtu2 ? (rtu2.pub_running != null) && isPeerStale(rtu2) : false;
+                updateEventStrip('rtu1', rtu1, cl1);
+                updateEventStrip('rtu2', rtu2, cl2);
+                renderEventStrip();
+
+                // Drive main-dashboard teleprotection via the traffic-flow module
+                // so topology and GOOSE faults are combined correctly (OR logic).
+                // Never call updateMplsTeleprotectionStatus() directly from here —
+                // that would race against the Dijkstra topology check.
+                window.mplsTrafficFlow?.onTptCommLossChange(commLoss);
+            }
+        }
+
+        function startPolling() {
+            if (_pollTimer) return;
+            poll();
+            _pollTimer = setInterval(poll, 1500);
+        }
+
+        function stopPolling() {
+            if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+        }
+
+        // ── Button handlers ───────────────────────────────────────────────
+        if (startBtn) {
+            startBtn.addEventListener('click', async () => {
+                startBtn.disabled = true;
+                await apiFetch('/api/tpt/start', 'POST');
+                startPolling();
+                setTimeout(() => { startBtn.disabled = false; }, 1500);
+            });
+        }
+
+        if (stopBtn) {
+            stopBtn.addEventListener('click', async () => {
+                stopBtn.disabled = true;
+                await apiFetch('/api/tpt/stop', 'POST');
+                setTimeout(() => {
+                    stopBtn.disabled = false;
+                    poll();   // refresh state immediately
+                }, 800);
+            });
+        }
+
+        if (tripBtn) {
+            tripBtn.addEventListener('click', async () => {
+                tripBtn.disabled = true;
+                tripBtn.textContent = '⚡ Tripping…';
+                await apiFetch('/api/tpt/trip', 'POST');
+                await poll();
+                setTimeout(() => {
+                    tripBtn.disabled = false;
+                    tripBtn.textContent = '⚡ Trip RTU1';
+                }, 2000);
+            });
+        }
+
+        if (clearBtn) {
+            clearBtn.addEventListener('click', async () => {
+                await apiFetch('/api/tpt/clear', 'POST');
+                await poll();
+            });
+        }
+
+        // ── Deploy button — runs install-tpt.sh via backend ───────────────
+        if (deployBtn) {
+            deployBtn.addEventListener('click', async () => {
+                deployBtn.disabled = true;
+                deployBtn.textContent = '⬆ Installing…';
+                if (logEl) logEl.innerHTML = '<div class="tpt-log-idle">⬆ Running install-tpt.sh — copying daemon to RTU containers…</div>';
+
+                const result = await apiFetch('/api/tpt/install', 'POST');
+
+                deployBtn.disabled = false;
+                deployBtn.textContent = '⬆ Deploy';
+
+                if (!result) {
+                    if (logEl) logEl.innerHTML = '<div class="tpt-log-idle" style="color:var(--accent-danger)">✗ Deploy failed — no response from backend</div>';
+                    return;
+                }
+
+                // Backend returned an error object (e.g. route not found on old process)
+                if (result.error || result.exitCode === undefined) {
+                    const msg = result.error || 'Unexpected response — backend may need restarting';
+                    if (logEl) logEl.innerHTML = `<div class="tpt-log-idle" style="color:var(--accent-danger)">✗ Backend error: ${msg}</div>`;
+                    return;
+                }
+
+                // Show script output in the log panel
+                const success = result.exitCode === 0;
+                const icon = success ? '✓' : '✗';
+                const colour = success ? 'var(--accent-ok,#4caf50)' : 'var(--accent-danger,#f44336)';
+                if (logEl) {
+                    logEl.innerHTML = `<div class="tpt-log-idle" style="color:${colour};margin-bottom:6px;">` +
+                        `${icon} install-tpt.sh exited ${result.exitCode}</div>` +
+                        `<pre style="font-size:10px;line-height:1.5;white-space:pre-wrap;color:var(--text-secondary);">` +
+                        (result.output || '(no output)').replace(/</g, '&lt;') + `</pre>`;
+                }
+
+                // If successful, kick off polling immediately so RTU cards update
+                if (success) {
+                    startPolling();
+                    await poll();
+                }
+            });
+        }
+
+        // ── Auto-start polling (daemon may already be running) ────────────
+        startPolling();
+
+    })();
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // MPLS Traffic Flow Visualiser
+    // Renders animated IGP-path packets between RTU1 and RTU2 while the
+    // GOOSE teleprotection channel is active.
+    //
+    // Behaviour:
+    //  • Inactive  → no animation (clean topology)
+    //  • Active    → animated packets follow primary IGP path (teal)
+    //  • Link fault → Dijkstra reroutes; rerouted path shown in orange
+    //  • No path   → smart-grid COMM LOSS triggered; grid deactivates
+    // ═══════════════════════════════════════════════════════════════════════
+    (function initMplsTrafficFlow() {
+
+        const SVG_NS = 'http://www.w3.org/2000/svg';
+
+        // ── IGP graph — mirrors config.json topology + SVG coordinates ────
+        // pts[0] = endpoint near `from` node; pts[1] = endpoint near `to` node.
+        // Dijkstra reverses the pts array when traversing the edge backwards.
+        //
+        // IS-IS metric: all links = 10  (Nokia SR-OS default)
+        //
+        // Primary path (cost 40, 4 hops) — shortest via ACCESS ring:
+        //   RTU1 → A1-1 → A1-2 → A1-3 → RTU2
+        //
+        // Rerouted path (cost 50, 5 hops) — any A1-2 ring link down:
+        //   RTU1 → A1-1 → ACC1 → ACC2 → A1-3 → RTU2
+        //
+        // No path → RTU1 or RTU2 link down → COMM LOSS → Smart Grid off
+        const EDGES = [
+            // RTU1 ↔ A1-1  (vertical)
+            { linkId: 'link-a1-1-rtu1',  from: 'a1-1',  to: 'rtu1',  cost: 10,
+              pts: [{x:250,y:400},{x:250,y:453}] },
+
+            // ACCESS ring: A1-1 ↔ A1-2 ↔ A1-3  (horizontal — PRIMARY path)
+            { linkId: 'link-a1-1-a1-2',  from: 'a1-1',  to: 'a1-2',  cost: 10,
+              pts: [{x:282,y:367},{x:518,y:367}] },
+            { linkId: 'link-a1-2-a1-3',  from: 'a1-2',  to: 'a1-3',  cost: 10,
+              pts: [{x:582,y:367},{x:788,y:367}] },
+
+            // A1-3 ↔ RTU2  (vertical)
+            { linkId: 'link-a1-3-rtu2',  from: 'a1-3',  to: 'rtu2',  cost: 10,
+              pts: [{x:820,y:400},{x:820,y:453}] },
+
+            // ACC1 ↔ A1-1  (diagonal — used in rerouted path)
+            { linkId: 'link-acc1-a1-1',  from: 'acc1',  to: 'a1-1',  cost: 10,
+              pts: [{x:350,y:268},{x:280,y:335}] },
+            // ACC2 ↔ A1-3  (diagonal — used in rerouted path)
+            { linkId: 'link-acc2-a1-3',  from: 'acc2',  to: 'a1-3',  cost: 10,
+              pts: [{x:750,y:268},{x:820,y:335}] },
+
+            // DC1 ↔ ACC1  (vertical)
+            { linkId: 'link-dc1-acc1',   from: 'dc1',   to: 'acc1',  cost: 10,
+              pts: [{x:360,y:138},{x:360,y:202}] },
+            // DC2 ↔ ACC2  (vertical)
+            { linkId: 'link-dc2-acc2',   from: 'dc2',   to: 'acc2',  cost: 10,
+              pts: [{x:740,y:138},{x:740,y:202}] },
+
+            // DC1 ↔ DC2  (horizontal, core backbone)
+            { linkId: 'link-dc1-dc2',    from: 'dc1',   to: 'dc2',   cost: 10,
+              pts: [{x:392,y:105},{x:708,y:105}] },
+
+            // ACC1 ↔ ACC2  (horizontal, aggregation ring)
+            { linkId: 'link-acc1-acc2',  from: 'acc1',  to: 'acc2',  cost: 10,
+              pts: [{x:392,y:235},{x:708,y:235}] },
+        ];
+
+        const NODES = ['rtu1','rtu2','a1-1','a1-2','a1-3','acc1','acc2','dc1','dc2'];
+
+        // ── Dijkstra ──────────────────────────────────────────────────────
+        // Returns ordered array of edges rtu1→rtu2, or null if no path.
+        function dijkstra(faultSet) {
+            // Build adjacency list, skipping faulted links.
+            const adj = {};
+            NODES.forEach(n => { adj[n] = []; });
+            for (const e of EDGES) {
+                if (faultSet.has(e.linkId)) continue;
+                // Forward direction
+                adj[e.from].push({ to: e.to, cost: e.cost,
+                                   edge: { ...e } });
+                // Reverse direction — flip pts so SVG coords stay correct
+                adj[e.to ].push({ to: e.from, cost: e.cost,
+                                   edge: { ...e, pts: [e.pts[1], e.pts[0]] } });
+            }
+
+            const dist = {}; const prev = {}; const prevEdge = {};
+            NODES.forEach(n => { dist[n] = Infinity; });
+            dist['rtu1'] = 0;
+            const unvisited = new Set(NODES);
+
+            while (unvisited.size) {
+                let u = null;
+                for (const n of unvisited) { if (u === null || dist[n] < dist[u]) u = n; }
+                if (dist[u] === Infinity || u === 'rtu2') break;
+                unvisited.delete(u);
+                for (const { to, cost, edge } of adj[u]) {
+                    const alt = dist[u] + cost;
+                    if (alt < dist[to]) {
+                        dist[to] = alt;
+                        prev[to] = u;
+                        prevEdge[to] = edge;
+                    }
+                }
+            }
+
+            if (dist['rtu2'] === Infinity) return null;
+            const path = []; let cur = 'rtu2';
+            while (cur !== 'rtu1') { path.unshift(prevEdge[cur]); cur = prev[cur]; }
+            return path;
+        }
+
+        // Cache the primary (fault-free) path link IDs for reroute detection
+        const PRIMARY_LINK_IDS = new Set((dijkstra(new Set()) || []).map(e => e.linkId));
+
+        // ── SVG element references ─────────────────────────────────────────
+        const highlightG  = document.getElementById('mpls-path-highlight');
+        const statusG     = document.getElementById('mpls-path-status-group');
+        const statusText  = document.getElementById('mpls-path-status-text');
+        const statusBg    = document.getElementById('mpls-path-status-bg');
+
+        // ── State ──────────────────────────────────────────────────────────
+        let _tptActive     = false;
+        let _faultLinks    = new Set();
+        let _animElems     = [];   // all created SVG elements (cleared on update)
+        // Two independent comm-loss sources — alarm fires when EITHER is true,
+        // clears only when BOTH are false.  Prevents the race where Dijkstra
+        // heals the alarm every 15 s while the TPT GOOSE layer still reports
+        // a heartbeat timeout, causing oscillation on a single link fault.
+        let _topoCommLoss  = false;  // driven by Dijkstra (no IGP path rtu1↔rtu2)
+        let _gooseCommLoss = false;  // driven by GOOSE heartbeat timeout (TPT poll)
+
+        function applyCommLoss() {
+            window.smartGrid?.updateMplsTeleprotectionStatus(_topoCommLoss || _gooseCommLoss);
+        }
+
+        // ── Helpers ────────────────────────────────────────────────────────
+        function clearFlow() {
+            _animElems.forEach(el => {
+                try { el.remove(); } catch (_) {}
+            });
+            _animElems = [];
+            if (statusG) statusG.setAttribute('visibility', 'hidden');
+        }
+
+        function renderFlow(pathEdges) {
+            clearFlow();
+            if (!pathEdges) return;
+
+            const isRerouted = pathEdges.some(e => !PRIMARY_LINK_IDS.has(e.linkId));
+            const segClass   = isRerouted ? 'mpls-path-seg-rerouted' : 'mpls-path-seg-primary';
+
+            pathEdges.forEach((e, idx) => {
+                const [a, b] = e.pts;
+
+                // Glowing link overlay
+                const ln = document.createElementNS(SVG_NS, 'line');
+                ln.setAttribute('x1', a.x); ln.setAttribute('y1', a.y);
+                ln.setAttribute('x2', b.x); ln.setAttribute('y2', b.y);
+                ln.setAttribute('class', segClass);
+                highlightG.appendChild(ln);
+                _animElems.push(ln);
+
+                // (packet animation removed)
+            });
+
+            // Status label
+            if (statusText && statusG) {
+                const hops = pathEdges.length;
+                statusText.textContent = isRerouted
+                    ? `⚡ REROUTED  ·  ${hops}-hop failover path via IGP  ·  RTU1 ↔ RTU2`
+                    : `● ACTIVE  ·  RTU1 ↔ RTU2  ·  primary path  ·  ${hops} hops`;
+                statusText.setAttribute('fill', isRerouted ? '#ff9800' : '#00c8a0');
+                if (statusBg) statusBg.setAttribute('stroke', isRerouted ? '#ff9800' : '#00c8a0');
+                statusG.setAttribute('visibility', 'visible');
+            }
+        }
+
+        function renderNoPath() {
+            clearFlow();
+            if (statusText && statusG) {
+                statusText.textContent = '⚠  NO PATH AVAILABLE  —  RTU1 ↔ RTU2 unreachable  —  SMART GRID DEACTIVATED';
+                statusText.setAttribute('fill', '#dc3545');
+                if (statusBg) statusBg.setAttribute('stroke', '#dc3545');
+                statusG.setAttribute('visibility', 'visible');
+            }
+        }
+
+        // ── Main update ────────────────────────────────────────────────────
+        // Runs Dijkstra unconditionally. Only updates _topoCommLoss; GOOSE-level
+        // recovery is handled independently by onTptCommLossChange().
+        function update() {
+            const path = dijkstra(_faultLinks);
+
+            if (!path) {
+                // No IGP path RTU1↔RTU2 → topology-driven comm-loss
+                clearFlow();
+                renderNoPath();
+                if (!_topoCommLoss) {
+                    _topoCommLoss = true;
+                    applyCommLoss();
+                }
+                return;
+            }
+
+            // Topology path restored — clear only the topology-side flag.
+            // If the GOOSE layer (_gooseCommLoss) is still true the alarm stays on
+            // until the TPT poll confirms the GOOSE heartbeat has resumed.
+            if (_topoCommLoss) {
+                _topoCommLoss = false;
+                applyCommLoss();
+            }
+
+            if (!_tptActive) {
+                clearFlow();   // path exists but daemon not running — clean topology
+                return;
+            }
+
+            renderFlow(path);
+        }
+
+        // ── Public API ─────────────────────────────────────────────────────
+        window.mplsTrafficFlow = {
+            /** Called by TPT poll loop when GOOSE daemon active/inactive */
+            onTptStateChange(active) {
+                if (_tptActive === active) return;  // no-op if unchanged
+                _tptActive = active;
+                update();
+            },
+            /** Called by SmartGrid._applyLinkHealth with current fault set */
+            onLinkHealthUpdate(faultSet) {
+                _faultLinks = faultSet;
+                update();
+            },
+            /**
+             * Called by the TPT poll whenever the GOOSE-layer comm-loss state
+             * changes. Updates only _gooseCommLoss, then recomputes the final
+             * alarm state via applyCommLoss().  This is the authoritative source
+             * when the TPT daemon is running — the topology layer must not
+             * override it.
+             */
+            onTptCommLossChange(gooseLoss) {
+                if (_gooseCommLoss === gooseLoss) return;
+                _gooseCommLoss = gooseLoss;
+                applyCommLoss();
+            },
+        };
+
+    })();
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // SR-TE LSP Overlay
+    // LSP: to-ACCESS1-3, headend ACCESS1-1
+    // PRIMARY  path (to-ACCESS1-3):        A1-1 → A1-2 → A1-3  (ACCESS ring)
+    // SECONDARY path (to-ACCESS1-3-backup): A1-1 → ACC1 → ACC2 → A1-3 (aggregation)
+    //
+    // Active path is drawn solid (mpls-srte-active); standby is dim dashed
+    // (mpls-srte-standby). Polls /api/mpls/srte-lsp every 20 s via gNMI.
+    // ══════════════════════════════════════════════════════════════════════════
+    (function initSrteLspOverlay() {
+        const SVG_NS   = 'http://www.w3.org/2000/svg';
+        const overlayG = document.getElementById('mpls-srte-overlay');
+        if (!overlayG) return;
+
+        const BASE_URL = window.smartGrid?.pingServiceUrl || 'http://localhost:3000';
+        const POLL_MS  = 20_000;
+
+        // PRIMARY path (to-ACCESS1-3):        A1-1 → A1-2 → A1-3  (ACCESS ring)
+        // Offset 5 px above physical link lines.
+        // Derived from SVG link coordinates:
+        //   link-a1-1-a1-2: x1=282 y1=367 x2=518 y2=367
+        //   link-a1-2-a1-3: x1=582 y1=367 x2=788 y2=367
+        const PRIMARY_SEGS = [
+            [282, 362, 518, 362],   // A1-1 → A1-2
+            [582, 362, 788, 362],   // A1-2 → A1-3
+        ];
+
+        // SECONDARY path (to-ACCESS1-3-backup): A1-1 → ACC1 → ACC2 → A1-3 (aggregation)
+        // Offset ~4 px to the left/above physical link lines for visual separation.
+        // Derived from SVG link coordinates:
+        //   link-acc1-a1-1: x1=350 y1=268 x2=280 y2=335  (reversed for A1-1→ACC1)
+        //   link-acc1-acc2: x1=392 y1=235 x2=708 y2=235
+        //   link-acc2-a1-3: x1=750 y1=268 x2=820 y2=335
+        const SECONDARY_SEGS = [
+            [276, 338, 346, 271],   // A1-1 → ACC1  (diagonal, -4 px offset)
+            [392, 230, 708, 230],   // ACC1 → ACC2  (horizontal, 5 px above y=235)
+            [754, 271, 824, 338],   // ACC2 → A1-3  (diagonal, -4 px offset)
+        ];
+
+        function drawSegs(segs, segCls, dotCls) {
+            segs.forEach(([x1, y1, x2, y2]) => {
+                const line = document.createElementNS(SVG_NS, 'line');
+                line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+                line.setAttribute('class', segCls);
+                overlayG.appendChild(line);
+                // directional mid-point dot
+                const dot = document.createElementNS(SVG_NS, 'circle');
+                dot.setAttribute('cx', (x1 + x2) / 2);
+                dot.setAttribute('cy', (y1 + y2) / 2);
+                dot.setAttribute('r', 3);
+                dot.setAttribute('class', dotCls);
+                overlayG.appendChild(dot);
+            });
+        }
+
+        function buildOverlay(lsp) {
+            overlayG.innerHTML = '';
+            const operState = (lsp.operState || 'unknown').toLowerCase();
+            const pathType  = (lsp.pathType  || 'unknown').toLowerCase();
+
+            if (operState === 'unknown') {
+                // Cannot determine active path — show ring only in grey
+                drawSegs(SECONDARY_SEGS,
+                         'mpls-srte-seg mpls-srte-unknown',
+                         'mpls-srte-dot mpls-srte-unknown');
+                return;
+            }
+
+            // Identify which segments are active vs standby
+            const isPrimaryActive = pathType !== 'secondary';  // primary is default
+            const activeSegs  = isPrimaryActive ? PRIMARY_SEGS   : SECONDARY_SEGS;
+            const standbySegs = isPrimaryActive ? SECONDARY_SEGS : PRIMARY_SEGS;
+
+            const stateCls = operState === 'up' ? 'mpls-srte-up' : 'mpls-srte-down';
+
+            // Standby path drawn first (below active)
+            drawSegs(standbySegs,
+                     'mpls-srte-seg mpls-srte-standby',
+                     'mpls-srte-dot mpls-srte-standby');
+
+            // Active path drawn on top — solid + state colour
+            drawSegs(activeSegs,
+                     `mpls-srte-seg mpls-srte-active ${stateCls}`,
+                     `mpls-srte-dot mpls-srte-active ${stateCls}`);
+        }
+
+        async function poll() {
+            try {
+                const r    = await fetch(`${BASE_URL}/api/mpls/srte-lsp`,
+                                         { signal: AbortSignal.timeout(6000) });
+                const data = await r.json();
+                buildOverlay(data);
+            } catch {
+                buildOverlay({ operState: 'unknown', pathType: 'unknown' });
+            }
+        }
+
+        poll();
+        setInterval(poll, POLL_MS);
     })();
 
 });

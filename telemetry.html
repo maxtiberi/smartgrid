@@ -1,0 +1,1797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Grid — Network Telemetry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── Design tokens (mirror of smart-grid.css) ────────────────────────── */
+:root {
+  --bg-dark:           #e8e6e1;
+  --bg-card:           #d0cec9;
+  --bg-elevated:       #f5f3ef;
+  --text-primary:      #1a1a1a;
+  --text-secondary:    #4a4a4a;
+  --text-tertiary:     #6a6a6a;
+  --accent-danger:     #8a4a4a;
+  --accent-success:    #4a6a5a;
+  --accent-warning:    #8a7a4a;
+  --color-border-dark: #3a3a3a;
+  --color-core:        #3a5a8a;
+  --color-agg:         #5a5a8a;
+  --color-access:      #3a7a5a;
+  --color-primary-btn: #005AFF;
+}
+
+/* ── Reset & base ────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Archivo', sans-serif;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-dark);
+  min-height: 100vh;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────── */
+.t-header {
+  background: #1a1a2e;
+  color: #fff;
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid rgba(0,90,255,0.4);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.t-header-left { display: flex; align-items: center; gap: 18px; }
+.t-header-title {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #e8e8f0;
+}
+.t-header-sub {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+.t-header-right { display: flex; align-items: center; gap: 10px; }
+
+.t-btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 5px 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.85);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.t-btn:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.35); }
+.t-btn-primary {
+  background: rgba(0,90,255,0.7);
+  border-color: rgba(0,90,255,0.9);
+  color: #fff;
+}
+.t-btn-primary:hover { background: rgba(0,90,255,0.9); }
+
+.t-meta {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 0.05em;
+}
+/* ── Live connection badge ──────────────────────────────────────────────── */
+.t-live-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 3px 9px;
+  border-radius: 10px;
+  border: 1px solid;
+  white-space: nowrap;
+  transition: color 0.3s, border-color 0.3s, background 0.3s;
+}
+.t-live-badge.t-live-connected   { color:#5ce1c2; border-color:rgba(92,225,194,.4); background:rgba(92,225,194,.08); }
+.t-live-badge.t-live-connecting  { color:#e0c050; border-color:rgba(224,192,80,.4); background:rgba(224,192,80,.08); }
+.t-live-badge.t-live-error       { color:#e06060; border-color:rgba(224,96,96,.4);  background:rgba(224,96,96,.08);  }
+/* Brief pulse when a push event arrives */
+@keyframes t-live-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.t-live-badge.t-live-pulse { animation: t-live-pulse 0.5s ease; }
+
+/* ── Main layout ─────────────────────────────────────────────────────── */
+.t-main {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 28px 28px 60px;
+}
+
+/* ── Section wrapper ─────────────────────────────────────────────────── */
+.t-section {
+  margin-bottom: 36px;
+}
+.t-section-hdr {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(0,0,0,0.12);
+}
+.t-section-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+.t-section-count {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+/* ── Loading / error states ──────────────────────────────────────────── */
+.t-loading {
+  text-align: center;
+  padding: 60px 0;
+  color: var(--text-tertiary);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+.t-spinner {
+  width: 28px; height: 28px;
+  border: 2px solid rgba(0,0,0,0.12);
+  border-top-color: var(--color-primary-btn);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.t-error {
+  background: rgba(138,74,74,0.1);
+  border: 1px solid rgba(138,74,74,0.3);
+  border-radius: 8px;
+  padding: 16px 20px;
+  color: var(--accent-danger);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  display: none;
+}
+
+/* ── Router cards grid (Section 1) ───────────────────────────────────── */
+.t-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 16px;
+}
+.t-card {
+  background: var(--bg-elevated);
+  border: 1px solid rgba(0,0,0,0.09);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  transition: box-shadow 0.15s;
+}
+.t-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+
+.t-card-header {
+  background: #1a1a2e;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.t-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8e8f0;
+  letter-spacing: 0.02em;
+}
+.t-card-host {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: rgba(255,255,255,0.38);
+  margin-top: 1px;
+}
+.t-role-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 3px;
+  color: #fff;
+  white-space: nowrap;
+}
+.role-core   { background: var(--color-core); }
+.role-aggregation { background: var(--color-agg); }
+.role-access { background: var(--color-access); }
+.role-unknown { background: #555; }
+
+.t-card-body { padding: 12px 14px; }
+
+/* Donut ring + stats row */
+.t-card-stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.t-donut-wrap { flex-shrink: 0; position: relative; width: 72px; height: 72px; }
+.t-donut-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.t-donut-count {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.t-donut-pct {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--text-tertiary);
+  margin-top: 1px;
+}
+.t-card-counters { flex: 1; }
+.t-counter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  padding: 3px 0;
+}
+.t-counter-label { color: var(--text-secondary); }
+.t-counter-val {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+}
+.val-up   { color: var(--accent-success); }
+.val-down { color: var(--accent-danger); }
+
+/* Port grid */
+.t-port-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.t-port-led {
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(0,0,0,0.15);
+  position: relative;
+}
+.t-port-led[title] { cursor: default; }
+.led-up      { background: #4a7a5a; }
+.led-down    { background: #8a4a4a; }
+.led-unknown { background: #555; }
+
+/* Interface list */
+.t-iface-list {
+  max-height: 120px;
+  overflow-y: auto;
+  border-top: 1px solid rgba(0,0,0,0.07);
+  padding-top: 8px;
+  scrollbar-width: thin;
+}
+.t-iface-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  font-size: 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+.t-iface-name {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--text-primary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.t-iface-ip {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--text-tertiary);
+  flex: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.t-state-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  letter-spacing: 0.04em;
+}
+.badge-up      { background: rgba(74,106,90,0.18); color: var(--accent-success); }
+.badge-down    { background: rgba(138,74,74,0.18); color: var(--accent-danger); }
+.badge-unknown { background: rgba(100,100,100,0.15); color: var(--text-tertiary); }
+
+.t-card-error {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--accent-danger);
+  padding: 8px 0;
+}
+
+/* ── Full-width table sections (2, 3, 4) ─────────────────────────────── */
+.t-table-wrap {
+  background: var(--bg-elevated);
+  border: 1px solid rgba(0,0,0,0.09);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+table.t-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+table.t-table thead th {
+  background: #1a1a2e;
+  color: rgba(255,255,255,0.7);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  padding: 8px 14px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+table.t-table tbody tr {
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  transition: background 0.1s;
+}
+table.t-table tbody tr:last-child { border-bottom: none; }
+table.t-table tbody tr:hover { background: rgba(0,0,0,0.03); }
+table.t-table td {
+  padding: 8px 14px;
+  vertical-align: middle;
+  color: var(--text-primary);
+}
+table.t-table td.mono {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+}
+table.t-table td.dim { color: var(--text-tertiary); }
+
+/* Group sub-header in IS-IS table */
+.t-group-hdr td {
+  background: rgba(0,0,0,0.035);
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  padding: 5px 14px;
+}
+
+/* IS-IS oper LED */
+.t-led {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.led-green { background: #4a7a5a; box-shadow: 0 0 4px rgba(74,122,90,0.6); }
+.led-red   { background: #8a4a4a; box-shadow: 0 0 4px rgba(138,74,74,0.6); }
+.led-grey  { background: #888; }
+
+/* Route protocol pills */
+.t-pill {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  display: inline-block;
+  margin: 0 2px;
+}
+.pill-isis      { background: rgba(58,90,138,0.15); color: var(--color-core); border: 1px solid rgba(58,90,138,0.3); }
+.pill-static    { background: rgba(138,122,74,0.15); color: var(--accent-warning); border: 1px solid rgba(138,122,74,0.3); }
+.pill-local,
+.pill-connected { background: rgba(74,106,90,0.15); color: var(--accent-success); border: 1px solid rgba(74,106,90,0.3); }
+.pill-bgp       { background: rgba(90,90,138,0.15); color: var(--color-agg); border: 1px solid rgba(90,90,138,0.3); }
+.pill-unknown   { background: rgba(100,100,100,0.12); color: var(--text-tertiary); border: 1px solid rgba(0,0,0,0.1); }
+.pill-dash      { background: rgba(100,100,100,0.08); color: var(--text-tertiary); border: 1px solid rgba(0,0,0,0.08); }
+
+/* Route bar */
+.t-route-bar {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(0,0,0,0.08);
+  overflow: hidden;
+  margin-top: 4px;
+  display: flex;
+}
+.t-route-bar-seg { height: 100%; }
+.seg-isis      { background: var(--color-core); }
+.seg-static    { background: var(--accent-warning); }
+.seg-local,
+.seg-connected { background: var(--accent-success); }
+.seg-bgp       { background: var(--color-agg); }
+
+/* ── LSP section (Section 4) ─────────────────────────────────────────── */
+.t-lsp-wrap {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 16px;
+}
+@media (max-width: 900px) { .t-lsp-wrap { grid-template-columns: 1fr; } }
+
+.t-lsp-card {
+  background: var(--bg-elevated);
+  border: 1px solid rgba(0,0,0,0.09);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.t-lsp-card-header {
+  background: #1a1a2e;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.t-lsp-name {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #e8e8f0;
+}
+.t-lsp-state-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+}
+.lsp-up      { background: rgba(74,106,90,0.25); color: #6fcf97; border: 1px solid rgba(111,207,151,0.4); }
+.lsp-down    { background: rgba(138,74,74,0.25); color: #eb5757; border: 1px solid rgba(235,87,87,0.4); }
+.lsp-unknown { background: rgba(100,100,100,0.2); color: #aaa; border: 1px solid rgba(150,150,150,0.3); }
+
+.t-lsp-meta { padding: 12px 16px; border-bottom: 1px solid rgba(0,0,0,0.07); }
+.t-lsp-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 5px;
+  font-size: 11px;
+}
+.t-lsp-meta-row:last-child { margin-bottom: 0; }
+.t-lsp-key {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  min-width: 80px;
+}
+.t-lsp-val {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--text-primary);
+}
+.t-path-type-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 2px;
+  letter-spacing: 0.05em;
+}
+.ptype-primary   { background: rgba(74,106,90,0.2); color: #4caf50; border: 1px solid #4caf50; }
+.ptype-secondary { background: rgba(138,122,74,0.2); color: #ff9800; border: 1px solid #ff9800; }
+.ptype-unknown   { background: rgba(100,100,100,0.15); color: #888; border: 1px solid #555; }
+
+.t-lsp-no-data {
+  padding: 28px 16px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+/* LSP path table */
+.t-lsp-path-table {
+  background: var(--bg-elevated);
+  border: 1px solid rgba(0,0,0,0.09);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.t-lsp-path-header {
+  background: #1a1a2e;
+  padding: 10px 16px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.6);
+}
+.t-active-row td { background: rgba(156,111,228,0.06); }
+.t-active-marker {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  color: #9c6fe4;
+  margin-left: 5px;
+  letter-spacing: 0.04em;
+}
+
+/* ── Network Topology NOC canvas ─────────────────────────────────────── */
+.t-noc-wrap {
+  position: relative;
+  height: 620px;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(92,225,194,.04), transparent 60%),
+    radial-gradient(ellipse at 80% 80%, rgba(240,198,116,.03), transparent 55%),
+    #07090c;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #1a242d;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+}
+.t-noc-grid {
+  position:absolute; inset:0;
+  background-image:
+    linear-gradient(to right,  rgba(92,225,194,.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(92,225,194,.05) 1px, transparent 1px),
+    linear-gradient(to right,  rgba(92,225,194,.10) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(92,225,194,.10) 1px, transparent 1px);
+  background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px;
+  pointer-events:none;
+}
+.t-noc-frame {
+  position:absolute; inset:14px;
+  border:1px dashed #1a242d; pointer-events:none; border-radius:2px;
+}
+.t-noc-frame::before,.t-noc-frame::after,
+.t-noc-corners::before,.t-noc-corners::after {
+  content:""; position:absolute; width:12px; height:12px; border:1px solid #5ce1c2;
+}
+.t-noc-frame::before{top:-1px;left:-1px;border-right:none;border-bottom:none}
+.t-noc-frame::after {top:-1px;right:-1px;border-left:none;border-bottom:none}
+.t-noc-corners{position:absolute;inset:14px;pointer-events:none}
+.t-noc-corners::before{bottom:-1px;left:-1px;border-right:none;border-top:none}
+.t-noc-corners::after {bottom:-1px;right:-1px;border-left:none;border-top:none}
+.t-noc-meta {
+  position:absolute; top:14px; left:18px;
+  font-family:'IBM Plex Mono',monospace; font-size:10px;
+  color:#4a5764; letter-spacing:.12em; text-transform:uppercase; pointer-events:none;
+}
+.t-noc-meta .hl{color:#7a8a99}
+.t-noc-stage { position:absolute; inset:0; cursor:default; }
+.t-noc-stage.panning { cursor:grabbing; }
+svg.t-noc-links{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+.t-noc-lbase  {stroke:#243240;stroke-width:1.5;fill:none;}
+.t-noc-lglow  {stroke:#5ce1c2;stroke-width:2;fill:none;opacity:.85;
+               filter:drop-shadow(0 0 4px rgba(92,225,194,.6));}
+.t-noc-ldown  {stroke:#ff6b6b;stroke-width:2;fill:none;opacity:.8;
+               filter:drop-shadow(0 0 4px rgba(255,107,107,.5));}
+.t-noc-lflow  {stroke:#5ce1c2;stroke-width:2;stroke-dasharray:6 10;
+               fill:none;opacity:.9;animation:t-noc-flow 1.2s linear infinite;}
+.t-noc-ldown-flow{stroke:#ff6b6b;stroke-width:1.5;stroke-dasharray:4 8;
+               fill:none;opacity:.5;}
+@keyframes t-noc-flow{ to{stroke-dashoffset:-32} }
+.t-noc-lsp-halo  {fill:none;stroke:#f0c674;stroke-width:14;stroke-linecap:round;opacity:.18;}
+.t-noc-lsp-active{fill:none;stroke:#f0c674;stroke-width:6; stroke-linecap:round;opacity:.55;}
+.t-noc-lsp-fail  {fill:none;stroke:#a07840;stroke-width:4; stroke-linecap:round;opacity:.32;stroke-dasharray:7 6;}
+.t-noc-lhit      {stroke:transparent;stroke-width:18;fill:none;
+                  pointer-events:stroke;cursor:pointer;}
+.t-noc-llabel    {font-family:'IBM Plex Mono',monospace;font-size:10px;
+                  fill:#d7e3ee;pointer-events:none;}
+.t-noc-llabel-bg {fill:#0b0f14;stroke:#243240;stroke-width:1;pointer-events:none;}
+.t-noc-llabel-sub{font-family:'IBM Plex Mono',monospace;font-size:9px;
+                  fill:#5ce1c2;pointer-events:none;}
+/* node cards */
+.t-noc-node{
+  position:absolute; width:118px;
+  transform:translate(-50%,-50%);
+  cursor:grab; user-select:none;
+}
+.t-noc-node.dragging{cursor:grabbing;z-index:20}
+.t-noc-card{
+  position:relative;
+  background:linear-gradient(180deg,#131b22 0%,#0e1419 100%);
+  border:1px solid #243240; border-radius:8px;
+  padding:8px 9px; transition:border-color .15s,box-shadow .15s;
+  display:flex; align-items:center; gap:8px;
+}
+.t-noc-node:hover .t-noc-card{border-color:rgba(92,225,194,.4)}
+.t-noc-node.selected .t-noc-card{
+  border-color:#f0c674;
+  box-shadow:0 0 0 1px #f0c674,0 0 24px rgba(240,198,116,.15);
+}
+.t-noc-node.down .t-noc-card{border-color:rgba(255,107,107,.4)}
+.t-noc-node-head{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.t-noc-ico{width:24px;height:24px;flex-shrink:0;color:#5ce1c2}
+.t-noc-node.muted   .t-noc-ico{color:#7a8a99}
+.t-noc-node.selected .t-noc-ico{color:#f0c674}
+.t-noc-node.down    .t-noc-ico{color:#ff6b6b}
+.t-noc-ntitles{flex:1;min-width:0}
+.t-noc-nname{
+  font-family:'Archivo',sans-serif;font-weight:600;font-size:11.5px;
+  color:#d7e3ee;line-height:1.1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.t-noc-nrole{
+  font-family:'IBM Plex Mono',monospace;font-size:8.5px;
+  color:#7a8a99;letter-spacing:.08em;text-transform:uppercase;margin-top:1px;
+}
+.t-noc-pill{
+  position:absolute;top:-4px;right:-4px;
+  width:8px;height:8px;border-radius:50%;
+  background:#5ce1c2;box-shadow:0 0 6px #5ce1c2;
+  border:1.5px solid #07090c;
+}
+.t-noc-node.muted .t-noc-pill{background:#7a8a99;box-shadow:0 0 4px #7a8a99}
+.t-noc-node.down  .t-noc-pill{background:#ff6b6b;box-shadow:0 0 6px #ff6b6b}
+.t-noc-port-anchor{
+  position:absolute;width:6px;height:6px;border-radius:50%;
+  background:#07090c;border:1px solid #5ce1c2;box-shadow:0 0 4px #5ce1c2;
+  pointer-events:none;
+}
+/* toolbar */
+.t-noc-toolbar{
+  position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+  background:#0e1419;border:1px solid #243240;border-radius:8px;
+  display:flex;align-items:center;padding:4px;gap:2px;z-index:5;
+  box-shadow:0 4px 16px rgba(0,0,0,.4);
+}
+.t-noc-toolbar button{
+  background:transparent;border:0;color:#7a8a99;
+  padding:7px 10px;border-radius:5px;cursor:pointer;
+  display:flex;align-items:center;gap:5px;
+  font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+  transition:background .12s,color .12s;
+}
+.t-noc-toolbar button:hover{background:#131b22;color:#d7e3ee}
+.t-noc-toolbar button.on{color:#5ce1c2}
+.t-noc-toolbar button svg{width:14px;height:14px}
+.t-noc-div{width:1px;height:18px;background:#1a242d;margin:0 2px}
+.t-noc-zoom{font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+            color:#d7e3ee;padding:0 8px}
+/* floating inspector */
+.t-noc-inspector{
+  position:absolute;top:14px;right:14px;bottom:54px;width:220px;
+  background:#0e1419;border:1px solid #243240;border-radius:10px;
+  padding:14px;overflow-y:auto;font-family:'IBM Plex Mono',monospace;
+  font-size:11px;color:#7a8a99;display:none;z-index:10;
+  scrollbar-width:thin;
+}
+.t-noc-inspector.open{display:block}
+.t-noc-insp-title{font-family:'Archivo',sans-serif;font-size:13px;
+  font-weight:600;color:#d7e3ee;margin-bottom:2px}
+.t-noc-insp-sub{font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  color:#5ce1c2;margin-bottom:10px}
+.t-noc-insp-row{
+  display:flex;justify-content:space-between;gap:6px;padding:4px 0;
+  border-bottom:1px solid #1a242d;font-size:10.5px;
+}
+.t-noc-insp-row:last-child{border-bottom:none}
+.t-noc-insp-k{color:#4a5764}
+.t-noc-insp-v{color:#d7e3ee;text-align:right}
+.t-noc-insp-v.ok  {color:#5ce1c2}
+.t-noc-insp-v.bad {color:#ff6b6b}
+.t-noc-insp-close{
+  float:right;background:transparent;border:0;color:#7a8a99;
+  cursor:pointer;font-size:14px;line-height:1;transition:color .12s;
+}
+.t-noc-insp-close:hover{color:#d7e3ee}
+
+/* ── Responsive ──────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .t-main { padding: 16px; }
+  .t-header { padding: 10px 16px; }
+  .t-meta { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- SVG icon symbols (router, RTU, server) reused by topology canvas -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="t-noc-router" viewBox="0 0 32 32">
+      <rect x="3" y="10" width="26" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <rect x="3" y="18" width="26" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="7" cy="13" r=".9" fill="currentColor"/>
+      <circle cx="10" cy="13" r=".9" fill="currentColor" opacity=".6"/>
+      <circle cx="7" cy="21" r=".9" fill="currentColor"/>
+      <circle cx="10" cy="21" r=".9" fill="currentColor" opacity=".6"/>
+      <path d="M16 4L13 7M16 4L19 7M16 4V10" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      <path d="M16 28L13 25M16 28L19 25M16 28V22" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      <path d="M2 14L5 13M2 14L5 15M2 14H8"   stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      <path d="M30 14L27 13M30 14L27 15M30 14H24" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      <path d="M2 22L5 21M2 22L5 23M2 22H8"   stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      <path d="M30 22L27 21M30 22L27 23M30 22H24" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="t-noc-rtu" viewBox="0 0 32 32">
+      <rect x="5" y="7" width="22" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <rect x="8" y="10" width="16" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1"/>
+      <circle cx="10" cy="20" r="1" fill="currentColor"/>
+      <circle cx="14" cy="20" r="1" fill="currentColor" opacity=".5"/>
+      <circle cx="18" cy="20" r="1" fill="currentColor" opacity=".5"/>
+      <path d="M22 20H24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M11 4V7M21 4V7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="t-noc-minus" viewBox="0 0 16 16"><path d="M3 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="t-noc-plus"  viewBox="0 0 16 16"><path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="t-noc-fit"   viewBox="0 0 16 16"><path d="M3 6V3H6M10 3H13V6M13 10V13H10M6 13H3V10" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></symbol>
+    <symbol id="t-noc-flow"  viewBox="0 0 16 16">
+      <path d="M2 8H14" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 2"/>
+      <path d="M11 5L14 8L11 11" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- HEADER                                                              -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<header class="t-header">
+  <div class="t-header-left">
+    <div>
+      <div class="t-header-title">Smart Grid — Network Telemetry</div>
+      <div class="t-header-sub">Nokia SR-OS · gNMI · IS-IS / SR-TE</div>
+    </div>
+  </div>
+  <div class="t-header-right">
+    <div class="t-meta">
+      <span id="t-ts">—</span>
+    </div>
+    <span class="t-live-badge t-live-connecting" id="t-live-badge">◉ CONNECTING</span>
+    <button class="t-btn t-btn-primary" id="t-refresh-btn">↺ Refresh</button>
+    <a href="smart-grid.html" class="t-btn" id="t-back-btn">← Dashboard</a>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- MAIN                                                                -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<main class="t-main">
+
+  <!-- Global loading / error -->
+  <div class="t-loading" id="t-loading">
+    <div class="t-spinner"></div>
+    LOADING TELEMETRY…
+  </div>
+  <div class="t-error" id="t-error"></div>
+
+  <!-- Content (hidden until data loads) -->
+  <div id="t-content" style="display:none">
+
+    <!-- ─────────────────────────────────────────────────────────────── -->
+    <!-- SECTION 0 · NETWORK TOPOLOGY                                    -->
+    <!-- ─────────────────────────────────────────────────────────────── -->
+    <div class="t-section">
+      <div class="t-section-hdr">
+        <span class="t-section-title">▸ Network Topology</span>
+        <span class="t-section-count" id="s0-count"></span>
+      </div>
+      <!-- NOC canvas -->
+      <div class="t-noc-wrap" id="t-noc-wrap">
+        <div class="t-noc-grid" id="t-noc-grid"></div>
+        <div class="t-noc-frame"></div>
+        <div class="t-noc-corners"></div>
+        <div class="t-noc-meta">
+          <span class="hl">TOPOLOGY</span> · Smart-Grid MPLS
+        </div>
+        <div class="t-noc-stage" id="t-noc-stage">
+          <svg class="t-noc-links" id="t-noc-links"></svg>
+          <div id="t-noc-nodes"></div>
+        </div>
+        <!-- floating inspector -->
+        <div class="t-noc-inspector" id="t-noc-inspector"></div>
+        <!-- toolbar -->
+        <div class="t-noc-toolbar">
+          <button id="tn-zoom-out" title="Zoom out"><svg><use href="#t-noc-minus"/></svg></button>
+          <span class="t-noc-zoom" id="tn-zoom-val">100%</span>
+          <button id="tn-zoom-in"  title="Zoom in"><svg><use href="#t-noc-plus"/></svg></button>
+          <button id="tn-fit"      title="Fit all"><svg><use href="#t-noc-fit"/></svg> FIT</button>
+          <span class="t-noc-div"></span>
+          <button id="tn-flow" class="on" title="Toggle traffic animation"><svg><use href="#t-noc-flow"/></svg> FLOW</button>
+          <button id="tn-grid" class="on" title="Toggle grid">▦ GRID</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────────── -->
+    <!-- SECTION 1 · INTERFACE STATUS                                    -->
+    <!-- ─────────────────────────────────────────────────────────────── -->
+    <div class="t-section">
+      <div class="t-section-hdr">
+        <span class="t-section-title">▸ Interface Status</span>
+        <span class="t-section-count" id="s1-count"></span>
+      </div>
+      <div class="t-cards-grid" id="s1-grid"></div>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────────── -->
+    <!-- SECTION 2 · IGP — IS-IS STATUS                                  -->
+    <!-- ─────────────────────────────────────────────────────────────── -->
+    <div class="t-section">
+      <div class="t-section-hdr">
+        <span class="t-section-title">▸ IGP — IS-IS Status &amp; Adjacencies</span>
+        <span class="t-section-count" id="s2-count"></span>
+      </div>
+      <div class="t-table-wrap">
+        <table class="t-table" id="s2-table">
+          <thead>
+            <tr>
+              <th>Node</th>
+              <th>IS-IS</th>
+              <th>Interface</th>
+              <th>Level</th>
+              <th>Neighbor SysID</th>
+              <th>Neighbor IP</th>
+              <th>Uptime</th>
+            </tr>
+          </thead>
+          <tbody id="s2-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────────── -->
+    <!-- SECTION 3 · ROUTE TABLE                                         -->
+    <!-- ─────────────────────────────────────────────────────────────── -->
+    <div class="t-section">
+      <div class="t-section-hdr">
+        <span class="t-section-title">▸ Route Table</span>
+        <span class="t-section-count" id="s3-count"></span>
+      </div>
+      <div class="t-table-wrap">
+        <table class="t-table" id="s3-table">
+          <thead>
+            <tr>
+              <th>Node</th>
+              <th>Total</th>
+              <th>IS-IS</th>
+              <th>Static</th>
+              <th>Connected / Local</th>
+              <th>BGP</th>
+              <th>Distribution</th>
+            </tr>
+          </thead>
+          <tbody id="s3-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────────── -->
+    <!-- SECTION 4 · MPLS LSP                                            -->
+    <!-- ─────────────────────────────────────────────────────────────── -->
+    <div class="t-section">
+      <div class="t-section-hdr">
+        <span class="t-section-title">▸ MPLS LSP</span>
+        <span class="t-section-count" id="s4-count"></span>
+      </div>
+      <div class="t-lsp-wrap" id="s4-wrap"></div>
+    </div>
+
+  </div><!-- #t-content -->
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SCRIPT                                                              -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+const API_BASE = 'http://localhost:3000';
+
+// Node display order (topology: core → aggregation → access)
+const NODE_ORDER = [
+  'mpls-dc1', 'mpls-dc2',
+  'mpls-acc1', 'mpls-acc2',
+  'mpls-a1-1', 'mpls-a1-2', 'mpls-a1-3'
+];
+
+// ── Live badge helpers ────────────────────────────────────────────────
+function setLiveBadge(state) {
+  const el = document.getElementById('t-live-badge');
+  if (!el) return;
+  el.className = 't-live-badge';
+  if (state === 'connected')    { el.classList.add('t-live-connected');  el.textContent = '● LIVE'; }
+  else if (state === 'pulse')   {
+    el.classList.add('t-live-connected', 't-live-pulse');
+    el.textContent = '● LIVE';
+    el.addEventListener('animationend', () => el.classList.remove('t-live-pulse'), { once: true });
+  }
+  else if (state === 'error')   { el.classList.add('t-live-error');      el.textContent = '✕ DISCONNECTED'; }
+  else                          { el.classList.add('t-live-connecting'); el.textContent = '◉ CONNECTING…'; }
+}
+
+// ── SSE connection ────────────────────────────────────────────────────
+let _es = null;
+
+function applyTelemetryData(data) {
+  const ts = data.ts ? new Date(data.ts).toLocaleTimeString() : '—';
+  document.getElementById('t-ts').textContent = `Last updated: ${ts}`;
+  initTopology();
+  updateTopology(data.nodes || {}, data.lsp || null);
+  renderSection1(data.nodes || {});
+  renderSection2(data.nodes || {});
+  renderSection3(data.nodes || {});
+  renderSection4(data.lsp  || null);
+  document.getElementById('t-loading').style.display = 'none';
+  document.getElementById('t-content').style.display = 'block';
+}
+
+function connectSSE() {
+  if (_es) { _es.close(); _es = null; }
+  setLiveBadge('connecting');
+
+  _es = new EventSource(`${API_BASE}/api/events`);
+
+  _es.addEventListener('telemetry', e => {
+    try {
+      applyTelemetryData(JSON.parse(e.data));
+      setLiveBadge('pulse');
+    } catch { /* ignore parse errors */ }
+  });
+
+  _es.addEventListener('wait', () => {
+    // Server cache not ready yet — it will push a 'telemetry' event soon
+    setLiveBadge('connecting');
+  });
+
+  _es.addEventListener('open', () => setLiveBadge('connected'));
+
+  _es.onerror = () => {
+    // EventSource auto-reconnects; just update the badge
+    setLiveBadge('error');
+  };
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────
+function fmt(v, fallback='—') { return v !== null && v !== undefined && v !== '' ? v : fallback; }
+
+function fmtUptime(secs) {
+  if (!secs && secs !== 0) return '—';
+  const s = Number(secs);
+  if (isNaN(s)) return fmt(secs);
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const parts = [];
+  if (d) parts.push(`${d}d`);
+  if (h) parts.push(`${h}h`);
+  parts.push(`${m}m`);
+  return parts.join(' ');
+}
+
+function roleClass(role) {
+  const r = (role || '').toLowerCase();
+  if (r === 'core') return 'role-core';
+  if (r === 'aggregation') return 'role-aggregation';
+  if (r === 'access') return 'role-access';
+  return 'role-unknown';
+}
+function roleLabel(role) {
+  const r = (role || '').toLowerCase();
+  if (r === 'core') return 'CORE';
+  if (r === 'aggregation') return 'AGG';
+  if (r === 'access') return 'ACCESS';
+  return (role || 'N/A').toUpperCase();
+}
+
+function stateBadge(state) {
+  const s = (state || 'unknown').toLowerCase();
+  const cls = s === 'up' ? 'badge-up' : s === 'down' ? 'badge-down' : 'badge-unknown';
+  return `<span class="t-state-badge ${cls}">${s.toUpperCase()}</span>`;
+}
+function ledSpan(state) {
+  const s = (state||'').toLowerCase();
+  const cls = s==='up' ? 'led-green' : s==='down' ? 'led-red' : 'led-grey';
+  return `<span class="t-led ${cls}"></span>`;
+}
+
+// Build inline donut SVG
+function donutSVG(active, total) {
+  const r = 28, cx = 36, cy = 36, stroke = 6;
+  const circ = 2 * Math.PI * r;
+  const pct  = total > 0 ? active / total : 0;
+  const dash  = pct * circ;
+  const gap   = circ - dash;
+  return `<svg width="72" height="72" viewBox="0 0 72 72">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none"
+      stroke="rgba(0,0,0,0.1)" stroke-width="${stroke}"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none"
+      stroke="#8a4a4a" stroke-width="${stroke}"
+      stroke-dasharray="${circ}" stroke-dashoffset="0"
+      transform="rotate(-90 ${cx} ${cy})"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none"
+      stroke="#4a7a5a" stroke-width="${stroke}"
+      stroke-dasharray="${dash.toFixed(2)} ${gap.toFixed(2)}"
+      stroke-dashoffset="0"
+      transform="rotate(-90 ${cx} ${cy})"/>
+  </svg>`;
+}
+
+// ── SECTION 0 — NOC Interactive Topology ────────────────────────────
+// Canvas engine adapted from Network Topology.html (Claude Design)
+
+const NOC_DEFS = {
+  nodes: [
+    { id:'mpls-dc1',  name:'dc1',       role:'DC',     tier:0, icon:'t-noc-router', mgmt:'192.168.30.2'  },
+    { id:'mpls-dc2',  name:'dc2',       role:'DC',     tier:0, icon:'t-noc-router', mgmt:'192.168.30.3'  },
+    { id:'mpls-acc1', name:'SR1-ACC1',  role:'AGG',    tier:1, icon:'t-noc-router', mgmt:'192.168.30.4'  },
+    { id:'mpls-acc2', name:'SR1-ACC2',  role:'AGG',    tier:1, icon:'t-noc-router', mgmt:'192.168.30.5'  },
+    { id:'mpls-a1-1', name:'ACCESS1-1', role:'ACCESS', tier:2, icon:'t-noc-router', mgmt:'192.168.30.11' },
+    { id:'mpls-a1-2', name:'ACCESS1-2', role:'ACCESS', tier:2, icon:'t-noc-router', mgmt:'192.168.30.12' },
+    { id:'mpls-a1-3', name:'ACCESS1-3', role:'ACCESS', tier:2, icon:'t-noc-router', mgmt:'192.168.30.13' },
+    { id:'rtu1',      name:'RTU1',      role:'RTU',    tier:3, icon:'t-noc-rtu',    mgmt:'192.168.30.6'  },
+    { id:'rtu2',      name:'RTU2',      role:'RTU',    tier:3, icon:'t-noc-rtu',    mgmt:'192.168.30.7'  },
+  ],
+  links: [
+    { id:'L1',  a:'mpls-dc1',  b:'mpls-acc1', ifA:'1/1/c1/1', ifB:'1/1/c1/1', speed:'100G' },
+    { id:'L2',  a:'mpls-dc1',  b:'mpls-dc2',  ifA:'1/1/c2/1', ifB:'1/1/c2/1', speed:'100G' },
+    { id:'L3',  a:'mpls-dc2',  b:'mpls-acc2', ifA:'1/1/c1/1', ifB:'1/1/c1/1', speed:'100G' },
+    { id:'L4',  a:'mpls-acc1', b:'mpls-acc2', ifA:'1/1/c3/1', ifB:'1/1/c3/1', speed:'100G' },
+    { id:'L5',  a:'mpls-acc1', b:'mpls-a1-1', ifA:'1/1/c2/1', ifB:'1/1/c2/1', speed:'100G' },
+    { id:'L6',  a:'mpls-acc2', b:'mpls-a1-3', ifA:'1/1/c2/1', ifB:'1/1/c2/1', speed:'100G' },
+    { id:'L7',  a:'mpls-a1-1', b:'mpls-a1-2', ifA:'1/1/c1/1', ifB:'1/1/c1/1', speed:'100G' },
+    { id:'L8',  a:'mpls-a1-2', b:'mpls-a1-3', ifA:'1/1/c2/1', ifB:'1/1/c1/1', speed:'100G' },
+    { id:'L9',  a:'mpls-a1-1', b:'rtu1',      ifA:'1/1/c3/1', ifB:'eth1',      speed:'1G'   },
+    { id:'L10', a:'mpls-a1-3', b:'rtu2',       ifA:'1/1/c3/1', ifB:'eth1',     speed:'1G'   },
+  ]
+};
+
+// Runtime state — positions persist between telemetry refreshes
+const noc = {
+  nodes: [],          // [{...def, x, y, up}]
+  links: [],          // [{...def, state:'up'|'down'|'unknown'}]
+  lsp: null,
+  sel: { type:null, id:null },
+  zoom: 1,
+  flow: true,
+  showGrid: true,
+  initialized: false
+};
+
+function nocFindNode(id){ return noc.nodes.find(n=>n.id===id); }
+
+/* ── layout: tier-based auto-positioning ─── */
+function nocLayout() {
+  const wrap = document.getElementById('t-noc-wrap');
+  if (!wrap) return;
+  const W = wrap.clientWidth  || 900;
+  const H = wrap.clientHeight || 520;
+  const CARDW = 118, CARDH = 48, GAP = 20;
+  const PAD_X = 80, PAD_TOP = 50, PAD_BOT = 70;
+
+  // Group by tier
+  const tierMap = {};
+  noc.nodes.forEach(n => {
+    const t = n.tier ?? 1;
+    (tierMap[t] = tierMap[t] || []).push(n);
+  });
+  const tiers = Object.keys(tierMap).map(Number).sort((a,b)=>a-b);
+  const usableH = H - PAD_TOP - PAD_BOT;
+  const usableW = W - PAD_X * 2;
+  const tierStep = tiers.length > 1 ? usableH / (tiers.length - 1) : 0;
+
+  tiers.forEach((tier, ti) => {
+    const row = tierMap[tier];
+    const yCenter = PAD_TOP + ti * tierStep;
+    const n = row.length;
+    if (n === 0) return;
+    if (n === 1) { row[0].x = W / 2; row[0].y = yCenter; return; }
+    const spacing = Math.min(CARDW + GAP * 3, usableW / (n - 1));
+    const totalW  = spacing * (n - 1);
+    const startX  = (W - totalW) / 2;
+    row.forEach((node, i) => { node.x = startX + i * spacing; node.y = yCenter; });
+  });
+}
+
+/* ── link path: centre-to-centre bezier ─── */
+function nocPath(A, B) {
+  const mx = (A.x + B.x) / 2;
+  return `M${A.x},${A.y} C${mx},${A.y} ${mx},${B.y} ${B.x},${B.y}`;
+}
+
+/* ── render SVG links ─── */
+function nocRenderLinks() {
+  const svg = document.getElementById('t-noc-links');
+  if (!svg) return;
+  svg.innerHTML = '';
+  const NS = 'http://www.w3.org/2000/svg';
+  let upCount = 0;
+
+  // 1. Physical links
+  noc.links.forEach(L => {
+    const A = nocFindNode(L.a), B = nocFindNode(L.b);
+    if (!A || !B) return;
+    const d = nocPath(A, B);
+    const isUp   = L.state === 'up';
+    const isDown = L.state === 'down';
+    if (isUp) upCount++;
+
+    const g = document.createElementNS(NS, 'g');
+    g.dataset.id = L.id;
+    g.classList.add('t-noc-link-g');
+
+    // base (always drawn)
+    const base = document.createElementNS(NS, 'path');
+    base.setAttribute('d', d);
+    base.setAttribute('class', 't-noc-lbase');
+    g.appendChild(base);
+
+    if (!isDown) {
+      // glow
+      const glow = document.createElementNS(NS, 'path');
+      glow.setAttribute('d', d);
+      glow.setAttribute('class', 't-noc-lglow');
+      g.appendChild(glow);
+      // animated flow
+      if (noc.flow) {
+        const fl = document.createElementNS(NS, 'path');
+        fl.setAttribute('d', d);
+        fl.setAttribute('class', 't-noc-lflow');
+        g.appendChild(fl);
+      }
+    } else {
+      // down indicator
+      const dw = document.createElementNS(NS, 'path');
+      dw.setAttribute('d', d);
+      dw.setAttribute('class', 't-noc-ldown');
+      g.appendChild(dw);
+    }
+
+    // hit area for selection
+    const hit = document.createElementNS(NS, 'path');
+    hit.setAttribute('d', d);
+    hit.setAttribute('class', 't-noc-lhit');
+    hit.addEventListener('click', e => {
+      e.stopPropagation();
+      noc.sel = { type:'link', id:L.id };
+      nocRenderNodes();
+      nocShowInspector();
+    });
+    g.appendChild(hit);
+
+    // speed label
+    const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
+    const bg = document.createElementNS(NS, 'rect');
+    bg.setAttribute('x', mx - 18); bg.setAttribute('y', my - 9);
+    bg.setAttribute('width', 36); bg.setAttribute('height', 18);
+    bg.setAttribute('rx', 3);
+    bg.setAttribute('class', 't-noc-llabel-bg');
+    g.appendChild(bg);
+    const t = document.createElementNS(NS, 'text');
+    t.setAttribute('x', mx); t.setAttribute('y', my + 4);
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('class', 't-noc-llabel');
+    t.textContent = L.speed;
+    g.appendChild(t);
+
+    svg.appendChild(g);
+  });
+
+  // 2. LSP path overlay
+  // Known static paths (fallback when backend hop-list is unavailable — which is common
+  // because arHopListIndex / actual-route-hop-list may not be populated by the gNMI agent).
+  // PRIMARY path (to-ACCESS1-3):        A1-1 → A1-2 → A1-3  (ACCESS ring)
+  // SECONDARY path (to-ACCESS1-3-backup): A1-1 → ACC1 → ACC2 → A1-3 (aggregation)
+  const LSP_FALLBACK = {
+    primary:   ['mpls-a1-1', 'mpls-a1-2', 'mpls-a1-3'],
+    secondary: ['mpls-a1-1', 'mpls-acc1', 'mpls-acc2', 'mpls-a1-3']
+  };
+
+  const lsp = noc.lsp;
+  if (lsp) {
+    // Build a normalised list of {hops, isActive} entries to render
+    const toRender = [];
+
+    if (Array.isArray(lsp.paths) && lsp.paths.length) {
+      lsp.paths.forEach(path => {
+        // Prefer live nodeHops; fall back to known topology
+        const live = (path.nodeHops || []).filter(Boolean);
+        const hops = live.length >= 2
+          ? live
+          : (LSP_FALLBACK[path.type] || LSP_FALLBACK[path.name] || []);
+        toRender.push({ hops, isActive: path.name === lsp.activePath });
+      });
+    } else {
+      // No path details at all — draw both known paths, active = pathType from lsp
+      const activeType = lsp.pathType === 'primary' ? 'primary' : 'secondary';
+      const standbyType = activeType === 'secondary' ? 'primary' : 'secondary';
+      toRender.push({ hops: LSP_FALLBACK[activeType],  isActive: true  });
+      toRender.push({ hops: LSP_FALLBACK[standbyType], isActive: false });
+    }
+
+    toRender.forEach(({ hops, isActive }) => {
+      if (!hops || hops.length < 2) return;
+      for (let i = 0; i < hops.length - 1; i++) {
+        const A = nocFindNode(hops[i]), B = nocFindNode(hops[i + 1]);
+        if (!A || !B) continue;
+        const d = nocPath(A, B);
+        if (isActive) {
+          const h = document.createElementNS(NS, 'path');
+          h.setAttribute('d', d); h.setAttribute('class', 't-noc-lsp-halo'); svg.appendChild(h);
+          const p = document.createElementNS(NS, 'path');
+          p.setAttribute('d', d); p.setAttribute('class', 't-noc-lsp-active'); svg.appendChild(p);
+        } else {
+          const p = document.createElementNS(NS, 'path');
+          p.setAttribute('d', d); p.setAttribute('class', 't-noc-lsp-fail'); svg.appendChild(p);
+        }
+      }
+    });
+  }
+
+  // update count text
+  let ct = `${upCount} / ${noc.links.length} links UP`;
+  if (lsp) {
+    // Determine active hops: live data first, then fallback
+    const activePathObj = Array.isArray(lsp.paths)
+      ? lsp.paths.find(p => p.name === lsp.activePath) : null;
+    const liveHops = activePathObj
+      ? (activePathObj.nodeHops || []).filter(Boolean) : [];
+    const activeType = lsp.pathType === 'primary' ? 'primary' : 'secondary';
+    const displayHops = liveHops.length >= 2
+      ? liveHops
+      : (LSP_FALLBACK[activeType] || []);
+    if (displayHops.length >= 2) {
+      ct += '  ·  LSP: ' + displayHops
+        .map(id => { const n = nocFindNode(id); return n ? n.name : id; })
+        .join(' → ');
+    }
+  }
+  const countEl = document.getElementById('s0-count');
+  if (countEl) countEl.textContent = ct;
+}
+
+/* ── render DOM node cards ─── */
+function nocRenderNodes() {
+  const layer = document.getElementById('t-noc-nodes');
+  if (!layer) return;
+  layer.innerHTML = '';
+  noc.nodes.forEach(n => {
+    const isSel  = noc.sel.type === 'node' && noc.sel.id === n.id;
+    const isRtu  = n.role === 'RTU';
+    const el = document.createElement('div');
+    el.className = 't-noc-node' +
+      (isSel ? ' selected' : '') +
+      (n.up === false ? ' down' : '') +
+      (isRtu ? ' muted' : '');
+    el.dataset.id = n.id;
+    el.style.left = n.x + 'px';
+    el.style.top  = n.y + 'px';
+    el.innerHTML = `
+      <div class="t-noc-card">
+        <div class="t-noc-pill"></div>
+        <div class="t-noc-node-head">
+          <svg class="t-noc-ico"><use href="#${n.icon}"/></svg>
+          <div class="t-noc-ntitles">
+            <div class="t-noc-nname">${n.name}</div>
+            <div class="t-noc-nrole">${n.role}</div>
+          </div>
+        </div>
+      </div>`;
+    // click to inspect
+    el.querySelector('.t-noc-card').addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      noc.sel = { type:'node', id:n.id };
+      nocShowInspector();
+      nocBindDrag(el, n, e);
+      e.preventDefault();
+    });
+    layer.appendChild(el);
+  });
+}
+
+/* ── node drag ─── */
+function nocBindDrag(el, n, startEvt) {
+  const origX = n.x, origY = n.y;
+  const sx = startEvt.clientX, sy = startEvt.clientY;
+  let moved = false;
+  el.classList.add('dragging');
+
+  function onMove(e) {
+    moved = true;
+    n.x = origX + (e.clientX - sx);
+    n.y = origY + (e.clientY - sy);
+    el.style.left = n.x + 'px';
+    el.style.top  = n.y + 'px';
+    nocRenderLinks();
+  }
+  function onUp() {
+    el.classList.remove('dragging');
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    if (!moved) return;
+    nocRenderLinks();
+    nocRenderNodes();
+  }
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+/* ── floating inspector ─── */
+function nocShowInspector() {
+  const panel = document.getElementById('t-noc-inspector');
+  if (!panel) return;
+  const sel = noc.sel;
+  if (!sel.type) { panel.classList.remove('open'); return; }
+  panel.classList.add('open');
+
+  if (sel.type === 'node') {
+    const n = nocFindNode(sel.id);
+    if (!n) return;
+    const connLinks = noc.links.filter(L => L.a === n.id || L.b === n.id);
+    const upLinks   = connLinks.filter(L => L.state === 'up').length;
+    panel.innerHTML = `
+      <button class="t-noc-insp-close" id="t-noc-close">✕</button>
+      <div class="t-noc-insp-title">${n.name}</div>
+      <div class="t-noc-insp-sub">${n.role}</div>
+      <div class="t-noc-insp-row"><span class="t-noc-insp-k">Mgmt IPv4</span>
+        <span class="t-noc-insp-v">${n.mgmt || '—'}</span></div>
+      <div class="t-noc-insp-row"><span class="t-noc-insp-k">Status</span>
+        <span class="t-noc-insp-v ${n.up === false ? 'bad' : 'ok'}">${n.up === false ? 'DOWN' : 'UP'}</span></div>
+      <div class="t-noc-insp-row"><span class="t-noc-insp-k">Links up</span>
+        <span class="t-noc-insp-v ${upLinks < connLinks.length ? 'bad' : 'ok'}">${upLinks} / ${connLinks.length}</span></div>
+      ${connLinks.map(L => {
+        const other = nocFindNode(L.a === n.id ? L.b : L.a);
+        return `<div class="t-noc-insp-row">
+          <span class="t-noc-insp-k">${L.a===n.id?L.ifA:L.ifB}</span>
+          <span class="t-noc-insp-v ${L.state==='up'?'ok':L.state==='down'?'bad':''}">${other?other.name:'?'} · ${L.speed}</span>
+        </div>`;
+      }).join('')}`;
+  } else if (sel.type === 'link') {
+    const L = noc.links.find(l => l.id === sel.id);
+    if (!L) return;
+    const A = nocFindNode(L.a), B = nocFindNode(L.b);
+    panel.innerHTML = `
+      <button class="t-noc-insp-close" id="t-noc-close">✕</button>
+      <div class="t-noc-insp-title">${A?A.name:'?'} ⇄ ${B?B.name:'?'}</div>
+      <div class="t-noc-insp-sub">${L.speed} LINK</div>
+      <div class="t-noc-insp-row"><span class="t-noc-insp-k">${A?A.name:'?'}</span>
+        <span class="t-noc-insp-v">${L.ifA}</span></div>
+      <div class="t-noc-insp-row"><span class="t-noc-insp-k">${B?B.name:'?'}</span>
+        <span class="t-noc-insp-v">${L.ifB}</span></div>
+      <div class="t-noc-insp-row"><span class="t-noc-insp-k">State</span>
+        <span class="t-noc-insp-v ${L.state==='up'?'ok':L.state==='down'?'bad':''}">${(L.state||'unknown').toUpperCase()}</span></div>`;
+  }
+  document.getElementById('t-noc-close')?.addEventListener('click', () => {
+    noc.sel = { type:null, id:null };
+    panel.classList.remove('open');
+    nocRenderNodes();
+  });
+}
+
+/* ── zoom ─── */
+function nocSetZoom(z) {
+  noc.zoom = Math.max(0.5, Math.min(1.8, z));
+  const stage = document.getElementById('t-noc-stage');
+  if (stage) { stage.style.transform = `scale(${noc.zoom})`; stage.style.transformOrigin = '0 0'; }
+  const zv = document.getElementById('tn-zoom-val');
+  if (zv) zv.textContent = Math.round(noc.zoom * 100) + '%';
+}
+
+/* ── one-time init: build nodes, bind toolbar ─── */
+function initTopology() {
+  if (noc.initialized) return;
+  noc.initialized = true;
+
+  // populate nodes from static defs (positions will be set by layout)
+  noc.nodes = NOC_DEFS.nodes.map(d => ({ ...d, x: 0, y: 0, up: null }));
+  noc.links = NOC_DEFS.links.map(d => ({ ...d, state: 'unknown' }));
+
+  nocLayout();
+
+  // toolbar buttons
+  document.getElementById('tn-zoom-in')?.addEventListener('click',  () => nocSetZoom(noc.zoom + 0.1));
+  document.getElementById('tn-zoom-out')?.addEventListener('click', () => nocSetZoom(noc.zoom - 0.1));
+  document.getElementById('tn-fit')?.addEventListener('click', () => {
+    nocLayout(); nocSetZoom(1); nocRenderLinks(); nocRenderNodes();
+  });
+  document.getElementById('tn-flow')?.addEventListener('click', e => {
+    noc.flow = !noc.flow;
+    e.currentTarget.classList.toggle('on', noc.flow);
+    nocRenderLinks();
+  });
+  document.getElementById('tn-grid')?.addEventListener('click', e => {
+    noc.showGrid = !noc.showGrid;
+    e.currentTarget.classList.toggle('on', noc.showGrid);
+    const g = document.getElementById('t-noc-grid');
+    if (g) g.style.display = noc.showGrid ? '' : 'none';
+  });
+
+  // click on empty canvas → deselect
+  document.getElementById('t-noc-stage')?.addEventListener('click', e => {
+    if (e.target.id === 't-noc-stage' || e.target.closest('svg.t-noc-links')) {
+      noc.sel = { type:null, id:null };
+      document.getElementById('t-noc-inspector')?.classList.remove('open');
+      nocRenderNodes();
+    }
+  });
+
+  // resize → re-layout
+  new ResizeObserver(() => {
+    nocLayout(); nocRenderLinks(); nocRenderNodes();
+  }).observe(document.getElementById('t-noc-wrap'));
+
+  nocRenderLinks();
+  nocRenderNodes();
+}
+
+/* ── called on every telemetry refresh ─── */
+function updateTopology(apiNodes, lsp) {
+  noc.lsp = lsp || null;
+
+  // Update link states from live port data
+  noc.links.forEach(L => {
+    const getPs = (nodeId, portId) => {
+      const nd = apiNodes[nodeId];
+      if (!nd) return 'unknown';
+      const p = (nd.ports || []).find(p => p.portId === portId);
+      return p ? (p.operState || 'unknown').toLowerCase() : 'unknown';
+    };
+    const sa = getPs(L.a, L.ifA);
+    const sb = L.ifB && L.ifB !== 'eth1' ? getPs(L.b, L.ifB) : sa;
+    L.state = (sa === 'up' && sb === 'up') ? 'up'
+            : (sa === 'down' || sb === 'down') ? 'down'
+            : 'unknown';
+  });
+
+  // Update node up/down status
+  noc.nodes.forEach(n => {
+    const nd = apiNodes[n.id];
+    if (!nd) { n.up = null; return; }
+    const ifaces = nd.interfaces || [];
+    const relevant = ifaces.filter(i => i.name !== 'system');
+    n.up = relevant.length === 0 ? null : relevant.some(i => i.operState === 'up');
+  });
+
+  nocRenderLinks();
+  nocRenderNodes();
+}
+
+// ── SECTION 1 — Interface cards ──────────────────────────────────────
+function renderSection1(nodes) {
+  const grid = document.getElementById('s1-grid');
+  const activeNodes = NODE_ORDER.filter(id => nodes[id]);
+  document.getElementById('s1-count').textContent =
+    `${activeNodes.length} / ${NODE_ORDER.length} nodes`;
+
+  grid.innerHTML = activeNodes.map(nodeId => {
+    const n = nodes[nodeId];
+    if (n.error && !n.interfaces.length) {
+      return `<div class="t-card">
+        <div class="t-card-header">
+          <div><div class="t-card-name">${n.name}</div><div class="t-card-host">${n.host}</div></div>
+          <span class="t-role-badge ${roleClass(n.role)}">${roleLabel(n.role)}</span>
+        </div>
+        <div class="t-card-body"><div class="t-card-error">⚠ ${n.error}</div></div>
+      </div>`;
+    }
+
+    const ifaces = (n.interfaces || []).filter(i => i.name !== 'system');
+    const activeIf = ifaces.filter(i => i.operState === 'up').length;
+    const totalIf  = ifaces.length;
+    const pct = totalIf > 0 ? Math.round(activeIf / totalIf * 100) : 0;
+
+    const ports = n.ports || [];
+    const portLeds = ports.map(p => {
+      const s = (p.operState||'').toLowerCase();
+      const cls = s==='up' ? 'led-up' : s==='down' ? 'led-down' : 'led-unknown';
+      return `<div class="t-port-led ${cls}" title="${p.portId} · ${s}"></div>`;
+    }).join('');
+
+    const ifRows = ifaces.slice(0,8).map(i => {
+      const s = (i.operState||'').toLowerCase();
+      return `<div class="t-iface-row">
+        <span class="t-iface-name" title="${i.name}">${i.name}</span>
+        <span class="t-iface-ip">${i.ipv4 || '—'}</span>
+        ${stateBadge(s)}
+      </div>`;
+    }).join('') + (ifaces.length > 8
+      ? `<div class="t-iface-row"><span class="dim" style="font-size:10px;color:var(--text-tertiary)">…${ifaces.length-8} more</span></div>`
+      : '');
+
+    return `<div class="t-card">
+      <div class="t-card-header">
+        <div>
+          <div class="t-card-name">${n.name}</div>
+          <div class="t-card-host">${n.host}</div>
+        </div>
+        <span class="t-role-badge ${roleClass(n.role)}">${roleLabel(n.role)}</span>
+      </div>
+      <div class="t-card-body">
+        <div class="t-card-stats">
+          <div class="t-donut-wrap">
+            ${donutSVG(activeIf, totalIf)}
+            <div class="t-donut-label">
+              <span class="t-donut-count">${activeIf}/${totalIf}</span>
+              <span class="t-donut-pct">${pct}%</span>
+            </div>
+          </div>
+          <div class="t-card-counters">
+            <div class="t-counter-row">
+              <span class="t-counter-label">Interfaces up</span>
+              <span class="t-counter-val val-up">${activeIf}</span>
+            </div>
+            <div class="t-counter-row">
+              <span class="t-counter-label">Interfaces down</span>
+              <span class="t-counter-val val-down">${totalIf - activeIf}</span>
+            </div>
+            <div class="t-counter-row">
+              <span class="t-counter-label">Physical ports</span>
+              <span class="t-counter-val">${ports.length}</span>
+            </div>
+          </div>
+        </div>
+        ${ports.length ? `<div class="t-port-grid">${portLeds}</div>` : ''}
+        ${ifaces.length ? `<div class="t-iface-list">${ifRows}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── SECTION 2 — IS-IS adjacencies ───────────────────────────────────
+function renderSection2(nodes) {
+  const tbody = document.getElementById('s2-tbody');
+  let totalAdj = 0;
+  let html = '';
+
+  NODE_ORDER.forEach(nodeId => {
+    const n = nodes[nodeId];
+    if (!n) return;
+    const isis = n.isis;
+    const isisUp = isis && isis.operState === 'up';
+    const ifaces = isis ? (isis.interfaces || []) : [];
+
+    // Collect all adjacencies for this node
+    const adjs = [];
+    ifaces.forEach(iface => {
+      (iface.adjacencies || []).forEach(adj => {
+        adjs.push({ iface: iface.name, adj });
+      });
+    });
+
+    totalAdj += adjs.length;
+
+    // Group header row
+    html += `<tr class="t-group-hdr">
+      <td colspan="7">
+        <span class="t-role-badge ${roleClass(n.role)}" style="margin-right:8px">${roleLabel(n.role)}</span>
+        ${n.name}
+        ${ledSpan(isis ? isis.operState : 'unknown')}
+        <span style="font-size:9px;color:var(--text-tertiary)">IS-IS ${isis ? (isis.operState||'—').toUpperCase() : 'N/A'}</span>
+      </td>
+    </tr>`;
+
+    if (!adjs.length) {
+      html += `<tr><td class="dim" colspan="7" style="font-size:11px;padding-left:28px">No IS-IS adjacencies</td></tr>`;
+      return;
+    }
+
+    adjs.forEach(({ iface, adj }) => {
+      const uptime = fmtUptime(adj.uptime);
+      const s = (adj.operState||'').toLowerCase();
+      html += `<tr>
+        <td></td>
+        <td>${ledSpan(s)}<span class="mono" style="font-size:10px">${s.toUpperCase()}</span></td>
+        <td class="mono" style="font-size:10px">${iface}</td>
+        <td><span class="t-state-badge ${s==='up'?'badge-up':'badge-unknown'}">${adj.level||'—'}</span></td>
+        <td class="mono" style="font-size:10px">${adj.neighborSystemId||'—'}</td>
+        <td class="mono" style="font-size:10px">${adj.neighborIp||'—'}</td>
+        <td class="mono" style="font-size:10px">${uptime}</td>
+      </tr>`;
+    });
+  });
+
+  tbody.innerHTML = html;
+  document.getElementById('s2-count').textContent = `${totalAdj} adjacenc${totalAdj === 1 ? 'y' : 'ies'}`;
+}
+
+// ── SECTION 3 — Route table ──────────────────────────────────────────
+function renderSection3(nodes) {
+  const tbody = document.getElementById('s3-tbody');
+  let totalRoutes = 0;
+  let html = '';
+
+  NODE_ORDER.forEach(nodeId => {
+    const n = nodes[nodeId];
+    if (!n) return;
+    const r = n.routes;
+
+    if (!r) {
+      html += `<tr>
+        <td>
+          <span class="t-role-badge ${roleClass(n.role)}" style="margin-right:6px">${roleLabel(n.role)}</span>
+          ${n.name}
+        </td>
+        <td class="dim">—</td>
+        <td><span class="t-pill pill-dash">—</span></td>
+        <td><span class="t-pill pill-dash">—</span></td>
+        <td><span class="t-pill pill-dash">—</span></td>
+        <td><span class="t-pill pill-dash">—</span></td>
+        <td class="dim" style="font-size:10px">unavailable</td>
+      </tr>`;
+      return;
+    }
+
+    totalRoutes += r.total || 0;
+    const bp = r.byProtocol || {};
+    const isisCount  = bp['isis']  || bp['ISIS']  || 0;
+    const staticCount = bp['static'] || bp['STATIC'] || 0;
+    const localCount = (bp['local'] || bp['LOCAL'] || 0) + (bp['connected'] || bp['CONNECTED'] || 0);
+    const bgpCount   = bp['bgp']   || bp['BGP']   || 0;
+    const total = r.total || 0;
+
+    // Stacked bar segments
+    const barSegs = [
+      { count: isisCount,   cls: 'seg-isis' },
+      { count: staticCount, cls: 'seg-static' },
+      { count: localCount,  cls: 'seg-local' },
+      { count: bgpCount,    cls: 'seg-bgp' },
+    ].filter(s => s.count > 0).map(s => {
+      const w = total > 0 ? (s.count / total * 100).toFixed(1) : 0;
+      return `<div class="t-route-bar-seg ${s.cls}" style="width:${w}%"></div>`;
+    }).join('');
+
+    html += `<tr>
+      <td>
+        <span class="t-role-badge ${roleClass(n.role)}" style="margin-right:6px">${roleLabel(n.role)}</span>
+        ${n.name}
+      </td>
+      <td class="mono" style="font-weight:600">${total}</td>
+      <td><span class="t-pill pill-isis">${isisCount}</span></td>
+      <td><span class="t-pill pill-static">${staticCount}</span></td>
+      <td><span class="t-pill pill-connected">${localCount}</span></td>
+      <td><span class="t-pill pill-bgp">${bgpCount || '—'}</span></td>
+      <td style="min-width:100px"><div class="t-route-bar">${barSegs}</div></td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = html;
+  document.getElementById('s3-count').textContent = `${totalRoutes} routes across ${NODE_ORDER.length} nodes`;
+}
+
+// ── SECTION 4 — MPLS LSP ────────────────────────────────────────────
+function renderSection4(lsp) {
+  const wrap = document.getElementById('s4-wrap');
+
+  if (!lsp) {
+    wrap.innerHTML = `<div class="t-lsp-card"><div class="t-lsp-no-data">No LSP data available</div></div>`;
+    document.getElementById('s4-count').textContent = '';
+    return;
+  }
+
+  const os = (lsp.operState || 'unknown').toLowerCase();
+  const osClass = os === 'up' ? 'lsp-up' : os === 'down' ? 'lsp-down' : 'lsp-unknown';
+  const ptClass = (t => t==='primary'?'ptype-primary':t==='secondary'?'ptype-secondary':'ptype-unknown')(lsp.pathType||'unknown');
+
+  // LSP summary card
+  const card = `<div class="t-lsp-card">
+    <div class="t-lsp-card-header">
+      <span class="t-lsp-name">${lsp.lspName || 'SR-TE LSP'}</span>
+      <span class="t-lsp-state-badge ${osClass}">${os.toUpperCase()}</span>
+    </div>
+    <div class="t-lsp-meta">
+      <div class="t-lsp-meta-row">
+        <span class="t-lsp-key">Headend</span>
+        <span class="t-lsp-val">${lsp.headend || '—'}</span>
+      </div>
+      <div class="t-lsp-meta-row">
+        <span class="t-lsp-key">Tailend</span>
+        <span class="t-lsp-val">${lsp.tailend || '—'}</span>
+      </div>
+      <div class="t-lsp-meta-row">
+        <span class="t-lsp-key">Active path</span>
+        <span class="t-lsp-val">${lsp.activePath || '—'}
+          ${lsp.pathType && lsp.pathType !== 'unknown'
+            ? `<span class="t-path-type-badge ${ptClass}">${(lsp.pathType||'').toUpperCase()}</span>`
+            : ''}
+        </span>
+      </div>
+      <div class="t-lsp-meta-row">
+        <span class="t-lsp-key">Paths</span>
+        <span class="t-lsp-val">${lsp.configuredPaths ?? (lsp.paths||[]).length} configured &mdash; ${lsp.operationalPaths ?? (lsp.paths||[]).filter(p=>p.operState==='up').length} operational</span>
+      </div>
+    </div>
+  </div>`;
+
+  // Path detail table
+  const paths = lsp.paths || [];
+  const pathRows = paths.map(p => {
+    const isActive = p.name === lsp.activePath;
+    const ps = (p.operState||'').toLowerCase();
+    const pc = p.type === 'primary' ? 'ptype-primary' : p.type === 'secondary' ? 'ptype-secondary' : 'ptype-unknown';
+    return `<tr class="${isActive ? 't-active-row' : ''}">
+      <td class="mono" style="font-size:11px">${p.name}${isActive ? '<span class="t-active-marker">▶ ACTIVE</span>' : ''}</td>
+      <td><span class="t-path-type-badge ${pc}">${(p.type||'—').toUpperCase()}</span></td>
+      <td>${ledSpan(ps)}<span class="mono" style="font-size:10px">${ps.toUpperCase()}</span></td>
+      <td class="mono dim" style="font-size:10px">${p.pathState || '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const pathTable = `<div class="t-lsp-path-table">
+    <div class="t-lsp-path-header">PATH DETAIL</div>
+    <table class="t-table">
+      <thead><tr><th>Path Name</th><th>Type</th><th>Oper-State</th><th>Path State</th></tr></thead>
+      <tbody>${pathRows || '<tr><td colspan="4" class="dim" style="font-size:11px">No paths configured</td></tr>'}</tbody>
+    </table>
+  </div>`;
+
+  wrap.innerHTML = card + pathTable;
+  document.getElementById('s4-count').textContent =
+    `${paths.length} path${paths.length !== 1 ? 's' : ''} · ${(lsp.operState||'unknown').toUpperCase()}`;
+}
+
+// ── Main load ────────────────────────────────────────────────────────
+// ── Initial full load (REST) ──────────────────────────────────────────
+// Called once on page load and on manual Refresh. SSE handles all subsequent
+// updates without touching this function.
+async function loadAll() {
+  document.getElementById('t-loading').style.display = 'block';
+  document.getElementById('t-content').style.display = 'none';
+  document.getElementById('t-error').style.display   = 'none';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/telemetry/all`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    applyTelemetryData(await res.json());
+  } catch (err) {
+    document.getElementById('t-loading').style.display = 'none';
+    const el = document.getElementById('t-error');
+    el.style.display = 'block';
+    el.textContent = `⚠ Failed to load telemetry: ${err.message}`;
+  }
+}
+
+// ── Event listeners ───────────────────────────────────────────────────
+// Manual refresh: re-fetch from REST (SSE stays connected)
+document.getElementById('t-refresh-btn').addEventListener('click', loadAll);
+
+// ── Boot ──────────────────────────────────────────────────────────────
+// 1. Initial REST fetch so the page has data immediately
+// 2. Open SSE connection — from this point all updates arrive via push
+loadAll().then(() => connectSSE());
+</script>
+</body>
+</html>

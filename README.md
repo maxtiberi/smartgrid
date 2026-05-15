@@ -1,459 +1,557 @@
-# Smart Grid Nokia Dashboard
+# SmartGrid Nokia Dashboard
 
-An interactive HTML dashboard for monitoring Smart Grid power generation and SR Linux router infrastructure with real-time gNMI telemetry integration.
+Interactive web dashboard for a Nokia SR-OS smart-grid teleprotection lab.  
+Combines animated power-grid simulation with live telemetry from real Nokia SR-1 (srsim) routers, IEC 61850 GOOSE teleprotection monitoring, and per-link fault visualisation.
 
-## Features
+---
 
-### Power Grid Monitoring
-- **4 Power Plants**: Nuclear α (1.2 GW), Nuclear β (1.2 GW), Solar (800 MW), Wind (400 MW)
-- Real-time power output monitoring
-- Nuclear plants with adjustable power levels (0–100 %)
-- Interactive start/stop controls
-- Network topology visualization with animated energy flow and 4 logical zones:
-  - `GENERATION` — power plants (4 sources, 3.6 GW nameplate)
-  - `TRANSMISSION SUBSTATION` — step-up 20 → 400 kV
-  - `DISTRIBUTION` — feeders **F1–F4** + secondary substations **S1–S4** + **DER**
-  - `CONSUMPTION` — urban load (2.8 GW demand)
-- **Voltage badges** along the corridors: 20 kV (gen output), 400 kV (HV transmission),
-  20 kV MV (feeders), 0.4 kV LV (consumer side)
-- **Capacity badges** next to each plant (GW / MW)
-- **Secondary substations S1–S4**: MV/LV step-down (20 / 0.4 kV)
-- **DER node** (PV + BESS) with **bidirectional** connection on Feeder F4 — represents
-  distributed solar + battery storage exporting/importing energy at MV
-- Draggable topology nodes
-- Direction arrows on power flow paths
+## Contents
 
-### Network Infrastructure Monitoring
-- **6 SR Linux Routers**: DC-1, DC-2 (spine) + Leaf-1, Leaf-2, Leaf-3, Leaf-4 (leaf)
-- **4 RTUs** (Remote Terminal Units): RTU-1..4 connected to Leaf-1..4 (ICMP ping monitored)
-- Real-time gNMI telemetry streaming (5-second intervals)
-- **Metrics Tracked**:
-  - Interface statistics (operational state, traffic rates, errors)
-  - System performance (CPU, memory utilization)
-  - BGP statistics (peer sessions, routes received)
-- Visual status indicators:
-  - Green glow: Router connected
-  - Red pulsing: Router disconnected
-  - Yellow glow: Router stale (no updates >30s)
-  - Grayscale: Service unavailable
-- Hover tooltips with summary metrics
-- Click-to-open detailed panels
-- **gNMI Service toggle**: pill button in the header to start/stop the gNMI telemetry
-  service from the dashboard. Detects external instances started via `start-gnmi.sh`
-  and can SIGTERM them.
+1. [Architecture](#architecture)
+2. [Network Topology](#network-topology)
+3. [Features](#features)
+4. [Prerequisites](#prerequisites)
+5. [Installation & Startup](#installation--startup)
+6. [API Reference](#api-reference)
+7. [Configuration](#configuration)
+8. [Monitoring Loops](#monitoring-loops)
+9. [Teleprotection (IEC 61850 GOOSE)](#teleprotection-iec-61850-goose)
+10. [Scripts](#scripts)
+11. [File Structure](#file-structure)
+12. [Troubleshooting](#troubleshooting)
 
-### Teleprotection System Panel
-Industrial-infographic visualization of the differential teleprotection chain
-(matching Nokia microgrid reference style):
-- 400 kV HV transmission line with 5 lattice tower silhouettes
-- Step-down transformers (400 / 10 kV) + 10 kV bus bar
-- 19" rack illustrations for **RTU-1** and **RTU-4** with LEDs, ports, display
-- Telecom Network card with **DC-1 / DC-2** routers and MPLS-TP inter-link
-- Red dashed **communication layer** with animated GOOSE packets (forward + return)
-- Protocol badges: `IEC 60834-1`, `IEC 61850 GOOSE`, `MPLS-TP`
-- **Fault state styling**: red border + glow + pulsing LEDs when a leaf is isolated
-- Top-right legend: Power Flow (solid) vs Communication Line (dashed red)
-
-### RTU Monitoring
-- ICMP ping monitoring for **RTU-1** (172.20.20.20), **RTU-2** (172.20.20.21),
-  **RTU-3** (172.20.20.22), **RTU-4** (172.20.20.23)
-- Real-time alerts on connectivity loss
-- 10-second polling interval
-- Triggers teleprotection trip if a leaf becomes isolated (both DC uplinks down)
+---
 
 ## Architecture
 
 ```
-                         ┌────────────────────────────────┐
-                         │   config.json (single source)  │
-                         │   routers · rtus · links · gnmi│
-                         └──────┬───────────────┬─────────┘
-                                │               │
-   SR Linux Routers             │               │
-   (172.20.20.x : 57401)        │               │
-        │                       ▼               ▼
-        │ gRPC streaming    gnmi-service.js   ping-service.js
-        ▼ (5 s sample)        (port 3001)       (port 3000)
-   gnmi subscriptions      ─ /api/routers     ─ /ping?ip=…
-   (interface, system,     ─ /api/links       ─ /gnmi/status
-    bgp, oper-state)       ─ /api/config      ─ /gnmi/start
-                           ─ /api/sse           /gnmi/stop  (manage gNMI)
-                                  │                     │
-                                  └─────────┬───────────┘
-                                            │ REST + SSE
-                                            ▼
-                                       smart-grid.js
-                                  (frontend, 10 s polling)
-                                            │
-                                            ▼
-                                       smart-grid.html (browser)
+ ┌──────────────────────────────────────────────────────────────────┐
+ │                        config.json                               │
+ │   nodes · links · credentials · RTU endpoints · grid params      │
+ └─────────────────────┬────────────────────────────────────────────┘
+                       │  loaded at startup by both backend + frontend
+                       │
+        ┌──────────────▼──────────────────────────────────┐
+        │              ping-service.js (port 3000)        │
+        │                                                  │
+        │  • ICMP ping (whitelisted IPs)                   │
+        │  • gNMI via docker exec gnmic (on demand)        │
+        │  • /api/mpls/access-health   (10 s poll)         │
+        │  • /api/mpls/link-health     (15 s poll)         │
+        │  • /api/tpt/*  → proxy to tpt-daemon.py          │
+        │  • /gnmic/node/:id  → live node telemetry        │
+        │  • /gnmi/status|start|stop  (legacy gNMI svc)    │
+        └────────────────────┬────────────────────────────┘
+                             │  REST (fetch)
+                             ▼
+                      smart-grid.js  (browser)
+                      SmartGrid class + IIFEs
+                             │
+                             ▼
+                      smart-grid.html  (browser)
+                      SVG topology + panels + popups
+
+
+ Containerlab network (192.168.30.0/24):
+ ┌────────────────────────────────────────────────────────────────┐
+ │  SR-OS routers (srsim 25.10.R1)  ←─ gNMI :57400 ──► gnmic   │
+ │  dc1 dc2 acc1 acc2 a1-1 a1-2 a1-3                             │
+ │                                                                │
+ │  RTU containers (Linux)                                        │
+ │  rtu1 (192.168.30.7)  rtu2 (192.168.30.6)                     │
+ │    └─ tpt-daemon.py (HTTP :8850, UDP GOOSE :61850) ──────────► │
+ └────────────────────────────────────────────────────────────────┘
 ```
 
-**Data flow**:
-- `gnmi-service.js` subscribes to each router via gNMI on port **57401**, caches state,
-  and exposes a REST API + Server-Sent Events stream on **port 3001**.
-- `ping-service.js` provides ICMP ping (for RTUs) and now also **manages the gNMI service
-  lifecycle** (start/stop/status, including detecting external instances on port 3001).
-- `smart-grid.js` consumes both APIs, drives the topology animations, fault state, and
-  the gNMI toggle button.
-- `config.json` is the single source of truth for routers, RTUs, links, ports, and gNMI
-  credentials — both backend services and the frontend hydrate from it via `/api/config`.
+**Request flow for link health:**
+1. Browser polls `/api/mpls/link-health` every 15 s
+2. ping-service queries all 7 nodes in parallel via `docker exec gnmic … get --path '/state/port[port-id=*]/oper-state'`
+3. Port states are mapped to the 10 logical topology links
+4. Browser toggles `.mpls-link-fault` CSS class on each `<line>` element → red blinking indicator
+
+---
+
+## Network Topology
+
+### SR-OS Nodes
+
+| Node key | Container name | IP | Role | Ports (links) |
+|---|---|---|---|---|
+| mpls-dc1 | DC-1 (dc1) | 192.168.30.2 | Core | c1/1→ACC1, c2/1→DC-2 |
+| mpls-dc2 | DC-2 (dc2) | 192.168.30.3 | Core | c1/1→ACC2, c2/1→DC-1 |
+| mpls-acc1 | SR1-ACC1 (acc1) | 192.168.30.4 | Aggregation | c1/1→DC-1, c2/1→ACCESS1-1, c3/1→ACC2 |
+| mpls-acc2 | SR1-ACC2 (acc2) | 192.168.30.5 | Aggregation | c1/1→DC-2, c2/1→ACCESS1-3, c3/1→ACC1 |
+| mpls-a1-1 | ACCESS1-1 | 192.168.30.11 | Access | c1/1→ACCESS1-2, c2/1→ACC1, c3/1→RTU1 |
+| mpls-a1-2 | ACCESS1-2 | 192.168.30.12 | Access | c1/1→ACCESS1-1, c2/1→ACCESS1-3 |
+| mpls-a1-3 | ACCESS1-3 | 192.168.30.13 | Access | c1/1→ACCESS1-2, c2/1→ACC2, c3/1→RTU2 |
+
+### Infrastructure
+
+| Container | IP | Role |
+|---|---|---|
+| gnmic | 192.168.30.10 | gNMI collector (gnmic binary at /app/gnmic, API :9804) |
+| gnmi-relay | 192.168.30.20 | TCP relay host:57400 → dc1:57400 |
+
+### RTUs
+
+| RTU | Container IP | GOOSE IP | Peer GOOSE IP | HTTP API |
+|---|---|---|---|---|
+| RTU1 | 192.168.30.7 | 192.168.100.3 | 192.168.100.4 | :8850 |
+| RTU2 | 192.168.30.6 | 192.168.100.4 | 192.168.100.3 | :8850 |
+
+### Topology Links (10 total)
+
+| Link ID | Endpoint A | Endpoint B |
+|---|---|---|
+| link-dc1-dc2 | dc1 · 1/1/c2/1 | dc2 · 1/1/c2/1 |
+| link-dc1-acc1 | dc1 · 1/1/c1/1 | acc1 · 1/1/c1/1 |
+| link-dc2-acc2 | dc2 · 1/1/c1/1 | acc2 · 1/1/c1/1 |
+| link-acc1-acc2 | acc1 · 1/1/c3/1 | acc2 · 1/1/c3/1 |
+| link-acc1-a1-1 | acc1 · 1/1/c2/1 | a1-1 · 1/1/c2/1 |
+| link-acc2-a1-3 | acc2 · 1/1/c2/1 | a1-3 · 1/1/c2/1 |
+| link-a1-1-a1-2 | a1-1 · 1/1/c1/1 | a1-2 · 1/1/c1/1 |
+| link-a1-2-a1-3 | a1-2 · 1/1/c2/1 | a1-3 · 1/1/c1/1 |
+| link-a1-1-rtu1 | a1-1 · 1/1/c3/1 | *(RTU — unmonitored)* |
+| link-a1-3-rtu2 | a1-3 · 1/1/c3/1 | *(RTU — unmonitored)* |
+
+---
+
+## Features
+
+### Power Grid Simulation
+
+- **4 power plants**: Nuclear α (1.2 GW), Nuclear β (1.2 GW), Solar (800 MW), Wind (400 MW)
+- Animated energy flow from generation → step-up substation → feeders F1–F4 → secondary substations S1–S4 → city (2.8 GW demand)
+- Nuclear plants have adjustable power sliders (0–100%)
+- Solar/wind add realistic ±5%/±7.5% noise via continuous animation loop
+- DER node (PV + BESS, 350 kW) on Feeder F4 with bidirectional flow
+- **Transmission power reduction**: each offline access node reduces city power by 25%
+- Draggable topology nodes with live-updating connection paths
+
+### MPLS Network Topology (Live)
+
+- SVG diagram of the full 7-node SR-OS topology with role-differentiated link styles (core / aggregation / access / RTU)
+- **Link fault visualisation**: any port reporting `down` via gNMI turns the corresponding link red and blinking
+- Clickable nodes (DC-1, DC-2, ACCESS1-1) open live telemetry popups showing:
+  - Physical port grid (colour-coded: up=green, down=red, unconfigured=grey)
+  - Router interfaces table (oper-state, IP, in/out packet counters)
+  - IS-IS adjacency status (level, neighbour, state, metric)
+  - Segment Routing summary (prefix-SIDs, active adjacency-SIDs)
+
+### Teleprotection System (IEC 61850 GOOSE)
+
+- Industrial-infographic panel: 400 kV HV line, transformers, 19" rack RTU illustrations, MPLS-TP comm link
+- Animated GOOSE packet pulses (forward + return) between ACCESS1-1 and ACCESS1-3
+- **ACCESS1-1 ↔ RTU1 link fault indicator**: when port 1/1/c3/1 on ACCESS1-1 reports `down`, the comm line turns red and a `LINK FAULT` badge appears at the midpoint
+- Trip/Clear controls proxied to both RTU daemons simultaneously
+- Teleprotection state badge: CLOSED (normal) / OPEN (fault/trip)
+
+### Statistics Rings
+
+Three circular progress rings updated every monitoring cycle:
+- **Routers online** (out of 7)
+- **RTUs reachable** (out of 2)
+- **Overall health** (weighted average)
+
+### Security Panel
+
+Toggle between secure (green, AES-256 shield icons) and insecure (red, open-lock icons) packet animations on the topology links.
+
+### Manual Override
+
+Forces all devices online and all links up. Disables all monitoring polls while active. Restores previous state on deactivation.
+
+---
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
-- Access to SR Linux routers on network 172.20.20.0/24
-- Modern web browser (Chrome, Firefox, Safari, Edge)
+- **Docker** with containerlab deployed (`clab deploy`)
+- **Node.js** ≥ 14
+- **gnmic** container running (`docker ps | grep gnmic`)
+- RTU containers running (`docker ps | grep rtu`)
+- Modern browser (Chrome 90+, Firefox 88+, Safari 14+)
 
-## Installation
+---
+
+## Installation & Startup
+
+### 1. Install Node dependencies
 
 ```bash
-cd SmartGrid-Nokia-Dashboard
-
-# Install dependencies
 npm install
-
-# Verify proto files exist
-ls -la proto/gnmi/
-ls -la proto/gnmi_ext/
 ```
 
-## Usage
+### 2. Deploy the containerlab topology
 
-### 1. Start the Ping Service (recommended first)
+```bash
+clab deploy -t smart_grid.yaml    # adjust filename to your topology file
+```
+
+Verify containers are up:
+
+```bash
+docker ps --format 'table {{.Names}}\t{{.Status}}'
+```
+
+### 3. Install and start TPT daemons on RTUs
+
+```bash
+bash scripts/install-tpt.sh
+```
+
+This copies `tpt-daemon.py` to both RTU containers, installs Python 3, and launches the daemons with GOOSE publication and telemetry simulation enabled.  
+Verify: `curl http://192.168.30.7:8850/health` and `curl http://192.168.30.6:8850/health`
+
+### 4. Start the backend
 
 ```bash
 node ping-service.js
+# or: npm start
 ```
-
-The ping service runs on port **3000** and also exposes the `/gnmi/{status,start,stop}`
-endpoints used by the dashboard's gNMI toggle button.
 
 Expected output:
 ```
 Ping service running on http://localhost:3000
-Monitoring IPs: 172.20.20.5, 172.20.20.8, ...
+Monitoring IPs: 192.168.30.2, 192.168.30.3, ...
 ```
 
-### 2. Start the gNMI Service
-
-You have **two options**:
-
-**A) From the dashboard** (recommended): once ping-service is up and the page is loaded,
-click the `Start` pill button in the top-right header. The button reflects the live
-state (`Start` / `Stop · pid X` / `Stop (external)` / `ping-svc offline`).
-
-**B) From a terminal**:
-```bash
-bash start-gnmi.sh        # wrapper with proto-file checks and logs
-# or directly:
-node gnmi-service.js
-```
-
-The dashboard's status pill will detect the external process via a port-3001 probe and
-show the `external` state (amber LED + "ext" badge).
-
-Expected output:
-```
-gNMI Service starting...
-Listening on http://localhost:3001
-Starting gNMI subscriptions for 6 routers...
-Router dc1 (DC-1) connected
-Router dc2 (DC-2) connected
-...
-```
-
-### 3. Open the Dashboard
+### 5. Open the dashboard
 
 ```bash
 open smart-grid.html
 ```
 
-Or simply open `smart-grid.html` in your web browser.
+Or open `smart-grid.html` directly in any browser.
 
-### 4. After every Containerlab redeploy: refresh router IPs
+### After every `clab redeploy`
 
-Leaf router IPs are auto-assigned by Docker and **change on every `clab redeploy`**.
-Run the helper script to sync `config.json` with the live container IPs:
+SR-OS container IPs can change. Sync `config.json`:
 
 ```bash
-# Dry-run: show what would change
-bash scripts/update-ips.sh
-
-# Apply changes
-bash scripts/update-ips.sh --apply
+bash scripts/update-ips.sh          # dry-run: shows diff
+bash scripts/update-ips.sh --apply  # writes changes
 ```
 
-If you skip this step, the dashboard will appear to show wrong link states because gNMI
-subscribes to the wrong containers.
+---
 
-## API Endpoints
+## API Reference
 
-### gNMI Service (port 3001)
+All endpoints are on `ping-service.js` at `http://localhost:3000`.
 
-- `GET /health` — service health check
-- `GET /api/config` — full topology config (routers, RTUs, links, ports)
-- `GET /api/routers` — list of routers with status summary
-- `GET /api/routers/:id/interfaces` — interface statistics for router
-- `GET /api/routers/:id/system` — CPU / memory metrics
-- `GET /api/routers/:id/bgp` — BGP peer information
-- `GET /api/links` — computed link state for all topology links
-- `GET /api/sse` — Server-Sent Events stream for real-time updates
-- `GET /api/debug/cache` — full router cache (debug)
-- `GET /api/debug/trace` — bounded oper-state trace (debug)
+### General
 
-Router IDs: `dc1`, `dc2`, `leaf1`, `leaf2`, `leaf3`, `leaf4`
+| Method | Path | Description |
+|---|---|---|
+| GET | `/health` | Service liveness: `{status: "ok", service: "ping-service"}` |
+| GET | `/ping?ip=X.X.X.X` | ICMP to a whitelisted IP: `{ip, alive, timestamp}` |
 
-### Ping Service (port 3000)
+### gNMI (via gnmic container)
 
-- `GET /health` — service health check
-- `GET /ping?ip=<ip_address>` — ICMP ping (whitelisted to configured router/RTU IPs)
-- `GET /gnmi/status` — gNMI service status. Returns:
-  ```json
-  { "running": true, "managed": true, "external": false,
-    "pid": 25475, "port": 3001, "logs": [ … ] }
-  ```
-  Probes port 3001 directly, so it detects **any** gNMI instance —
-  including ones started outside the dashboard (e.g. via `start-gnmi.sh`).
-- `GET /gnmi/start` — spawn `node gnmi-service.js` as a child process
-- `GET /gnmi/stop` — SIGTERM the gNMI service. If the running instance is external
-  (not spawned by ping-service), looks up its PID via `lsof -t -i :3001` and signals it.
+| Method | Path | Description |
+|---|---|---|
+| GET | `/gnmi/status` | gNMI service status: `{running, managed, external, pid, port, logs[]}` |
+| GET | `/gnmi/start` | Spawn `node gnmi-service.js` as a child process |
+| GET | `/gnmi/stop` | SIGTERM the managed gNMI service |
+| GET | `/gnmic/node/:nodeId` | Live telemetry for a node (8 parallel gNMI queries). Returns: `{node, host, ts, interfaces[], ports[], isis{}, sr{}}` |
+
+Valid `:nodeId` values: `mpls-dc1`, `mpls-dc2`, `mpls-acc1`, `mpls-acc2`, `mpls-a1-1`, `mpls-a1-2`, `mpls-a1-3`
+
+The 8 queries issued per node:
+1. All interfaces oper-state (`/state/router[*]/interface[*]/oper-state`)
+2. Base router interface objects with IPs and counters
+3. Physical port oper-states (`/state/port[port-id=*]/oper-state`)
+4. IS-IS instance state
+5. IS-IS level details
+6. IS-IS interface adjacencies
+7. SR policy summary
+8. SR adjacency-SID table
+
+### MPLS Health
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/mpls/access-health` | Container liveness + RTU-facing port state for ACCESS1-1 and ACCESS1-3 |
+| GET | `/api/mpls/link-health` | Port oper-states for all 7 nodes → per-link up/down/unknown status |
+
+**`/api/mpls/access-health` response:**
+```json
+{
+  "access1": {
+    "nodeId": "mpls-a1-1",
+    "containerRunning": true,
+    "rtuPort": "1/1/c3/1",
+    "rtuPortUp": true,
+    "healthy": true,
+    "ts": "…"
+  },
+  "access3": { … },
+  "ts": "…"
+}
+```
+
+`healthy = containerRunning && rtuPortUp !== false`  
+`rtuPortUp = null` means gnmic was unreachable — treated as unknown, not failure.
+
+**`/api/mpls/link-health` response:**
+```json
+{
+  "ts": "…",
+  "links": {
+    "link-dc1-dc2": {
+      "status": "up",
+      "a": { "node": "mpls-dc1", "port": "1/1/c2/1", "state": "up" },
+      "b": { "node": "mpls-dc2", "port": "1/1/c2/1", "state": "up" }
+    },
+    "link-a1-1-a1-2": {
+      "status": "down",
+      "a": { "node": "mpls-a1-1", "port": "1/1/c1/1", "state": "down" },
+      "b": { "node": "mpls-a1-2", "port": "1/1/c1/1", "state": "down" }
+    }
+  }
+}
+```
+
+Status logic: `down` if either endpoint is `"down"`; `up` if either is `"up"`; `unknown` if both are `null` (gnmic unreachable).
+
+### Teleprotection (TPT)
+
+All TPT endpoints proxy to both RTU daemons at `http://192.168.30.7:8850` and `http://192.168.30.6:8850`.
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/tpt/status` | Combined status from both RTUs |
+| GET | `/api/tpt/log` | Last 50 GOOSE messages from both RTUs |
+| POST | `/api/tpt/start` | Start GOOSE publication on both RTUs |
+| POST | `/api/tpt/stop` | Stop GOOSE publication on both RTUs |
+| POST | `/api/tpt/trip` | Assert trip on RTU1 |
+| POST | `/api/tpt/clear` | De-assert trip on both RTUs |
+
+---
 
 ## Configuration
 
-### Single Source of Truth — `config.json`
-
-All topology data (routers, RTUs, links, service ports, gNMI credentials) lives in
-`config.json` at the project root. Both backend services and the frontend hydrate from
-this file via `/api/config`.
+### `config.json` — single source of truth
 
 ```json
 {
   "services": {
-    "pingService": { "port": 3000 },
-    "gnmiService": { "port": 3001 }
+    "pingService":     { "port": 3000 },
+    "mplsGnmiService": { "port": 3002 }
   },
-  "gnmi": {
-    "port": 57401,
+  "mplsRtus": {
+    "rtu1": { "host": "192.168.30.7", "name": "RTU1", "tptPort": 8850,
+              "accessNode": "mpls-a1-1", "gooseHost": "192.168.100.3", "peerHost": "192.168.100.4" },
+    "rtu2": { "host": "192.168.30.6", "name": "RTU2", "tptPort": 8850,
+              "accessNode": "mpls-a1-3", "gooseHost": "192.168.100.4", "peerHost": "192.168.100.3" }
+  },
+  "mplsNetwork": {
+    "credentials": { "username": "admin", "password": "NokiaSros1!" },
     "insecure": true,
-    "credentials": { "username": "admin", "password": "NokiaSrl1!" },
-    "sampleIntervalNs": 5000000000
+    "gnmicContainer": "gnmic",
+    "gnmicBinary": "/app/gnmic",
+    "nodes": { "mpls-dc1": { … }, … },
+    "infrastructure": { "gnmic": { … }, "gnmi-relay": { … } }
   },
-  "routers": {
-    "dc1":   { "host": "172.20.20.5", "name": "DC-1",   "type": "spine" },
-    "dc2":   { "host": "172.20.20.8", "name": "DC-2",   "type": "spine" },
-    "leaf1": { "host": "172.20.20.2", "name": "Leaf-1", "type": "leaf"  },
-    "leaf2": { "host": "172.20.20.4", "name": "Leaf-2", "type": "leaf"  },
-    "leaf3": { "host": "172.20.20.6", "name": "Leaf-3", "type": "leaf"  },
-    "leaf4": { "host": "172.20.20.3", "name": "Leaf-4", "type": "leaf"  }
-  },
-  "rtus": { "rtu1": { … }, "rtu2": { … }, … },
-  "links": { "dc1-leaf1": { … }, … }
+  "grid": {
+    "cityDemandMW": 2800,
+    "transmissionUnits": 4,
+    "transmissionLossPerUnitPct": 25
+  }
 }
 ```
 
-> ⚠️ **Leaf IPs change on every `clab redeploy`** because Docker assigns them
-> dynamically. Use `scripts/update-ips.sh` to keep `config.json` in sync.
+The frontend fetches this via `/api/config` (served by ping-service). Both `pingServiceUrl` and all node IPs/ports are read from this file at runtime — nothing is hard-coded in the frontend.
 
-### gNMI Subscriptions
+### Enabling gNMI on an SR-OS node
 
-Telemetry paths (5-second sample interval, plus ON_CHANGE for `interface/oper-state`):
-- `/interface` — all interface operational state and statistics
-- `/interface[name=*]/oper-state` — explicit ON_CHANGE for non-configured interfaces
-- `/platform/control` — CPU and memory metrics
-- `/network-instance[name=default]/protocols/bgp/statistics` — BGP statistics
-- `/network-instance[name=default]/protocols/bgp/neighbor` — BGP neighbor sessions
+SR-OS srsim nodes require explicit gRPC configuration in their startup config (`/home/sros/chroot/cf3:/config.cfg`). Add this block inside `system {}`, after `dns {}` and before `management-interface {}`:
 
-> The transceiver/ethernet/healthz `oper-state` paths are filtered out because
-> SR Linux reports `down` for the virtual transceivers in lab environments — using
-> them would overwrite the real interface state.
-
-## Testing
-
-### Test gNMI Service
-
-```bash
-# Health check
-curl http://localhost:3001/health
-
-# Get all routers status
-curl http://localhost:3001/api/routers | json_pp
-
-# Get specific router metrics
-curl http://localhost:3001/api/routers/dc1/interfaces | json_pp
-curl http://localhost:3001/api/routers/dc1/system | json_pp
-curl http://localhost:3001/api/routers/dc1/bgp | json_pp
+```
+grpc {
+    admin-state enable
+    allow-unsecure-connection
+    gnmi { admin-state enable; auto-config-save true }
+    gnoi { cert-mgmt { admin-state enable } file { admin-state enable } system { admin-state enable } }
+    md-cli { admin-state enable }
+    rib-api { admin-state enable }
+}
 ```
 
-### Test Ping Service
+Then restart the container. gRPC becomes available in ~60–90 s.
+
+---
+
+## Monitoring Loops
+
+| Loop | Interval | Trigger | Effect |
+|---|---|---|---|
+| **Access node health** | 10 s | `startTransmissionMonitoring()` | GET `/api/mpls/access-health` → set all transmission units alive/dead → recalculate city power → update teleprotection fault indicators |
+| **Link health** | 15 s | `startLinkMonitoring()` | GET `/api/mpls/link-health` → toggle `.mpls-link-fault` class on each `<line>` element |
+| **Animation loop** | rAF (~60 fps) | `animate()` | Add noise to solar/wind output, call `updateDisplay()` |
+| **gNMI status** | 5 s | `initGnmiController()` IIFE | GET `/gnmi/status` → update header pill LED and label |
+| **Node telemetry** | on demand | click on node | GET `/gnmic/node/:id` → render popup with port grid, interfaces, IS-IS, SR |
+
+**Null-guard behaviour:** The first access-health response can arrive after the page load. `_mplsAccessAlive` is initialised to `null`; `_applyMplsTransmissionState()` returns immediately if it is still `null`, preserving the default `alive: true` state for all transmission units until real data arrives.
+
+**Error behaviour:** On a failed fetch, the previous cached state is kept. The dashboard never flips to "fault" on a transient network error — a link must explicitly report `down` to trigger the fault class.
+
+---
+
+## Teleprotection (IEC 61850 GOOSE)
+
+### tpt-daemon.py
+
+Runs inside each RTU container. Implements a complete IEC 61850-8-1 GOOSE state machine:
+
+- **Transport**: UDP unicast, port 61850
+- **Encoding**: BER (Basic Encoding Rules), context-specific IMPLICIT tags
+- **Dataset**: 4 entries — `Tr` (trip BOOLEAN), `Cs` (command BOOLEAN), `V` (voltage FLOAT32), `I` (current FLOAT32)
+- **Retransmission schedule** (IEC 61850-8-1 §8.3.3): on state change → T1=2 ms (×2), T2=10 ms, T3=100 ms (×2), then steady-state T0=1000 ms heartbeat
+- `stNum` increments on every trip/clear; `sqNum` increments on every retransmit burst
+
+**Telemetry simulation** (`--sim-telemetry`):
+- Voltage oscillates ±2% at 0.3 Hz (normal)
+- Current oscillates ±10% at 0.5 Hz (normal)
+- On trip: voltage sags to 0.35 p.u., current spikes to 2.8 p.u.
+
+**HTTP API** (port 8850):
+
+| Endpoint | Description |
+|---|---|
+| GET `/status` or `/health` | Full state: local/peer IPs, pub_running, trip_asserted, V/I readings, stNum, sqNum, peer liveness, peer last values |
+| GET `/log` | Last 50 decoded received GOOSE PDUs |
+| POST `/start` | Begin GOOSE publication |
+| POST `/stop` | Stop publication |
+| POST `/trip` | Assert trip (increments stNum, triggers burst) |
+| POST `/clear` | De-assert trip |
+| POST `/telemetry` | Override V/I values: `{"voltage_pu": 1.02, "current_pu": 0.95}` |
+
+### Fault indicator in the dashboard
+
+The ACCESS1-1 ↔ RTU1 link state (`access1.rtuPortUp`) is checked after every access-health poll:
+- `rtuPortUp === false` → `tp-comm-line-a` gets `.tp-comm-line-fault` (red, blinking), the `tp-fault-a11-rtu` SVG group becomes visible, GOOSE pulse animations are hidden
+- `rtuPortUp === null` → no change (gnmic unavailable, treated as unknown)
+- `rtuPortUp === true` → normal state restored
+
+---
+
+## Scripts
+
+### `scripts/install-tpt.sh`
+
+Deploys `tpt-daemon.py` to both RTU containers and starts the daemons.
 
 ```bash
-# ICMP ping
-curl "http://localhost:3000/ping?ip=172.20.20.5"
-curl "http://localhost:3000/ping?ip=172.20.20.20"   # RTU-1
-
-# gNMI lifecycle
-curl http://localhost:3000/gnmi/status | jq
-curl http://localhost:3000/gnmi/start  | jq
-curl http://localhost:3000/gnmi/stop   | jq
+bash scripts/install-tpt.sh
 ```
 
-### Dashboard Interactions
+Steps: checks Docker + containers running → installs Python 3 → copies and chmod daemon → kills previous instances → launches with `--auto-start --sim-telemetry` → verifies HTTP health endpoints.
 
-1. **gNMI toggle** (top-right header): start/stop the telemetry service. The pill LED
-   shows the current state — green pulsing (managed) / amber (external) /
-   red (stopped) / grey blinking (ping-service unreachable).
-2. **Power Plants**: click "start" to activate plants, adjust nuclear plant sliders.
-3. **Distribution Network**: toggle network on/off; this drives the activation of all
-   transmission lines, secondary substations, and the city node together.
-4. **Router Nodes**:
-   - Hover over router nodes to see tooltip with metrics
-   - Click router nodes to open detailed panel
-   - Press ESC to close panel
-5. **Topology**: drag nodes to rearrange network visualization.
-6. **Manual override / fault injection**: panels under the topology let you force
-   devices online or inject router/link faults to test the teleprotection logic.
+### `scripts/update-ips.sh`
 
-## Troubleshooting
-
-### Routers show "unknown" status
-
-- Verify `gnmi-service.js` is running on port 3001
-- Check SR Linux routers are accessible at 172.20.20.x:57401
-- Verify network connectivity to router management interfaces
-- Check browser console for CORS or fetch errors
-
-### gNMI service fails to connect
-
-- Verify router IPs and credentials in `gnmi-service.js`
-- Check that gNMI is enabled on SR Linux routers
-- Verify port 57401 is accessible (not blocked by firewall)
-- Check proto files exist in `proto/gnmi/` and `proto/gnmi_ext/`
-
-### Dependencies missing
+Syncs SR-OS node IPs in `config.json` with current container IPs (necessary after `clab redeploy`).
 
 ```bash
-npm install @grpc/grpc-js @grpc/proto-loader ping
+bash scripts/update-ips.sh           # dry-run
+bash scripts/update-ips.sh --apply   # write changes
 ```
 
-### CORS errors in browser
+Maps: dc1→DC-1, dc2→DC-2, acc1→SR1-ACC1, acc2→SR1-ACC2, a1-1→ACCESS1-1, a1-2→ACCESS1-2, a1-3→ACCESS1-3
 
-- Ensure `gnmi-service.js` has CORS enabled (already configured)
-- Check that services are running on correct ports (3000, 3001)
+---
 
 ## File Structure
 
 ```
 SmartGrid-Nokia-Dashboard/
-├── README.md                 # This file
-├── config.json               # Single source of truth (routers, RTUs, links, ports)
-├── smart-grid.html           # Main dashboard HTML (topology + panels)
-├── smart-grid.css            # Dashboard styles (zones, badges, teleprotection, etc.)
-├── smart-grid.js             # Frontend logic (SmartGrid + DraggableTopology + gNMI controller)
-├── gnmi-service.js           # Backend gNMI service (port 3001)
-├── ping-service.js           # Backend ping service + gNMI lifecycle (port 3000)
-├── start-gnmi.sh             # Wrapper to start gNMI service with proto-file checks
-├── turbine-control.js        # Turbine animation controller
-├── turbine-styles.css        # Turbine styles
-├── tpt-simulator.html        # Standalone interactive TPT simulator
-├── lab.yaml                  # Containerlab topology definition (source of truth for nodes/links)
+├── config.json              # Single source of truth: nodes, links, RTUs, grid params
+├── smart-grid.html          # Dashboard UI: SVG topology + all panels + popups
+├── smart-grid.css           # Styles: zones, links, fault states, popups, teleprotection
+├── smart-grid.js            # Frontend: SmartGrid class + DraggableTopology + IIFEs
+│                            #   IIFEs: initGnmiController, initDc1Popup, initDc2Popup,
+│                            #          initA11Popup, security toggle, TPT control panel
+├── ping-service.js          # Backend (port 3000): gNMI orchestration, health monitoring,
+│                            #   TPT proxy, MPLS link/access health endpoints
+├── turbine-control.js       # Turbine blade animation helper
+├── turbine-styles.css       # Turbine SVG styles
+├── lab.yaml                 # Containerlab topology definition (reference)
 ├── scripts/
-│   └── update-ips.sh         # Sync config.json with current container IPs after `clab redeploy`
-├── proto/                    # Protocol buffer definitions
-│   ├── gnmi/gnmi.proto
-│   └── gnmi_ext/gnmi_ext.proto
-├── package.json              # Node.js dependencies
-└── package-lock.json
+│   ├── install-tpt.sh       # Deploy tpt-daemon.py to RTU containers
+│   ├── tpt-daemon.py        # IEC 61850 GOOSE daemon (runs in RTU containers)
+│   └── update-ips.sh        # Sync config.json IPs after clab redeploy
+├── Avvia Dashboard.command  # macOS double-click launcher
+├── package.json             # npm start → node ping-service.js
+├── proto/                   # gNMI + gNMI_ext protobuf definitions (legacy)
+├── gnmi-service.js          # Legacy SR Linux gNMI service (not used in MPLS lab)
+└── archive/                 # Previous versions of source files
 ```
 
-## Dependencies
+---
 
-### Runtime
-- `@grpc/grpc-js` (^1.14.3) - gRPC client for Node.js
-- `@grpc/proto-loader` (^0.7.15) - Protocol buffer loader
-- `ping` (^0.4.4) - ICMP ping utility
-- `express` (^4.21.2) - HTTP server framework
-- `cors` (^2.8.5) - CORS middleware
+## Troubleshooting
 
-### Protocol Buffers
-- OpenConfig gNMI proto files (included in `proto/` directory)
+### All link statuses show `unknown`
 
-## Performance
+gnmic is not reachable or the gNMI port on SR-OS nodes is not enabled.
 
-- **gNMI subscriptions**: 5-second sample interval per router
-- **Frontend polling**: 10-second interval for router status
-- **Ping monitoring**: 10-second interval for transmission units
-- **Metrics caching**: In-memory cache in gNMI service
-- **Auto-reconnection**: Exponential backoff (5s, 10s, 20s, max 60s)
+```bash
+# Check gnmic container is running
+docker ps | grep gnmic
+
+# Test a direct port query
+docker exec -i gnmic /app/gnmic \
+  -a 192.168.30.11:57400 -u admin -p NokiaSros1! --insecure \
+  get --path '/state/port[port-id=1/1/c1/1]/oper-state' --format json
+```
+
+If gNMI is not enabled on the SR-OS node, patch its startup config and restart:
+```bash
+# Copy config with gRPC block, then restart
+docker restart ACCESS1-1
+# Wait ~90 s for gRPC to become available
+```
+
+### `access-health` returns `containerRunning: false`
+
+The container name in `config.json` (`mplsNetwork.nodes.*.name`) must exactly match the Docker container name shown by `docker ps`. For srsim nodes the container name is the `name` field in the containerlab topology (e.g. `ACCESS1-1`), not the topology key with prefix stripped.
+
+### Fault indicator shows but link is actually up
+
+The port may be reported `down` due to a connector breakout mismatch. Check:
+```bash
+# Verify port oper-state directly
+docker exec -i gnmic /app/gnmic -a 192.168.30.11:57400 -u admin -p NokiaSros1! --insecure \
+  get --path '/state/port[port-id=*]/oper-state' --format json | grep -A2 'port-id'
+```
+
+### RTU TPT daemon not responding
+
+```bash
+# Re-run installer
+bash scripts/install-tpt.sh
+
+# Manual check inside container
+docker exec clab-smart_grid-rtu1 curl -s http://192.168.100.3:8850/health
+```
+
+### Dashboard shows wrong link states after lab redeploy
+
+IPs have changed. Run:
+```bash
+bash scripts/update-ips.sh --apply
+# Then restart ping-service
+pkill -f 'node ping-service.js'
+node ping-service.js &
+```
+
+---
 
 ## Security Notes
 
-This dashboard is configured for lab/development environments:
+This is a lab/demo environment:
+- gNMI credentials are in `config.json` in plain text
+- TLS is disabled (`insecure: true`) — no certificate verification
+- CORS allows all origins
+- No authentication on any API endpoint
 
-- Credentials hardcoded (use environment variables in production)
-- TLS verification disabled (`skip-verify: true`) for self-signed certs
-- CORS allows all origins (restrict in production)
-- No authentication on API endpoints
-
-## Browser Compatibility
-
-Tested and supported:
-- Chrome 90+
-- Firefox 88+
-- Safari 14+
-- Edge 90+
-
-Requires modern JavaScript features: async/await, fetch API, ES6 modules
-
-## License
-
-Based on Nokia SR Linux Smart Grid Lab configuration.
-
-## Support
-
-For issues related to:
-- SR Linux router configuration: Consult Nokia SR Linux documentation
-- gNMI protocol: See OpenConfig gNMI specification
-- Dashboard functionality: Check browser console for errors
-
-## Version & Recent Updates
-
-- Dashboard Version: **1.1.0**
-- gNMI Service Version: 1.0.0
-- Last Updated: **April 26, 2026**
-
-### Changelog 1.1.0 (April 2026)
-
-**Network Topology — physically accurate smart grid hierarchy**
-- Reordered zones to match real grids: `Generation → Transmission Substation → Distribution → Consumption`
-- Renamed Hub → **Step-up Substation** (20 → 400 kV) and T1–T4 → **Feeders F1–F4**
-- Each F→City link split into **F→S (MV)** and **S→City (LV)** with a secondary substation
-  in between (S1–S4, MV/LV step-down)
-- New **DER node** (PV + BESS) with bidirectional connection on Feeder F4 — represents
-  distributed solar/storage exporting/importing energy at the MV level
-- Voltage badges (20 / 400 kV / 20 kV MV / 0.4 kV LV) and capacity badges (GW / MW)
-- 5 zone-aware backgrounds and dashed separators
-- Direction arrows on power flow
-
-**Teleprotection System panel — full industrial redesign**
-- 400 kV HV line with 5 lattice transmission towers
-- Step-down transformers (400/10 kV) feeding a 10 kV bus bar
-- 19" rack-style RTU illustrations (LEDs, ports, display) for RTU-1 / RTU-4
-- Telecom Network card with DC-1 / DC-2 routers and MPLS-TP link
-- Red dashed communication layer with animated GOOSE packets (forward + return)
-- Protocol badges: IEC 60834-1, IEC 61850 GOOSE, MPLS-TP
-- Top-right legend, knockout label background for HV line readability
-- Fault state styling (red border + glow + pulsing LEDs) when a leaf is isolated
-
-**gNMI service control from the dashboard**
-- Header pill button to start/stop the gNMI telemetry service
-- `ping-service` now exposes `/gnmi/{status, start, stop}` and probes port 3001 to
-  detect external instances started outside the dashboard (e.g. via `start-gnmi.sh`)
-- External processes can be SIGTERM'd via `lsof` PID lookup
-- Refuses to start when port 3001 is already taken (avoids EADDRINUSE)
-- Single controller drives both the new pill button and the existing detailed
-  control panel below the topology, in sync
-
-**Operational helper**
-- `scripts/update-ips.sh` syncs `config.json` with current container IPs after
-  `clab redeploy` (dry-run by default, `--apply` to write). Bash 3.2 compatible.
+Do not expose port 3000 outside the lab network.

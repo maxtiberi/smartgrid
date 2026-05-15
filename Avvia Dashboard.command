@@ -70,14 +70,14 @@ echo ""
 echo -e "${GREEN}${BOLD}✓ Dashboard avviata!${RESET}"
 echo ""
 echo -e "  ${BOLD}• ping-service:${RESET}  http://localhost:3000"
-echo -e "  ${BOLD}• gNMI service:${RESET}  avviabile dalla dashboard con il pulsante ▶"
+echo -e "  ${BOLD}• TPT Deploy:${RESET}    usa il pulsante Deploy nella sezione MPLS"
 echo ""
 echo -e "${YELLOW}  Lascia questa finestra aperta finché usi la dashboard.${RESET}"
 echo -e "  Chiudi questa finestra per fermare tutti i servizi."
 echo ""
 
 # Aspetta e gestisci CTRL+C o chiusura finestra
-trap 'echo ""; echo -e "${YELLOW}Arresto servizi...${RESET}"; kill $(lsof -t -i:3000 -sTCP:LISTEN) 2>/dev/null; kill $(lsof -t -i:3001 -sTCP:LISTEN) 2>/dev/null; echo -e "${GREEN}Servizi fermati.${RESET}"; exit 0' SIGINT SIGTERM
+trap 'echo ""; echo -e "${YELLOW}Arresto servizi...${RESET}"; kill $(lsof -t -i:3000 -sTCP:LISTEN) 2>/dev/null; echo -e "${GREEN}Servizi fermati.${RESET}"; exit 0' SIGINT SIGTERM
 
 # Mantieni attivo il terminale
 wait

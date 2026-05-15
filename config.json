@@ -1,48 +1,15 @@
 {
-  "_comment": "Single source of truth for SmartGrid topology. Backend and frontend both load this via /api/config. IP assignments come from 'docker inspect' after containerlab redeploy; update this file when leaf IPs change.",
+  "_comment": "Single source of truth for SmartGrid topology. Backend and frontend both load this via /api/config.",
 
   "services": {
     "pingService":     { "port": 3000 },
-    "gnmiService":     { "port": 3001 },
     "mplsGnmiService": { "port": 3002 }
   },
 
-  "gnmi": {
-    "port": 57401,
-    "insecure": true,
-    "credentials": { "username": "admin", "password": "NokiaSrl1!" },
-    "sampleIntervalNs": 5000000000
-  },
-
-  "routers": {
-    "dc1":   { "host": "172.20.20.5", "name": "DC-1",   "type": "spine" },
-    "dc2":   { "host": "172.20.20.8", "name": "DC-2",   "type": "spine" },
-    "leaf1": { "host": "172.20.20.2", "name": "Leaf-1", "type": "leaf"  },
-    "leaf2": { "host": "172.20.20.4", "name": "Leaf-2", "type": "leaf"  },
-    "leaf3": { "host": "172.20.20.6", "name": "Leaf-3", "type": "leaf"  },
-    "leaf4": { "host": "172.20.20.3", "name": "Leaf-4", "type": "leaf"  }
-  },
-
-  "rtus": {
-    "rtu1": { "host": "172.20.20.20", "name": "RTU-1", "type": "rtu" },
-    "rtu2": { "host": "172.20.20.21", "name": "RTU-2", "type": "rtu" },
-    "rtu3": { "host": "172.20.20.22", "name": "RTU-3", "type": "rtu" },
-    "rtu4": { "host": "172.20.20.23", "name": "RTU-4", "type": "rtu" }
-  },
-
-  "links": {
-    "dc1-leaf1":  { "router1": "dc1",   "interface1": "ethernet-1/1", "router2": "leaf1", "interface2": "ethernet-1/1" },
-    "dc2-leaf1":  { "router1": "dc2",   "interface1": "ethernet-1/2", "router2": "leaf1", "interface2": "ethernet-1/5" },
-    "dc1-leaf2":  { "router1": "dc1",   "interface1": "ethernet-1/2", "router2": "leaf2", "interface2": "ethernet-1/1" },
-    "dc2-leaf2":  { "router1": "dc2",   "interface1": "ethernet-1/1", "router2": "leaf2", "interface2": "ethernet-1/2" },
-    "dc1-leaf3":  { "router1": "dc1",   "interface1": "ethernet-1/3", "router2": "leaf3", "interface2": "ethernet-1/2" },
-    "dc2-leaf3":  { "router1": "dc2",   "interface1": "ethernet-1/3", "router2": "leaf3", "interface2": "ethernet-1/3" },
-    "dc1-leaf4":  { "router1": "dc1",   "interface1": "ethernet-1/4", "router2": "leaf4", "interface2": "ethernet-1/1" },
-    "dc2-leaf4":  { "router1": "dc2",   "interface1": "ethernet-1/4", "router2": "leaf4", "interface2": "ethernet-1/2" },
-    "leaf1-rtu1": { "router1": "leaf1", "interface1": "ethernet-1/3", "router2": "rtu1",  "interface2": "eth1" },
-    "leaf2-rtu2": { "router1": "leaf2", "interface1": "ethernet-1/3", "router2": "rtu2",  "interface2": "eth1" },
-    "leaf3-rtu3": { "router1": "leaf3", "interface1": "ethernet-1/1", "router2": "rtu3",  "interface2": "eth1" },
-    "leaf4-rtu4": { "router1": "leaf4", "interface1": "ethernet-1/3", "router2": "rtu4",  "interface2": "eth1" }
+  "mplsRtus": {
+    "_comment": "MPLS RTU nodes running IEC 61850 GOOSE TPT daemon (tpt-daemon.py). IPs from containerlab inspect.",
+    "rtu1": { "host": "192.168.30.6", "name": "RTU1", "tptPort": 8850, "accessNode": "mpls-a1-1", "gooseHost": "192.168.100.3", "peerHost": "192.168.100.4" },
+    "rtu2": { "host": "192.168.30.7", "name": "RTU2", "tptPort": 8850, "accessNode": "mpls-a1-3", "gooseHost": "192.168.100.4", "peerHost": "192.168.100.3" }
   },
 
   "mplsNetwork": {
@@ -93,10 +60,5 @@
     "cityDemandMW": 2800,
     "transmissionUnits": 4,
     "transmissionLossPerUnitPct": 25
-  },
-
-  "teleprotection": {
-    "_doc": "Leaf is considered isolated when BOTH DC uplinks are down. If any leaf is isolated, teleprotection trips (breaker opens).",
-    "tripWhenAnyLeafIsolated": true
   }
 }

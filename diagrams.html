@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SmartGrid Nokia — Architecture Diagrams</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#eef0f5;padding:40px 0;display:flex;flex-direction:column;align-items:center;gap:0}
+
+/* ── Each section is exactly 960px wide, self-contained ── */
+.page{
+  width:960px;background:#fff;border-radius:20px;
+  box-shadow:0 4px 32px rgba(0,0,0,.10);
+  margin-bottom:40px;overflow:hidden;
+}
+.page-header{
+  padding:28px 36px 20px;
+  border-bottom:1.5px solid #f0f1f4;
+  display:flex;align-items:center;gap:14px;
+}
+.badge{
+  width:36px;height:36px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:15px;color:#fff;flex-shrink:0;
+}
+.page-header .info{display:flex;flex-direction:column;gap:2px}
+.page-title{font-size:17px;font-weight:700;color:#111827}
+.page-sub{font-size:12px;color:#6b7280;font-weight:400}
+.page-body{padding:28px 36px 32px}
+
+/* ── typography helpers ── */
+.mono{font-family:'IBM Plex Mono',monospace}
+.tag{
+  display:inline-flex;align-items:center;
+  padding:2px 9px;border-radius:5px;font-size:10.5px;font-weight:600;
+  font-family:'IBM Plex Mono',monospace;letter-spacing:.04em;
+}
+
+/* ════════════════════════════════════════
+   DIAGRAM 1 — System Architecture
+   ════════════════════════════════════════ */
+.arch-stack{display:flex;flex-direction:column;gap:12px}
+.arch-layer{
+  border-radius:12px;padding:16px 20px;
+  display:flex;align-items:center;gap:16px;
+  position:relative;
+}
+.arch-layer-label{
+  font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  writing-mode:vertical-rl;transform:rotate(180deg);
+  color:#9ca3af;min-width:18px;flex-shrink:0;
+}
+.arch-layer-content{flex:1;display:flex;gap:10px;flex-wrap:wrap}
+.arch-box{
+  border-radius:9px;padding:10px 14px;flex:1;min-width:120px;
+  border:1.5px solid transparent;
+}
+.arch-box h4{font-size:12px;font-weight:700;margin-bottom:3px}
+.arch-box p{font-size:10.5px;color:#6b7280;line-height:1.5}
+.arch-box .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+
+.arch-arrow{
+  display:flex;align-items:center;justify-content:center;
+  gap:8px;padding:4px 0;
+}
+.arch-arrow svg{flex-shrink:0}
+.arch-arrow span{
+  font-size:10px;font-weight:600;color:#6b7280;
+  font-family:'IBM Plex Mono',monospace;
+  background:#f3f4f6;border-radius:5px;padding:2px 8px;
+}
+
+/* ════════════════════════════════════════
+   DIAGRAM 2 — MPLS Topology
+   ════════════════════════════════════════ */
+.topo-wrap{position:relative;width:100%;height:480px}
+.topo-wrap svg{width:100%;height:100%}
+
+/* ════════════════════════════════════════
+   DIAGRAM 3 — Telemetry Pipeline
+   ════════════════════════════════════════ */
+.pipeline{display:flex;align-items:stretch;gap:0}
+.pipe-step{
+  flex:1;display:flex;flex-direction:column;
+  border-radius:12px;padding:18px 14px;
+  position:relative;
+}
+.pipe-step h4{font-size:12px;font-weight:700;margin-bottom:4px;text-align:center}
+.pipe-step ul{font-size:10.5px;color:#6b7280;padding-left:14px;line-height:1.8}
+.pipe-step .pipe-icon{
+  width:44px;height:44px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 10px;font-size:20px;
+}
+.pipe-connector{
+  display:flex;align-items:center;justify-content:center;
+  width:36px;flex-shrink:0;
+}
+.pipe-connector svg{overflow:visible}
+
+/* ════════════════════════════════════════
+   DIAGRAM 4 — Dashboard Feature Map
+   ════════════════════════════════════════ */
+.feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.feat-card{
+  border-radius:12px;padding:18px 20px;
+  border:1.5px solid transparent;
+}
+.feat-card h4{
+  font-size:13px;font-weight:700;margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;
+}
+.feat-card .feat-icon{
+  width:28px;height:28px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;
+}
+.feat-item{
+  display:flex;align-items:flex-start;gap:8px;
+  margin-bottom:8px;font-size:10.5px;color:#374151;
+  line-height:1.5;
+}
+.feat-dot{
+  width:6px;height:6px;border-radius:50%;
+  margin-top:4px;flex-shrink:0;
+}
+
+/* ════════════════════════════════════════
+   DIAGRAM 5 — IEC 61850 / GOOSE
+   ════════════════════════════════════════ */
+.goose-wrap{position:relative;width:100%;height:360px}
+.goose-wrap svg{width:100%;height:100%}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PAGE 1 — SYSTEM ARCHITECTURE
+     ══════════════════════════════════════════════════════════════ -->
+<div class="page" id="p1">
+  <div class="page-header">
+    <div class="badge" style="background:linear-gradient(135deg,#1d4ed8,#3b82f6)">1</div>
+    <div class="info">
+      <div class="page-title">System Architecture Overview</div>
+      <div class="page-sub">Full stack: browser frontend → Node.js backend → ContainerLab virtual network</div>
+    </div>
+  </div>
+  <div class="page-body">
+    <div class="arch-stack">
+
+      <!-- BROWSER LAYER -->
+      <div class="arch-layer" style="background:#eff6ff;border:1.5px solid #bfdbfe">
+        <div class="arch-layer-label" style="color:#3b82f6">BROWSER</div>
+        <div class="arch-layer-content">
+          <div class="arch-box" style="background:#fff;border-color:#bfdbfe">
+            <h4 style="color:#1d4ed8">smart-grid.html / .js / .css</h4>
+            <p>Power-grid SVG simulation, MPLS topology panel, security toggle, statistics rings, clickable node popups</p>
+            <div class="tags">
+              <span class="tag" style="background:#dbeafe;color:#1d4ed8">SVG animation</span>
+              <span class="tag" style="background:#dbeafe;color:#1d4ed8">rAF 60 fps</span>
+              <span class="tag" style="background:#dbeafe;color:#1d4ed8">fetch polling</span>
+            </div>
+          </div>
+          <div class="arch-box" style="background:#fff;border-color:#bfdbfe">
+            <h4 style="color:#1d4ed8">telemetry.html</h4>
+            <p>Interface status, IS-IS adjacencies, route table, SR-TE LSP detail — all panels fed by SSE stream</p>
+            <div class="tags">
+              <span class="tag" style="background:#dbeafe;color:#1d4ed8">SSE /api/events</span>
+              <span class="tag" style="background:#dbeafe;color:#1d4ed8">30 s auto-refresh</span>
+            </div>
+          </div>
+          <div class="arch-box" style="background:#fff;border-color:#bfdbfe">
+            <h4 style="color:#1d4ed8">SR-TE LSP Overlay</h4>
+            <p>Live primary / standby path rendering on topology SVG, polled every 20 s from /api/mpls/srte-lsp</p>
+            <div class="tags">
+              <span class="tag" style="background:#dbeafe;color:#1d4ed8">primary solid</span>
+              <span class="tag" style="background:#dbeafe;color:#1d4ed8">standby dashed</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ARROW 1 -->
+      <div class="arch-arrow">
+        <svg width="16" height="22" viewBox="0 0 16 22"><path d="M8 0 L8 14 M3 9 L8 14 L13 9" stroke="#9ca3af" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>REST + SSE  ·  http://localhost:3000</span>
+        <svg width="16" height="22" viewBox="0 0 16 22"><path d="M8 22 L8 8 M3 13 L8 8 L13 13" stroke="#9ca3af" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+
+      <!-- BACKEND LAYER -->
+      <div class="arch-layer" style="background:#f0fdf4;border:1.5px solid #bbf7d0">
+        <div class="arch-layer-label" style="color:#16a34a">BACKEND</div>
+        <div class="arch-layer-content">
+          <div class="arch-box" style="background:#fff;border-color:#bbf7d0">
+            <h4 style="color:#15803d">ping-service.js — port 3000</h4>
+            <p>Orchestration hub: gNMI GET/SUBSCRIBE via docker exec, in-memory telemetryCache, SSE broadcast, REST endpoints</p>
+            <div class="tags">
+              <span class="tag" style="background:#dcfce7;color:#15803d">Node.js</span>
+              <span class="tag" style="background:#dcfce7;color:#15803d">telemetryCache</span>
+              <span class="tag" style="background:#dcfce7;color:#15803d">semaphore(2)</span>
+              <span class="tag" style="background:#dcfce7;color:#15803d">_isisSem(2)</span>
+            </div>
+          </div>
+          <div class="arch-box" style="background:#fff;border-color:#bbf7d0">
+            <h4 style="color:#15803d">Key REST Endpoints</h4>
+            <p><span class="mono" style="font-size:10px">/api/telemetry/all</span> &nbsp;cache snapshot<br>
+            <span class="mono" style="font-size:10px">/api/mpls/link-health</span> &nbsp;port states<br>
+            <span class="mono" style="font-size:10px">/api/mpls/srte-lsp</span> &nbsp;LSP state<br>
+            <span class="mono" style="font-size:10px">/api/tpt/*</span> &nbsp;TPT proxy<br>
+            <span class="mono" style="font-size:10px">/api/events</span> &nbsp;SSE stream</p>
+          </div>
+          <div class="arch-box" style="background:#fff;border-color:#bbf7d0">
+            <h4 style="color:#15803d">config.json</h4>
+            <p>Single source of truth: node IPs, gNMI credentials, RTU endpoints, link definitions — loaded at startup by both backend and frontend</p>
+            <div class="tags">
+              <span class="tag" style="background:#dcfce7;color:#15803d">7 SR OS nodes</span>
+              <span class="tag" style="background:#dcfce7;color:#15803d">2 RTUs</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ARROW 2 -->
+      <div class="arch-arrow">
+        <svg width="16" height="22" viewBox="0 0 16 22"><path d="M8 0 L8 14 M3 9 L8 14 L13 9" stroke="#9ca3af" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>docker exec gnmic · gNMI :57400 · HTTP :8850</span>
+        <svg width="16" height="22" viewBox="0 0 16 22"><path d="M8 22 L8 8 M3 13 L8 8 L13 13" stroke="#9ca3af" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+
+      <!-- CONTAINERLAB LAYER -->
+      <div class="arch-layer" style="background:#faf5ff;border:1.5px solid #ddd6fe">
+        <div class="arch-layer-label" style="color:#7c3aed">CONTAINERLAB</div>
+        <div class="arch-layer-content">
+          <div class="arch-box" style="background:#fff;border-color:#ddd6fe">
+            <h4 style="color:#6d28d9">Nokia SR OS × 7 (srsim 25.10.R1)</h4>
+            <p>dc1, dc2 (core) · acc1, acc2 (aggregation) · a1-1, a1-2, a1-3 (access) — IS-IS + SR + MPLS-TP</p>
+            <div class="tags">
+              <span class="tag" style="background:#ede9fe;color:#6d28d9">gNMI :57400</span>
+              <span class="tag" style="background:#ede9fe;color:#6d28d9">IS-IS Lv2</span>
+              <span class="tag" style="background:#ede9fe;color:#6d28d9">SR-TE</span>
+            </div>
+          </div>
+          <div class="arch-box" style="background:#fff;border-color:#ddd6fe">
+            <h4 style="color:#6d28d9">gnmic collector</h4>
+            <p>OpenConfig gnmic binary at /app/gnmic — executes both GET queries (on-demand) and persistent ON_CHANGE subscriptions</p>
+            <div class="tags">
+              <span class="tag" style="background:#ede9fe;color:#6d28d9">192.168.30.10</span>
+              <span class="tag" style="background:#ede9fe;color:#6d28d9">API :9804</span>
+            </div>
+          </div>
+          <div class="arch-box" style="background:#fff;border-color:#ddd6fe">
+            <h4 style="color:#6d28d9">RTU1 + RTU2 (Linux)</h4>
+            <p>tpt-daemon.py — IEC 61850 GOOSE over UDP :61850, telemetry simulation, HTTP API :8850 for trip/clear/status</p>
+            <div class="tags">
+              <span class="tag" style="background:#ede9fe;color:#6d28d9">192.168.30.6/7</span>
+              <span class="tag" style="background:#ede9fe;color:#6d28d9">IEC 61850</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     PAGE 2 — IP/MPLS TOPOLOGY
+     ══════════════════════════════════════════════════════════════ -->
+<div class="page" id="p2">
+  <div class="page-header">
+    <div class="badge" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">2</div>
+    <div class="info">
+      <div class="page-title">IP/MPLS Network Topology</div>
+      <div class="page-sub">7-node Nokia SR OS three-tier hierarchy — Core / Aggregation / Access — with SR-TE LSP overlay</div>
+    </div>
+  </div>
+  <div class="page-body">
+    <div class="topo-wrap">
+      <svg viewBox="0 0 888 470" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+        <defs>
+          <marker id="arr" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 Z" fill="#9ca3af"/>
+          </marker>
+          <!-- shadow filter -->
+          <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0001"/>
+          </filter>
+        </defs>
+
+        <!-- ── TIER BACKGROUNDS ── -->
+        <!-- Core -->
+        <rect x="10" y="10" width="868" height="110" rx="14" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+        <text x="28" y="32" font-size="9" font-weight="700" fill="#93c5fd" letter-spacing="1.5" font-family="IBM Plex Mono,monospace">CORE</text>
+        <!-- Aggregation -->
+        <rect x="10" y="140" width="868" height="110" rx="14" fill="#faf5ff" stroke="#ddd6fe" stroke-width="1.5"/>
+        <text x="28" y="162" font-size="9" font-weight="700" fill="#c4b5fd" letter-spacing="1.5" font-family="IBM Plex Mono,monospace">AGGREGATION</text>
+        <!-- Access -->
+        <rect x="10" y="270" width="868" height="110" rx="14" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5"/>
+        <text x="28" y="292" font-size="9" font-weight="700" fill="#86efac" letter-spacing="1.5" font-family="IBM Plex Mono,monospace">ACCESS</text>
+        <!-- RTU row -->
+        <rect x="10" y="400" width="868" height="62" rx="14" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
+        <text x="28" y="420" font-size="9" font-weight="700" fill="#fdba74" letter-spacing="1.5" font-family="IBM Plex Mono,monospace">RTU</text>
+
+        <!-- ── NODE POSITIONS ──
+             dc1  (264, 72)
+             dc2  (624, 72)
+             acc1 (264,202)
+             acc2 (624,202)
+             a1-1 (150,332)
+             a1-2 (444,332)
+             a1-3 (738,332)
+             rtu1 (150,432)
+             rtu2 (738,432)
+        -->
+
+        <!-- ── PHYSICAL LINKS (grey) ── -->
+        <!-- dc1 – dc2 -->
+        <line x1="296" y1="72" x2="592" y2="72" stroke="#d1d5db" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- dc1 – acc1 -->
+        <line x1="264" y1="100" x2="264" y2="174" stroke="#d1d5db" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- dc2 – acc2 -->
+        <line x1="624" y1="100" x2="624" y2="174" stroke="#d1d5db" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- acc1 – acc2 -->
+        <line x1="296" y1="202" x2="592" y2="202" stroke="#d1d5db" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- acc1 – a1-1 -->
+        <line x1="244" y1="228" x2="168" y2="305" stroke="#d1d5db" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- acc2 – a1-3 -->
+        <line x1="644" y1="228" x2="720" y2="305" stroke="#d1d5db" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- a1-1 – a1-2 -->
+        <line x1="182" y1="332" x2="412" y2="332" stroke="#d1d5db" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- a1-2 – a1-3 -->
+        <line x1="476" y1="332" x2="706" y2="332" stroke="#d1d5db" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- a1-1 – rtu1 -->
+        <line x1="150" y1="358" x2="150" y2="406" stroke="#d1d5db" stroke-width="2" stroke-dasharray="5 3" stroke-linecap="round"/>
+        <!-- a1-3 – rtu2 -->
+        <line x1="738" y1="358" x2="738" y2="406" stroke="#d1d5db" stroke-width="2" stroke-dasharray="5 3" stroke-linecap="round"/>
+
+        <!-- ── SR-TE LSP: PRIMARY path (a1-1→a1-2→a1-3) ── -->
+        <!-- a1-1 → a1-2, offset y-4 -->
+        <line x1="182" y1="328" x2="412" y2="328" stroke="#7c3aed" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+        <!-- a1-2 → a1-3, offset y-4 -->
+        <line x1="476" y1="328" x2="706" y2="328" stroke="#7c3aed" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+        <!-- mid-dots primary -->
+        <circle cx="297" cy="328" r="4" fill="#7c3aed" opacity="0.9"/>
+        <circle cx="591" cy="328" r="4" fill="#7c3aed" opacity="0.9"/>
+
+        <!-- ── SR-TE LSP: SECONDARY path (a1-1→acc1→acc2→a1-3) ── -->
+        <line x1="241" y1="225" x2="165" y2="302" stroke="#7c3aed" stroke-width="2" stroke-dasharray="6 5" stroke-linecap="round" opacity="0.4"/>
+        <line x1="293" y1="198" x2="589" y2="198" stroke="#7c3aed" stroke-width="2" stroke-dasharray="6 5" stroke-linecap="round" opacity="0.4"/>
+        <line x1="647" y1="225" x2="723" y2="302" stroke="#7c3aed" stroke-width="2" stroke-dasharray="6 5" stroke-linecap="round" opacity="0.4"/>
+
+        <!-- ── NODES ── -->
+        <!-- dc1 -->
+        <g filter="url(#sh)">
+          <rect x="228" y="48" width="72" height="48" rx="10" fill="#1d4ed8"/>
+          <text x="264" y="68" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">dc1</text>
+          <text x="264" y="82" text-anchor="middle" font-size="8.5" fill="#93c5fd" font-family="IBM Plex Mono,monospace">192.168.30.2</text>
+          <text x="264" y="93" text-anchor="middle" font-size="8" fill="#93c5fd">SR-1 · Core</text>
+        </g>
+        <!-- dc2 -->
+        <g filter="url(#sh)">
+          <rect x="588" y="48" width="72" height="48" rx="10" fill="#1d4ed8"/>
+          <text x="624" y="68" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">dc2</text>
+          <text x="624" y="82" text-anchor="middle" font-size="8.5" fill="#93c5fd" font-family="IBM Plex Mono,monospace">192.168.30.3</text>
+          <text x="624" y="93" text-anchor="middle" font-size="8" fill="#93c5fd">SR-1 · Core</text>
+        </g>
+        <!-- acc1 -->
+        <g filter="url(#sh)">
+          <rect x="224" y="178" width="80" height="48" rx="10" fill="#6d28d9"/>
+          <text x="264" y="198" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">SR1-ACC1</text>
+          <text x="264" y="211" text-anchor="middle" font-size="8.5" fill="#c4b5fd" font-family="IBM Plex Mono,monospace">192.168.30.4</text>
+          <text x="264" y="222" text-anchor="middle" font-size="8" fill="#c4b5fd">SR-1 · Aggr</text>
+        </g>
+        <!-- acc2 -->
+        <g filter="url(#sh)">
+          <rect x="584" y="178" width="80" height="48" rx="10" fill="#6d28d9"/>
+          <text x="624" y="198" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">SR1-ACC2</text>
+          <text x="624" y="211" text-anchor="middle" font-size="8.5" fill="#c4b5fd" font-family="IBM Plex Mono,monospace">192.168.30.5</text>
+          <text x="624" y="222" text-anchor="middle" font-size="8" fill="#c4b5fd">SR-1 · Aggr</text>
+        </g>
+        <!-- a1-1 -->
+        <g filter="url(#sh)">
+          <rect x="108" y="308" width="84" height="48" rx="10" fill="#15803d"/>
+          <text x="150" y="328" text-anchor="middle" font-size="9.5" font-weight="700" fill="#fff">ACCESS1-1</text>
+          <text x="150" y="341" text-anchor="middle" font-size="8.5" fill="#86efac" font-family="IBM Plex Mono,monospace">192.168.30.11</text>
+          <text x="150" y="352" text-anchor="middle" font-size="8" fill="#86efac">SR-1 · Access</text>
+        </g>
+        <!-- a1-2 -->
+        <g filter="url(#sh)">
+          <rect x="402" y="308" width="84" height="48" rx="10" fill="#15803d"/>
+          <text x="444" y="328" text-anchor="middle" font-size="9.5" font-weight="700" fill="#fff">ACCESS1-2</text>
+          <text x="444" y="341" text-anchor="middle" font-size="8.5" fill="#86efac" font-family="IBM Plex Mono,monospace">192.168.30.12</text>
+          <text x="444" y="352" text-anchor="middle" font-size="8" fill="#86efac">SR-1 · Access</text>
+        </g>
+        <!-- a1-3 -->
+        <g filter="url(#sh)">
+          <rect x="696" y="308" width="84" height="48" rx="10" fill="#15803d"/>
+          <text x="738" y="328" text-anchor="middle" font-size="9.5" font-weight="700" fill="#fff">ACCESS1-3</text>
+          <text x="738" y="341" text-anchor="middle" font-size="8.5" fill="#86efac" font-family="IBM Plex Mono,monospace">192.168.30.13</text>
+          <text x="738" y="352" text-anchor="middle" font-size="8" fill="#86efac">SR-1 · Access</text>
+        </g>
+        <!-- rtu1 -->
+        <g filter="url(#sh)">
+          <rect x="110" y="410" width="80" height="40" rx="9" fill="#b45309"/>
+          <text x="150" y="426" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">RTU1</text>
+          <text x="150" y="438" text-anchor="middle" font-size="8" fill="#fde68a" font-family="IBM Plex Mono,monospace">192.168.30.7</text>
+        </g>
+        <!-- rtu2 -->
+        <g filter="url(#sh)">
+          <rect x="698" y="410" width="80" height="40" rx="9" fill="#b45309"/>
+          <text x="738" y="426" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">RTU2</text>
+          <text x="738" y="438" text-anchor="middle" font-size="8" fill="#fde68a" font-family="IBM Plex Mono,monospace">192.168.30.6</text>
+        </g>
+
+        <!-- ── IS-IS LINK LABELS ── -->
+        <rect x="406" y="62" width="76" height="16" rx="4" fill="#fff" stroke="#e5e7eb" stroke-width="1"/>
+        <text x="444" y="73" text-anchor="middle" font-size="8" fill="#6b7280" font-family="IBM Plex Mono,monospace">c2/1 ↔ c2/1</text>
+
+        <rect x="406" y="192" width="76" height="16" rx="4" fill="#fff" stroke="#e5e7eb" stroke-width="1"/>
+        <text x="444" y="203" text-anchor="middle" font-size="8" fill="#6b7280" font-family="IBM Plex Mono,monospace">c3/1 ↔ c3/1</text>
+
+        <!-- ── LSP LEGEND ── -->
+        <rect x="576" y="388" width="296" height="58" rx="9" fill="#f5f3ff" stroke="#ddd6fe" stroke-width="1.2"/>
+        <text x="590" y="405" font-size="9" font-weight="700" fill="#6d28d9" letter-spacing="1" font-family="IBM Plex Mono,monospace">SR-TE LSP: to-ACCESS1-3</text>
+        <!-- primary legend line -->
+        <line x1="590" y1="422" x2="622" y2="422" stroke="#7c3aed" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="636" cy="422" r="4" fill="#7c3aed"/>
+        <text x="648" y="426" font-size="9.5" fill="#374151">Primary  (ACCESS ring)</text>
+        <!-- secondary legend line -->
+        <line x1="590" y1="438" x2="622" y2="438" stroke="#7c3aed" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round" opacity="0.5"/>
+        <text x="648" y="442" font-size="9.5" fill="#374151">Standby  (aggregation path)</text>
+
+        <!-- gnmic node -->
+        <rect x="390" y="410" width="88" height="40" rx="9" fill="#374151"/>
+        <text x="434" y="426" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">gnmic</text>
+        <text x="434" y="438" text-anchor="middle" font-size="8" fill="#9ca3af" font-family="IBM Plex Mono,monospace">192.168.30.10</text>
+      </svg>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     PAGE 3 — TELEMETRY PIPELINE
+     ══════════════════════════════════════════════════════════════ -->
+<div class="page" id="p3">
+  <div class="page-header">
+    <div class="badge" style="background:linear-gradient(135deg,#0891b2,#22d3ee)">3</div>
+    <div class="info">
+      <div class="page-title">gNMI Telemetry Pipeline</div>
+      <div class="page-sub">Data flow from Nokia SR OS to browser — GET queries, ON_CHANGE subscriptions, SSE cache, and concurrency controls</div>
+    </div>
+  </div>
+  <div class="page-body">
+
+    <!-- Top pipeline: 5 stages -->
+    <div style="display:flex;align-items:stretch;gap:0;margin-bottom:24px">
+
+      <!-- Stage 1: SR OS -->
+      <div class="pipe-step" style="background:#eff6ff;border:1.5px solid #bfdbfe">
+        <div class="pipe-icon" style="background:#1d4ed8">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <h4 style="color:#1d4ed8">Nokia SR OS<br>× 7 nodes</h4>
+        <ul style="list-style:none;padding:0;margin-top:8px">
+          <li style="font-size:10px;color:#374151;padding:3px 0;border-bottom:1px solid #e0e7ff">gRPC gNMI :57400</li>
+          <li style="font-size:10px;color:#374151;padding:3px 0;border-bottom:1px solid #e0e7ff">IS-IS Lv2 adjacencies</li>
+          <li style="font-size:10px;color:#374151;padding:3px 0;border-bottom:1px solid #e0e7ff">SR prefix/adj SIDs</li>
+          <li style="font-size:10px;color:#374151;padding:3px 0">Route table stats</li>
+        </ul>
+      </div>
+
+      <!-- Arrow -->
+      <div class="pipe-connector">
+        <svg width="36" height="60" viewBox="0 0 36 60">
+          <line x1="18" y1="10" x2="18" y2="48" stroke="#d1d5db" stroke-width="2"/>
+          <polygon points="12,42 18,52 24,42" fill="#d1d5db"/>
+          <text x="18" y="30" text-anchor="middle" font-size="7" fill="#9ca3af" font-family="IBM Plex Mono">GET</text>
+        </svg>
+      </div>
+
+      <!-- Stage 2: gnmic -->
+      <div class="pipe-step" style="background:#f0fdf4;border:1.5px solid #bbf7d0">
+        <div class="pipe-icon" style="background:#15803d">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3 v3 M12 18 v3 M3 12 h3 M18 12 h3"/></svg>
+        </div>
+        <h4 style="color:#15803d">gnmic<br>collector</h4>
+        <ul style="list-style:none;padding:0;margin-top:8px">
+          <li style="font-size:10px;color:#374151;padding:3px 0;border-bottom:1px solid #d1fae5">docker exec wrapper</li>
+          <li style="font-size:10px;color:#374151;padding:3px 0;border-bottom:1px solid #d1fae5">ON_CHANGE subscribe</li>
+          <li style="font-size:10px;color:#374151;padding:3px 0;border-bottom:1px solid #d1fae5">JSON stream parser</li>
+          <li style="font-size:10px;color:#374151;padding:3px 0">15 s exec timeout</li>
+        </ul>
+      </div>
+
+      <!-- Arrow -->
+      <div class="pipe-connector">
+        <svg width="36" height="60" viewBox="0 0 36 60">
+          <line x1="18" y1="10" x2="18" y2="48" stroke="#d1d5db" stroke-width="2"/>
+          <polygon points="12,42 18,52 24,42" fill="#d1d5db"/>
+          <text x="18" y="30" text-anchor="middle" font-size="7" fill="#9ca3af" font-family="IBM Plex Mono">SUB</text>
+        </svg>
+      </div>
+
+      <!-- Stage 3: Backend Cache -->
+      <div class="pipe-step" style="background:#faf5ff;border:1.5px solid #ddd6fe">
+        <div class="pipe-icon" style="background:#6d28d9">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+        </div>
+        <h4 style="color:#6d28d9">telemetryCache<br>ping-service.js</h4>
+        <ul style="list-style:none;padding:0;margin-top:8px">
+          <li style="font-size:10px;color:#374151;padding:3px 0;border-bottom:1px solid #ede9fe">in-memory nodes{}</li>
+          <li style="font-size:10px;color:#374151;padding:3px 0;border-bottom:1px solid #ede9fe">90 s periodic refresh</li>
+          <li style="font-size:10px;color:#374151;padding:3px 0;border-bottom:1px solid #ede9fe">_nodeRefreshing lock</li>
+          <li style="font-size:10px;color:#374151;padding:3px 0">IS-IS merge strategy</li>
+        </ul>
+      </div>
+
+      <!-- Arrow -->
+      <div class="pipe-connector">
+        <svg width="36" height="60" viewBox="0 0 36 60">
+          <line x1="18" y1="10" x2="18" y2="48" stroke="#d1d5db" stroke-width="2"/>
+          <polygon points="12,42 18,52 24,42" fill="#d1d5db"/>
+          <text x="18" y="28" text-anchor="middle" font-size="7" fill="#9ca3af" font-family="IBM Plex Mono">SSE</text>
+          <text x="18" y="36" text-anchor="middle" font-size="7" fill="#9ca3af" font-family="IBM Plex Mono">REST</text>
+        </svg>
+      </div>
+
+      <!-- Stage 4: Browser -->
+      <div class="pipe-step" style="background:#fff7ed;border:1.5px solid #fed7aa">
+        <div class="pipe-icon" style="background:#b45309">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+        </div>
+        <h4 style="color:#b45309">Browser<br>Dashboard</h4>
+        <ul style="list-style:none;padding:0;margin-top:8px">
+          <li style="font-size:10px;color:#374151;padding:3px 0;border-bottom:1px solid #fde68a">smart-grid.html</li>
+          <li style="font-size:10px;color:#374151;padding:3px 0;border-bottom:1px solid #fde68a">telemetry.html</li>
+          <li style="font-size:10px;color:#374151;padding:3px 0;border-bottom:1px solid #fde68a">SVG live update</li>
+          <li style="font-size:10px;color:#374151;padding:3px 0">30 s countdown</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Concurrency controls explanation -->
+    <div style="background:#f8fafc;border-radius:12px;padding:18px 20px;border:1.5px solid #e2e8f0">
+      <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:12px;letter-spacing:.06em;text-transform:uppercase">Concurrency &amp; Reliability Controls</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px">
+        <div style="background:#fff;border-radius:8px;padding:12px;border:1px solid #e5e7eb">
+          <div style="font-size:10.5px;font-weight:700;color:#1d4ed8;margin-bottom:4px;font-family:'IBM Plex Mono',monospace">semaphore(2)</div>
+          <div style="font-size:10px;color:#6b7280">Max 2 nodes fetching simultaneously — limits total gRPC connections to Nokia TIMOS</div>
+        </div>
+        <div style="background:#fff;border-radius:8px;padding:12px;border:1px solid #e5e7eb">
+          <div style="font-size:10.5px;font-weight:700;color:#6d28d9;margin-bottom:4px;font-family:'IBM Plex Mono',monospace">_isisSem(2)</div>
+          <div style="font-size:10px;color:#6b7280">Global IS-IS adjacency semaphore — only 2 heavy interface/adjacency GETs in-flight across all nodes</div>
+        </div>
+        <div style="background:#fff;border-radius:8px;padding:12px;border:1px solid #e5e7eb">
+          <div style="font-size:10.5px;font-weight:700;color:#15803d;margin-bottom:4px;font-family:'IBM Plex Mono',monospace">_nodeRefreshing</div>
+          <div style="font-size:10px;color:#6b7280">Boolean lock prevents concurrent refresh cycles — eliminates race on prevIsisIfaces baseline</div>
+        </div>
+        <div style="background:#fff;border-radius:8px;padding:12px;border:1px solid #e5e7eb">
+          <div style="font-size:10.5px;font-weight:700;color:#b45309;margin-bottom:4px;font-family:'IBM Plex Mono',monospace">IS-IS merge</div>
+          <div style="font-size:10px;color:#6b7280">Pre-cycle snapshot — empty query result falls back to last known adjacency list, never overwrites good data</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     PAGE 4 — DASHBOARD FEATURE MAP
+     ══════════════════════════════════════════════════════════════ -->
+<div class="page" id="p4">
+  <div class="page-header">
+    <div class="badge" style="background:linear-gradient(135deg,#0f766e,#2dd4bf)">4</div>
+    <div class="info">
+      <div class="page-title">Dashboard Feature Map</div>
+      <div class="page-sub">Four interconnected panels — power grid simulation, MPLS live topology, deep telemetry, and IEC 61850 teleprotection</div>
+    </div>
+  </div>
+  <div class="page-body">
+    <div class="feat-grid">
+
+      <!-- Panel A: Power Grid -->
+      <div class="feat-card" style="background:#eff6ff;border-color:#bfdbfe">
+        <h4 style="color:#1d4ed8">
+          <div class="feat-icon" style="background:#1d4ed8">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+          Power Grid Simulation
+        </h4>
+        <div class="feat-item"><div class="feat-dot" style="background:#1d4ed8"></div><span><b>4 generation sources</b> — Nuclear α/β (1.2 GW each), Solar (800 MW ±5% noise), Wind (400 MW ±7.5% noise) with adjustable sliders</span></div>
+        <div class="feat-item"><div class="feat-dot" style="background:#1d4ed8"></div><span><b>Animated energy flow</b> — step-up transformer → 4 feeders F1–F4 → secondary substations → 2.8 GW city demand</span></div>
+        <div class="feat-item"><div class="feat-dot" style="background:#1d4ed8"></div><span><b>DER node</b> — PV + BESS (350 kW) with bidirectional flow on Feeder F4</span></div>
+        <div class="feat-item"><div class="feat-dot" style="background:#1d4ed8"></div><span><b>MPLS coupling</b> — each unreachable access node removes 25% from city supply, linking network faults to grid impact</span></div>
+        <div class="feat-item"><div class="feat-dot" style="background:#1d4ed8"></div><span><b>Statistics rings</b> — circular progress indicators for 7 routers, 2 RTUs, overall health</span></div>
+      </div>
+
+      <!-- Panel B: MPLS Network -->
+      <div class="feat-card" style="background:#faf5ff;border-color:#ddd6fe">
+        <h4 style="color:#6d28d9">
+          <div class="feat-icon" style="background:#6d28d9">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="12" cy="19" r="2"/><path d="M7 12h5M12 7v5"/></svg>
+          </div>
+          MPLS Live Topology
+        </h4>
+        <div class="feat-item"><div class="feat-dot" style="background:#6d28d9"></div><span><b>SVG topology panel</b> — 7 nodes, 10 links, role-differentiated styles (core/aggregation/access/RTU)</span></div>
+        <div class="feat-item"><div class="feat-dot" style="background:#6d28d9"></div><span><b>Link fault detection</b> — gNMI port state polling every 15 s; any port reporting <i>down</i> turns link red with blinking animation</span></div>
+        <div class="feat-item"><div class="feat-dot" style="background:#6d28d9"></div><span><b>Clickable node popups</b> — dc1, dc2, ACCESS1-1: port LED grid, interfaces+counters, IS-IS adjacencies, SR prefix/adj SIDs</span></div>
+        <div class="feat-item"><div class="feat-dot" style="background:#6d28d9"></div><span><b>SR-TE LSP overlay</b> — primary path solid purple, standby path dim dashed; active path switches on failover</span></div>
+        <div class="feat-item"><div class="feat-dot" style="background:#6d28d9"></div><span><b>Security toggle</b> — AES-256 / open-lock packet animations on topology links</span></div>
+      </div>
+
+      <!-- Panel C: Telemetry Page -->
+      <div class="feat-card" style="background:#f0fdf4;border-color:#bbf7d0">
+        <h4 style="color:#15803d">
+          <div class="feat-icon" style="background:#15803d">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          Telemetry Detail Page
+        </h4>
+        <div class="feat-item"><div class="feat-dot" style="background:#15803d"></div><span><b>Interface status cards</b> — one per router; SVG donut ring showing active%, LED port grid, scrollable interface list with IPv4</span></div>
+        <div class="feat-item"><div class="feat-dot" style="background:#15803d"></div><span><b>IS-IS adjacency table</b> — one row per adjacency; node, interface, level, neighbour SysID, neighbour IP, uptime (d/h/m)</span></div>
+        <div class="feat-item"><div class="feat-dot" style="background:#15803d"></div><span><b>Route table</b> — active routes per node by protocol (isis, local, static, bgp) from SR OS route-table statistics path</span></div>
+        <div class="feat-item"><div class="feat-dot" style="background:#15803d"></div><span><b>LSP detail card</b> — oper-state, active path, path type badge, primary/secondary path table with individual oper-states</span></div>
+        <div class="feat-item"><div class="feat-dot" style="background:#15803d"></div><span><b>SSE live push</b> — page subscribes to /api/events; all four sections update on every cache broadcast</span></div>
+      </div>
+
+      <!-- Panel D: TPT -->
+      <div class="feat-card" style="background:#fff7ed;border-color:#fed7aa">
+        <h4 style="color:#b45309">
+          <div class="feat-icon" style="background:#b45309">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          IEC 61850 TPT Panel
+        </h4>
+        <div class="feat-item"><div class="feat-dot" style="background:#b45309"></div><span><b>Industrial infographic</b> — 400 kV HV line, transformers, 19" rack RTU illustrations, MPLS-TP communication link</span></div>
+        <div class="feat-item"><div class="feat-dot" style="background:#b45309"></div><span><b>GOOSE pulse animation</b> — bidirectional packet pulses ACCESS1-1 ↔ ACCESS1-3, halted on comm fault</span></div>
+        <div class="feat-item"><div class="feat-dot" style="background:#b45309"></div><span><b>Link fault indicator</b> — port 1/1/c3/1 on ACCESS1-1 monitored every 10 s; if down → red LINK FAULT badge</span></div>
+        <div class="feat-item"><div class="feat-dot" style="background:#b45309"></div><span><b>Trip / Clear controls</b> — proxied to both RTU HTTP APIs simultaneously; badge switches CLOSED↔OPEN</span></div>
+        <div class="feat-item"><div class="feat-dot" style="background:#b45309"></div><span><b>V/I telemetry</b> — voltage sags to 0.35 p.u., current spikes to 2.8 p.u. on trip event (simulated by tpt-daemon.py)</span></div>
+      </div>
+    </div>
+
+    <!-- Monitoring loops summary -->
+    <div style="margin-top:20px;background:#f8fafc;border-radius:12px;padding:16px 20px;border:1.5px solid #e2e8f0">
+      <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase">Monitoring Loop Intervals</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div style="background:#dbeafe;border-radius:7px;padding:6px 12px;font-size:10.5px;font-weight:600;color:#1d4ed8">Access node health — 10 s</div>
+        <div style="background:#ede9fe;border-radius:7px;padding:6px 12px;font-size:10.5px;font-weight:600;color:#6d28d9">Link health — 15 s</div>
+        <div style="background:#dcfce7;border-radius:7px;padding:6px 12px;font-size:10.5px;font-weight:600;color:#15803d">Node cache refresh — 90 s</div>
+        <div style="background:#fce7f3;border-radius:7px;padding:6px 12px;font-size:10.5px;font-weight:600;color:#be185d">LSP poll — 15 s</div>
+        <div style="background:#fef3c7;border-radius:7px;padding:6px 12px;font-size:10.5px;font-weight:600;color:#b45309">SR-TE overlay — 20 s</div>
+        <div style="background:#f3f4f6;border-radius:7px;padding:6px 12px;font-size:10.5px;font-weight:600;color:#374151">Animation loop — 60 fps rAF</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     PAGE 5 — IEC 61850 GOOSE TELEPROTECTION
+     ══════════════════════════════════════════════════════════════ -->
+<div class="page" id="p5">
+  <div class="page-header">
+    <div class="badge" style="background:linear-gradient(135deg,#b45309,#f59e0b)">5</div>
+    <div class="info">
+      <div class="page-title">IEC 61850 GOOSE Teleprotection</div>
+      <div class="page-sub">End-to-end protection channel: substation relay → RTU → MPLS-TP network → remote RTU → remote relay</div>
+    </div>
+  </div>
+  <div class="page-body">
+    <div class="goose-wrap">
+      <svg viewBox="0 0 888 340" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+        <defs>
+          <marker id="arr2" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 Z" fill="#6b7280"/>
+          </marker>
+          <marker id="arr3" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 Z" fill="#7c3aed"/>
+          </marker>
+          <marker id="arr4" markerWidth="7" markerHeight="7" refX="2" refY="3.5" orient="auto-start-reverse">
+            <path d="M7,0 L0,3.5 L7,7 Z" fill="#7c3aed"/>
+          </marker>
+          <filter id="sh2" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0001"/>
+          </filter>
+        </defs>
+
+        <!-- ── SUBSTATION A ── -->
+        <g filter="url(#sh2)">
+          <rect x="20" y="100" width="96" height="80" rx="12" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
+          <text x="68" y="122" text-anchor="middle" font-size="9.5" font-weight="700" fill="#92400e">SUBSTATION A</text>
+          <text x="68" y="136" text-anchor="middle" font-size="8.5" fill="#b45309">400 kV HV Line</text>
+          <!-- transformer symbol -->
+          <circle cx="54" cy="156" r="11" fill="none" stroke="#b45309" stroke-width="1.5"/>
+          <circle cx="66" cy="156" r="11" fill="none" stroke="#b45309" stroke-width="1.5"/>
+          <!-- bolt -->
+          <path d="M72 128 L65 143 L69 143 L62 158" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <text x="68" y="176" text-anchor="middle" font-size="8" fill="#92400e">Protection relay</text>
+        </g>
+
+        <!-- ── RTU1 ── -->
+        <g filter="url(#sh2)">
+          <rect x="160" y="90" width="88" height="100" rx="12" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
+          <text x="204" y="110" text-anchor="middle" font-size="10" font-weight="700" fill="#92400e">RTU1</text>
+          <text x="204" y="123" text-anchor="middle" font-size="8" fill="#b45309" font-family="IBM Plex Mono,monospace">192.168.30.7</text>
+          <!-- rack lines -->
+          <line x1="172" y1="132" x2="236" y2="132" stroke="#d97706" stroke-width="0.8"/>
+          <line x1="172" y1="138" x2="236" y2="138" stroke="#d97706" stroke-width="0.8"/>
+          <line x1="172" y1="144" x2="236" y2="144" stroke="#d97706" stroke-width="0.8"/>
+          <!-- LEDs -->
+          <circle cx="180" cy="155" r="4" fill="#22c55e"/>
+          <circle cx="192" cy="155" r="4" fill="#22c55e"/>
+          <circle cx="204" cy="155" r="4" fill="#22c55e"/>
+          <circle cx="216" cy="155" r="4" fill="#f59e0b"/>
+          <text x="204" y="174" text-anchor="middle" font-size="8" fill="#b45309">tpt-daemon.py</text>
+          <text x="204" y="183" text-anchor="middle" font-size="7.5" fill="#9ca3af" font-family="IBM Plex Mono">:8850 · UDP:61850</text>
+        </g>
+
+        <!-- ── ACCESS1-1 ── -->
+        <g filter="url(#sh2)">
+          <rect x="304" y="95" width="84" height="88" rx="12" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+          <text x="346" y="115" text-anchor="middle" font-size="9" font-weight="700" fill="#1d4ed8">ACCESS1-1</text>
+          <text x="346" y="127" text-anchor="middle" font-size="7.5" fill="#3b82f6" font-family="IBM Plex Mono,monospace">192.168.30.11</text>
+          <rect x="316" y="133" width="60" height="20" rx="4" fill="#1d4ed8" opacity=".85"/>
+          <text x="346" y="147" text-anchor="middle" font-size="8.5" fill="#fff" font-weight="600">Nokia SR OS</text>
+          <text x="346" y="162" text-anchor="middle" font-size="7.5" fill="#6b7280">c3/1 → RTU1</text>
+          <text x="346" y="174" text-anchor="middle" font-size="7.5" fill="#6b7280">c1/1 → ACCESS1-2</text>
+        </g>
+
+        <!-- ── MPLS CLOUD ── -->
+        <g>
+          <rect x="444" y="80" width="136" height="118" rx="20" fill="#faf5ff" stroke="#ddd6fe" stroke-width="1.8" stroke-dasharray="6 3"/>
+          <text x="512" y="122" text-anchor="middle" font-size="11" font-weight="700" fill="#7c3aed">IP/MPLS</text>
+          <text x="512" y="136" text-anchor="middle" font-size="9" fill="#7c3aed">Network</text>
+          <text x="512" y="152" text-anchor="middle" font-size="8" fill="#9ca3af" font-family="IBM Plex Mono,monospace">IS-IS + SR-TE</text>
+          <text x="512" y="164" text-anchor="middle" font-size="8" fill="#9ca3af" font-family="IBM Plex Mono,monospace">MPLS-TP PW</text>
+          <!-- cloud circles -->
+          <circle cx="470" cy="100" r="18" fill="#faf5ff" stroke="#ddd6fe" stroke-width="1.2"/>
+          <circle cx="490" cy="88" r="22" fill="#faf5ff" stroke="#ddd6fe" stroke-width="1.2"/>
+          <circle cx="514" cy="83" r="20" fill="#faf5ff" stroke="#ddd6fe" stroke-width="1.2"/>
+          <circle cx="538" cy="88" r="22" fill="#faf5ff" stroke="#ddd6fe" stroke-width="1.2"/>
+          <circle cx="558" cy="100" r="18" fill="#faf5ff" stroke="#ddd6fe" stroke-width="1.2"/>
+          <text x="512" y="118" text-anchor="middle" font-size="11" font-weight="700" fill="#7c3aed">IP/MPLS</text>
+          <text x="512" y="131" text-anchor="middle" font-size="9" fill="#a78bfa">5 SR OS nodes</text>
+          <text x="512" y="144" text-anchor="middle" font-size="8" fill="#9ca3af" font-family="IBM Plex Mono,monospace">IS-IS Lv2 · SR-TE</text>
+          <text x="512" y="156" text-anchor="middle" font-size="8" fill="#9ca3af" font-family="IBM Plex Mono,monospace">MPLS-TP PW</text>
+          <text x="512" y="168" text-anchor="middle" font-size="8" fill="#9ca3af" font-family="IBM Plex Mono,monospace">192.168.30.0/24</text>
+          <rect x="456" y="178" width="56" height="16" rx="5" fill="#ede9fe"/>
+          <text x="484" y="189" text-anchor="middle" font-size="8.5" fill="#6d28d9" font-family="IBM Plex Mono">acc1  acc2</text>
+          <rect x="520" y="178" width="50" height="16" rx="5" fill="#ede9fe"/>
+          <text x="545" y="189" text-anchor="middle" font-size="8.5" fill="#6d28d9" font-family="IBM Plex Mono">dc1  dc2</text>
+        </g>
+
+        <!-- ── ACCESS1-3 ── -->
+        <g filter="url(#sh2)">
+          <rect x="640" y="95" width="84" height="88" rx="12" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+          <text x="682" y="115" text-anchor="middle" font-size="9" font-weight="700" fill="#1d4ed8">ACCESS1-3</text>
+          <text x="682" y="127" text-anchor="middle" font-size="7.5" fill="#3b82f6" font-family="IBM Plex Mono,monospace">192.168.30.13</text>
+          <rect x="652" y="133" width="60" height="20" rx="4" fill="#1d4ed8" opacity=".85"/>
+          <text x="682" y="147" text-anchor="middle" font-size="8.5" fill="#fff" font-weight="600">Nokia SR OS</text>
+          <text x="682" y="162" text-anchor="middle" font-size="7.5" fill="#6b7280">c3/1 → RTU2</text>
+          <text x="682" y="174" text-anchor="middle" font-size="7.5" fill="#6b7280">c1/1 → ACCESS1-2</text>
+        </g>
+
+        <!-- ── RTU2 ── -->
+        <g filter="url(#sh2)">
+          <rect x="780" y="90" width="88" height="100" rx="12" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
+          <text x="824" y="110" text-anchor="middle" font-size="10" font-weight="700" fill="#92400e">RTU2</text>
+          <text x="824" y="123" text-anchor="middle" font-size="8" fill="#b45309" font-family="IBM Plex Mono,monospace">192.168.30.6</text>
+          <line x1="792" y1="132" x2="856" y2="132" stroke="#d97706" stroke-width="0.8"/>
+          <line x1="792" y1="138" x2="856" y2="138" stroke="#d97706" stroke-width="0.8"/>
+          <line x1="792" y1="144" x2="856" y2="144" stroke="#d97706" stroke-width="0.8"/>
+          <circle cx="800" cy="155" r="4" fill="#22c55e"/>
+          <circle cx="812" cy="155" r="4" fill="#22c55e"/>
+          <circle cx="824" cy="155" r="4" fill="#22c55e"/>
+          <circle cx="836" cy="155" r="4" fill="#f59e0b"/>
+          <text x="824" y="174" text-anchor="middle" font-size="8" fill="#b45309">tpt-daemon.py</text>
+          <text x="824" y="183" text-anchor="middle" font-size="7.5" fill="#9ca3af" font-family="IBM Plex Mono">:8850 · UDP:61850</text>
+        </g>
+
+        <!-- ── SUBSTATION B ── -->
+        <g filter="url(#sh2)">
+          <rect x="775" y="100" width="96" height="80" rx="12" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
+          <!-- wait, rtu2 is already there. Let me reposition substation B -->
+        </g>
+
+        <!-- ── PHYSICAL LINKS ── -->
+        <!-- Substation A → RTU1 -->
+        <line x1="116" y1="140" x2="160" y2="140" stroke="#d1d5db" stroke-width="2" marker-end="url(#arr2)"/>
+        <!-- RTU1 → ACCESS1-1 -->
+        <line x1="248" y1="140" x2="304" y2="140" stroke="#d1d5db" stroke-width="2" marker-end="url(#arr2)"/>
+        <!-- ACCESS1-1 → MPLS cloud -->
+        <line x1="388" y1="139" x2="444" y2="139" stroke="#d1d5db" stroke-width="2" marker-end="url(#arr2)"/>
+        <!-- MPLS cloud → ACCESS1-3 -->
+        <line x1="580" y1="139" x2="640" y2="139" stroke="#d1d5db" stroke-width="2" marker-end="url(#arr2)"/>
+        <!-- ACCESS1-3 → RTU2 -->
+        <line x1="724" y1="140" x2="780" y2="140" stroke="#d1d5db" stroke-width="2" marker-end="url(#arr2)"/>
+
+        <!-- ── GOOSE UDP arrows (forward + return) ── -->
+        <!-- Forward GOOSE: RTU1 → (through network) → RTU2 -->
+        <path d="M204 86 Q512 30 824 86" stroke="#7c3aed" stroke-width="2" fill="none" stroke-linecap="round" marker-end="url(#arr3)"/>
+        <text x="512" y="44" text-anchor="middle" font-size="9.5" font-weight="600" fill="#7c3aed">GOOSE PDU  (stNum / sqNum / Tr / Cs / V / I)</text>
+        <text x="512" y="57" text-anchor="middle" font-size="8.5" fill="#9ca3af">UDP unicast · port 61850 · BER encoding · IEC 61850-8-1</text>
+        <!-- Return GOOSE -->
+        <path d="M824 210 Q512 268 204 210" stroke="#0891b2" stroke-width="2" fill="none" stroke-linecap="round" marker-end="url(#arr4)" marker-start="url(#arr4)"/>
+        <text x="512" y="278" text-anchor="middle" font-size="9.5" font-weight="600" fill="#0891b2">Heartbeat T0 = 1 s  /  Retransmit burst on state change</text>
+        <text x="512" y="290" text-anchor="middle" font-size="8.5" fill="#9ca3af">T1=2 ms ×2 · T2=10 ms · T3=100 ms ×2 → steady T0=1 s</text>
+
+        <!-- ── DATASET LEGEND ── -->
+        <rect x="338" y="248" width="348" height="54" rx="9" fill="#f5f3ff" stroke="#ddd6fe" stroke-width="1.2"/>
+        <text x="354" y="264" font-size="9" font-weight="700" fill="#6d28d9" letter-spacing=".8" font-family="IBM Plex Mono">GOOSE DATASET  (4 entries)</text>
+        <rect x="350" y="270" width="40" height="15" rx="4" fill="#ede9fe"/>
+        <text x="370" y="281" text-anchor="middle" font-size="8.5" fill="#6d28d9" font-family="IBM Plex Mono">Tr BOOL</text>
+        <rect x="398" y="270" width="42" height="15" rx="4" fill="#ede9fe"/>
+        <text x="419" y="281" text-anchor="middle" font-size="8.5" fill="#6d28d9" font-family="IBM Plex Mono">Cs BOOL</text>
+        <rect x="448" y="270" width="54" height="15" rx="4" fill="#ede9fe"/>
+        <text x="475" y="281" text-anchor="middle" font-size="8.5" fill="#6d28d9" font-family="IBM Plex Mono">V FLOAT32</text>
+        <rect x="510" y="270" width="54" height="15" rx="4" fill="#ede9fe"/>
+        <text x="537" y="281" text-anchor="middle" font-size="8.5" fill="#6d28d9" font-family="IBM Plex Mono">I FLOAT32</text>
+        <text x="580" y="281" font-size="8" fill="#9ca3af">stNum · sqNum</text>
+        <text x="350" y="298" font-size="8.5" fill="#374151">Trip event: V sags → 0.35 p.u.  |  I spikes → 2.8 p.u.  (tpt-daemon.py simulation)</text>
+      </svg>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

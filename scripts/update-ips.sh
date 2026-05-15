@@ -7,7 +7,7 @@
 # With    --apply  → patches config.json in-place and prints a summary
 #
 # Run this after every `clab deploy` or `clab redeploy` to avoid the symptom where
-# gNMI subscribes to the wrong container and the dashboard shows incorrect link states.
+# gnmic connects to the wrong container and the dashboard shows incorrect link states.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG="$SCRIPT_DIR/../config.json"
@@ -54,8 +54,8 @@ done
 
 echo ""
 if $any_change && ! $APPLY; then
-  echo "Run with --apply to patch config.json, then restart the gNMI service:"
-  echo "  bash scripts/update-ips.sh --apply && pkill -f gnmi-service.js && node gnmi-service.js &"
+  echo "Run with --apply to patch config.json, then restart the backend:"
+  echo "  bash scripts/update-ips.sh --apply && pkill -f ping-service.js && node ping-service.js &"
 elif ! $any_change; then
   echo "All IPs are correct — no action needed."
 fi
