@@ -3050,7 +3050,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (tripBtn) {
-            tripBtn.addEventListener('click', async () => {
+            // ── Trip modal wiring ─────────────────────────────────────────
+            const tripModal    = document.getElementById('trip-modal-backdrop');
+            const modalConfirm = document.getElementById('trip-modal-confirm');
+            const modalCancel  = document.getElementById('trip-modal-cancel');
+            const modalCloseX  = document.getElementById('trip-modal-close-x');
+
+            function openTripModal() {
+                tripModal.hidden = false;
+                // next frame so the display:none→flex transition plays
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => tripModal.classList.add('trip-modal-visible'));
+                });
+                modalConfirm.disabled = false;
+                modalConfirm.textContent = '⚡ Execute Trip';
+            }
+
+            function closeTripModal() {
+                tripModal.classList.remove('trip-modal-visible');
+                tripModal.addEventListener('transitionend', () => {
+                    tripModal.hidden = true;
+                }, { once: true });
+            }
+
+            // Clicking the backdrop (outside the card) also closes
+            tripModal.addEventListener('click', e => {
+                if (e.target === tripModal) closeTripModal();
+            });
+
+            // ESC key closes
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape' && !tripModal.hidden) closeTripModal();
+            });
+
+            modalCancel.addEventListener('click', closeTripModal);
+            modalCloseX.addEventListener('click', closeTripModal);
+
+            // Trip button → open modal
+            tripBtn.addEventListener('click', () => openTripModal());
+
+            // Confirm → execute trip, then close
+            modalConfirm.addEventListener('click', async () => {
+                modalConfirm.disabled = true;
+                modalConfirm.textContent = '⚡ Tripping…';
+                closeTripModal();
                 tripBtn.disabled = true;
                 tripBtn.textContent = '⚡ Tripping…';
                 await apiFetch('/api/tpt/trip', 'POST');

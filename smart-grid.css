@@ -4320,6 +4320,281 @@ body {
 .tpt-btn-trip    { background: rgba(138,90,58,.10);  color: #7a4a28; border: 1px solid rgba(138,90,58,0.35); }
 .tpt-btn-clear   { background: transparent;          color: var(--text-secondary); border: 1px solid rgba(0,0,0,0.15); }
 
+/* ── Trip-confirm modal ─────────────────────────────────────────────────── */
+.trip-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,10,0.55);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9900;
+    /* entry animation */
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+.trip-modal-backdrop.trip-modal-visible {
+    opacity: 1;
+}
+/* hide via [hidden] but keep transition by adding the class first */
+.trip-modal-backdrop[hidden] {
+    display: none !important;
+}
+
+.trip-modal {
+    background: var(--bg-elevated, #f5f3ef);
+    border: 1px solid rgba(138,74,74,0.25);
+    border-radius: 12px;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.12);
+    width: 640px;
+    max-width: calc(100vw - 40px);
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+    transform: translateY(10px);
+    transition: transform 0.18s ease;
+    font-family: 'IBM Plex Mono', monospace;
+}
+.trip-modal-backdrop.trip-modal-visible .trip-modal {
+    transform: translateY(0);
+}
+
+/* ── Header ── */
+.trip-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px 14px;
+    border-bottom: 1px solid rgba(138,74,74,0.15);
+    background: rgba(138,74,74,0.06);
+    border-radius: 12px 12px 0 0;
+}
+.trip-modal-icon {
+    flex-shrink: 0;
+    width: 36px; height: 36px;
+    border-radius: 9px;
+    background: rgba(138,74,74,0.10);
+    border: 1px solid rgba(138,74,74,0.25);
+    display: flex; align-items: center; justify-content: center;
+}
+.trip-modal-header-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.trip-modal-title {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #5a2a2a;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.trip-modal-std {
+    font-size: 9.5px;
+    color: var(--text-tertiary, #6a6a6a);
+    letter-spacing: 0.04em;
+}
+.trip-modal-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    line-height: 1;
+    color: var(--text-tertiary, #6a6a6a);
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 5px;
+    transition: background 0.12s, color 0.12s;
+}
+.trip-modal-close:hover {
+    background: rgba(0,0,0,0.08);
+    color: var(--text-primary);
+}
+
+/* ── Body ── */
+.trip-modal-body {
+    padding: 20px 22px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.trip-modal-intro {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    line-height: 1.7;
+    color: var(--text-primary);
+    background: rgba(138,74,74,0.05);
+    border-left: 3px solid rgba(138,74,74,0.45);
+    border-radius: 0 6px 6px 0;
+    padding: 10px 14px;
+}
+.trip-modal-intro code {
+    background: rgba(138,74,74,0.12);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10.5px;
+}
+
+.trip-modal-section-label {
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-tertiary, #6a6a6a);
+    margin-bottom: -8px;
+}
+
+/* ── Timeline ── */
+.trip-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+    padding-left: 4px;
+}
+.trip-tl-step {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    position: relative;
+    padding-bottom: 14px;
+}
+.trip-tl-step:last-child { padding-bottom: 0; }
+/* vertical connector line */
+.trip-tl-step:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 16px;
+    bottom: 0;
+    width: 1px;
+    background: rgba(138,74,74,0.18);
+}
+.trip-tl-dot {
+    width: 15px; height: 15px;
+    border-radius: 50%;
+    border: 2px solid;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+.trip-tl-dot--trigger { background: rgba(138,74,74,0.20); border-color: #8a4a4a; }
+.trip-tl-dot--burst   { background: rgba(180,100,60,0.15); border-color: #b4643c; }
+.trip-tl-dot--steady  { background: rgba(74,106,90,0.15);  border-color: #4a6a5a; }
+.trip-tl-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.trip-tl-time {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #7a3a3a;
+    font-family: 'IBM Plex Mono', monospace;
+}
+.trip-tl-event {
+    font-size: 11px;
+    color: var(--text-primary);
+    font-family: 'IBM Plex Mono', monospace;
+}
+.trip-tl-detail {
+    font-size: 9.5px;
+    color: var(--text-tertiary, #6a6a6a);
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+/* ── Effects grid ── */
+.trip-effects-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.trip-effect-card {
+    border-radius: 8px;
+    padding: 12px 14px;
+    border: 1px solid transparent;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.trip-effect-card--elec { background: rgba(138,74,74,0.07); border-color: rgba(138,74,74,0.18); }
+.trip-effect-card--net  { background: rgba(74,106,138,0.07); border-color: rgba(74,106,138,0.18); }
+.trip-effect-card--sub  { background: rgba(138,74,74,0.05); border-color: rgba(138,74,74,0.15); }
+.trip-effect-card--grid { background: rgba(74,106,90,0.06); border-color: rgba(74,106,90,0.18); }
+.trip-effect-icon { font-size: 16px; margin-bottom: 2px; }
+.trip-effect-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary, #4a4a4a);
+}
+.trip-effect-desc {
+    font-size: 10px;
+    line-height: 1.65;
+    color: var(--text-primary);
+    font-family: 'IBM Plex Mono', monospace;
+}
+.trip-effect-desc strong { color: #7a3a3a; }
+
+.trip-modal-note {
+    font-size: 10px;
+    line-height: 1.6;
+    color: var(--text-tertiary, #6a6a6a);
+    background: rgba(0,0,0,0.04);
+    border-radius: 6px;
+    padding: 9px 12px;
+}
+.trip-modal-note code {
+    background: rgba(0,0,0,0.07);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 9.5px;
+    color: var(--text-secondary);
+}
+
+/* ── Footer ── */
+.trip-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 22px 18px;
+    border-top: 1px solid rgba(0,0,0,0.08);
+}
+.trip-modal-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 8px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: filter 0.14s, transform 0.1s;
+    border: 1px solid transparent;
+}
+.trip-modal-btn:active { transform: scale(0.97); }
+.trip-modal-btn--cancel {
+    background: transparent;
+    color: var(--text-secondary, #4a4a4a);
+    border-color: rgba(0,0,0,0.18);
+}
+.trip-modal-btn--cancel:hover {
+    background: rgba(0,0,0,0.06);
+}
+.trip-modal-btn--confirm {
+    background: rgba(138,74,74,0.12);
+    color: #5a2020;
+    border-color: rgba(138,74,74,0.40);
+}
+.trip-modal-btn--confirm:hover {
+    background: rgba(138,74,74,0.22);
+    filter: brightness(0.95);
+}
+.trip-modal-btn--confirm:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Protocol description block */
 .tpt-description {
     padding: 14px 18px;

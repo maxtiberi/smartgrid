@@ -2594,5 +2594,131 @@
 
     <script src="smart-grid.js"></script>
     <script src="turbine-control.js"></script>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         TRIP-CONFIRM MODAL
+         Shown when the user presses "⚡ Trip RTU1".
+         Explains the IEC 61850 GOOSE action before it executes.
+         ═══════════════════════════════════════════════════════════════ -->
+    <div id="trip-modal-backdrop" class="trip-modal-backdrop" role="dialog"
+         aria-modal="true" aria-labelledby="trip-modal-title" hidden>
+      <div class="trip-modal" id="trip-modal">
+
+        <!-- Header -->
+        <div class="trip-modal-header">
+          <div class="trip-modal-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"
+                    fill="rgba(138,74,74,0.25)" stroke="#8a4a4a" stroke-width="1.4"/>
+              <path d="M13 7h-2l-1 5h2l-1 5 5-7h-3l1-3z" fill="#8a4a4a"/>
+            </svg>
+          </div>
+          <div class="trip-modal-header-text">
+            <span id="trip-modal-title" class="trip-modal-title">GOOSE Trip Command — RTU1</span>
+            <span class="trip-modal-std">IEC 61850-8-1 &middot; stNum-triggered retransmission</span>
+          </div>
+          <button class="trip-modal-close" id="trip-modal-close-x" aria-label="Cancel">&times;</button>
+        </div>
+
+        <!-- What happens explanation -->
+        <div class="trip-modal-body">
+
+          <p class="trip-modal-intro">
+            Pressing <strong>Execute Trip</strong> sends a GOOSE PDU with
+            <code>Trip&nbsp;=&nbsp;TRUE</code> from <strong>RTU1</strong> to
+            <strong>RTU2</strong> through the IP/MPLS network.
+            The action is <em>irreversible until Clear is pressed</em>.
+          </p>
+
+          <!-- Protocol sequence timeline -->
+          <div class="trip-modal-section-label">Protocol sequence</div>
+          <div class="trip-timeline">
+            <div class="trip-tl-step">
+              <div class="trip-tl-dot trip-tl-dot--trigger"></div>
+              <div class="trip-tl-content">
+                <span class="trip-tl-time">t = 0</span>
+                <span class="trip-tl-event">stNum incremented &mdash; first GOOSE PDU sent immediately</span>
+                <span class="trip-tl-detail">Tr = TRUE &nbsp;·&nbsp; sqNum = 0 &nbsp;·&nbsp; V → 0.35 p.u. &nbsp;·&nbsp; I → 2.8 p.u.</span>
+              </div>
+            </div>
+            <div class="trip-tl-step">
+              <div class="trip-tl-dot trip-tl-dot--burst"></div>
+              <div class="trip-tl-content">
+                <span class="trip-tl-time">T1 = 2 ms × 2</span>
+                <span class="trip-tl-event">Rapid retransmission burst (IEC 61850-8-1 §12.3)</span>
+                <span class="trip-tl-detail">sqNum = 1, 2 &nbsp;·&nbsp; same dataset, decreasing TAL</span>
+              </div>
+            </div>
+            <div class="trip-tl-step">
+              <div class="trip-tl-dot trip-tl-dot--burst"></div>
+              <div class="trip-tl-content">
+                <span class="trip-tl-time">T2 = 10 ms</span>
+                <span class="trip-tl-event">Second retransmission phase</span>
+                <span class="trip-tl-detail">sqNum = 3</span>
+              </div>
+            </div>
+            <div class="trip-tl-step">
+              <div class="trip-tl-dot trip-tl-dot--burst"></div>
+              <div class="trip-tl-content">
+                <span class="trip-tl-time">T3 = 100 ms × 2</span>
+                <span class="trip-tl-event">Final confirmation retransmissions</span>
+                <span class="trip-tl-detail">sqNum = 4, 5</span>
+              </div>
+            </div>
+            <div class="trip-tl-step">
+              <div class="trip-tl-dot trip-tl-dot--steady"></div>
+              <div class="trip-tl-content">
+                <span class="trip-tl-time">T0 = 1 s (steady)</span>
+                <span class="trip-tl-event">Heartbeat resumes at slow rate &mdash; state held TRIPPED</span>
+                <span class="trip-tl-detail">RTU2 detects loss-of-GOOSE if T0 × 5 = 5 s elapses without PDU</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Effects grid -->
+          <div class="trip-modal-section-label">Observable effects</div>
+          <div class="trip-effects-grid">
+            <div class="trip-effect-card trip-effect-card--elec">
+              <div class="trip-effect-icon">⚡</div>
+              <div class="trip-effect-title">Electrical</div>
+              <div class="trip-effect-desc">V collapses to <strong>0.35 p.u.</strong><br>I spikes to <strong>2.8 p.u.</strong><br>Strip-chart shows fault waveform</div>
+            </div>
+            <div class="trip-effect-card trip-effect-card--net">
+              <div class="trip-effect-icon">📡</div>
+              <div class="trip-effect-title">GOOSE / Network</div>
+              <div class="trip-effect-desc">PDU log shows <strong>⚡ TRIP</strong> burst<br>stNum incremented on both RTUs<br>sqNum resets to 0</div>
+            </div>
+            <div class="trip-effect-card trip-effect-card--sub">
+              <div class="trip-effect-icon">🔴</div>
+              <div class="trip-effect-title">Substation B</div>
+              <div class="trip-effect-desc">RTU2 asserts trip to remote relay<br>Circuit breaker changes <strong>CLOSED → OPEN</strong><br>Trip indicator turns red</div>
+            </div>
+            <div class="trip-effect-card trip-effect-card--grid">
+              <div class="trip-effect-icon">🏙️</div>
+              <div class="trip-effect-title">Grid model</div>
+              <div class="trip-effect-desc">ACCESS1-3 isolated → city supply<br>reduced by <strong>−25%</strong> in power grid<br>simulation panel</div>
+            </div>
+          </div>
+
+          <p class="trip-modal-note">
+            <strong>Note:</strong> this action calls
+            <code>POST /api/tpt/trip</code> on the backend, which forwards the command
+            to both RTU HTTP APIs simultaneously. Press <strong>Clear</strong> afterwards
+            to restore normal state.
+          </p>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="trip-modal-footer">
+          <button id="trip-modal-cancel" class="trip-modal-btn trip-modal-btn--cancel">
+            Cancel
+          </button>
+          <button id="trip-modal-confirm" class="trip-modal-btn trip-modal-btn--confirm">
+            &#9889; Execute Trip
+          </button>
+        </div>
+
+      </div>
+    </div>
 </body>
 </html>
