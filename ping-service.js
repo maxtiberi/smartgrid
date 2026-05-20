@@ -14,30 +14,54 @@ const PORT = CONFIG.services.pingService.port;
 
 // ── TPT (IEC 61850 GOOSE) proxy helpers ──────────────────────────────────────
 // Forwards requests to the tpt-daemon HTTP API running inside each RTU container.
+//
+// WHY docker exec instead of direct http.request:
+// The macOS host bridge interface (bridge103) is assigned 192.168.30.0 — the
+// network address rather than a usable host address.  Node.js TCP sockets
+// cannot source a connection from that address and fail immediately with
+// EHOSTUNREACH.  Routing via `docker exec <container> wget` sidesteps the
+// host-network entirely: wget runs inside the container and calls localhost.
 const MPLS_RTUS = CONFIG.mplsRtus || {};
 
+// Lookup container name by host IP (config.mplsRtus[x].name == docker container name).
+function _rtuContainer(host) {
+    const entry = Object.values(MPLS_RTUS).find(r => r.host === host);
+    return entry?.name || null;   // e.g. "RTU1" or "RTU2"
+}
+
 function tptFetch(host, port, method, endpoint, body) {
-    return new Promise((resolve) => {
-        const opts = {
-            hostname: host,
-            port,
-            path: endpoint,
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            timeout: 4000,
-        };
-        const req = http.request(opts, (resp) => {
-            let data = '';
-            resp.on('data', (c) => { data += c; });
-            resp.on('end',  ()  => {
-                try { resolve({ ok: true, data: JSON.parse(data) }); }
-                catch { resolve({ ok: false, error: 'JSON parse error', raw: data }); }
-            });
+    const container = _rtuContainer(host);
+    if (!container) {
+        return Promise.resolve({ ok: false, error: `No RTU container mapped to host ${host}` });
+    }
+
+    return new Promise(resolve => {
+        // Build docker + wget argv array — no shell, no quoting issues.
+        // wget -qO- prints response to stdout; --post-data sends a POST body.
+        const url  = `http://localhost:${port}${endpoint}`;
+        const args = ['exec', container, 'wget', '-qO-', '--timeout=5'];
+        if (method === 'POST') {
+            const postBody = body ? JSON.stringify(body) : '';
+            args.push('--post-data', postBody);
+        }
+        args.push(url);
+
+        const proc = spawn('docker', args);
+        let stdout = '', stderr = '';
+        proc.stdout.on('data', c => { stdout += c; });
+        proc.stderr.on('data', c => { stderr += c; });
+        proc.on('close', code => {
+            if (code !== 0) {
+                resolve({ ok: false, error: stderr.trim() || `wget exit ${code}` });
+                return;
+            }
+            try   { resolve({ ok: true, data: JSON.parse(stdout) }); }
+            catch { resolve({ ok: false, error: 'JSON parse error', raw: stdout.slice(0, 200) }); }
         });
-        req.on('error',   (e) => resolve({ ok: false, error: e.message }));
-        req.on('timeout', ()  => { req.destroy(); resolve({ ok: false, error: 'timeout' }); });
-        if (body) req.write(JSON.stringify(body));
-        req.end();
+        proc.on('error', e => resolve({ ok: false, error: e.message }));
+
+        // Hard kill after 7 s
+        setTimeout(() => { try { proc.kill(); } catch {} resolve({ ok: false, error: 'timeout' }); }, 7000);
     });
 }
 
