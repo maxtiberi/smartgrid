@@ -3645,7 +3645,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         async function poll() {
             try {
-                const r = await fetch('/api/scada/status', { signal: AbortSignal.timeout(6000) });
+                const r = await fetch('http://localhost:3000/api/scada/status', { signal: AbortSignal.timeout(6000) });
                 render(r.ok ? await r.json() : null);
             } catch {
                 render(null);
