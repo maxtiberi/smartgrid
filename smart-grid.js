@@ -3510,5 +3510,151 @@ document.addEventListener('DOMContentLoaded', () => {
         setInterval(poll, POLL_MS);
     })();
 
+    // ================================================================
+    // IEC 60870-5-104 SCADA Panel — polls /api/scada/status every 5 s
+    // ================================================================
+    (function initScadaPanel() {
+        const SCADA_POLL_MS = 5_000;
+
+        // DOM refs — panel
+        const sessionBadge  = document.getElementById('scada-session-badge');
+        const masterCard    = document.getElementById('scada-iec-master-card');
+        const rtuCard       = document.getElementById('scada-iec-rtu-card');
+        const dotMaster     = document.getElementById('scada-dot-master');
+        const dotRtu        = document.getElementById('scada-dot-rtu');
+        const ifaceBadge    = document.getElementById('scada-iface-badge');
+        const sessionVal    = document.getElementById('scada-session-val');
+        const lastTs        = document.getElementById('scada-last-ts');
+        const measVal       = document.getElementById('scada-meas-val');
+        const sendSeq       = document.getElementById('scada-send-seq');
+        const quality       = document.getElementById('scada-quality');
+        const logEl         = document.getElementById('scada-iec-log');
+        const channel       = document.getElementById('scada-iec-channel');
+        const failoverBar   = document.getElementById('scada-failover-bar');
+        const failoverIface = document.getElementById('scada-failover-iface');
+
+        // DOM refs — MPLS SVG SCADA node
+        const svgLed        = document.getElementById('scada-svg-led');
+        const svgIfaceText  = document.getElementById('scada-svg-iface');
+        const svgEth1Port   = document.getElementById('scada-eth1-port');
+        const svgEth2Port   = document.getElementById('scada-eth2-port');
+        const svgEth1Link   = document.getElementById('scada-eth1-link');
+        const svgEth2Link   = document.getElementById('scada-eth2-link');
+
+        if (!sessionBadge) return; // panel not in DOM
+
+        function classify(line) {
+            if (line.includes('ioa='))            return 'scada-log-line-measure';
+            if (line.includes('failing over') ||
+                line.includes('failed over'))      return 'scada-log-line-failover';
+            if (line.includes('failed') ||
+                line.includes('session lost'))     return 'scada-log-line-fail';
+            if (line.includes('STARTDT') ||
+                line.includes('TESTFR'))           return 'scada-log-line-ctrl';
+            return '';
+        }
+
+        function render(d) {
+            if (!d || !d.ok || !d.running) {
+                // Container not reachable
+                sessionBadge.textContent = 'OFFLINE';
+                sessionBadge.className   = 'scada-iec-session-badge';
+                if (dotMaster) dotMaster.className = 'scada-iec-dot down';
+                if (dotRtu)    dotRtu.className    = 'scada-iec-dot';
+                if (masterCard) masterCard.className = 'scada-iec-node-card session-down';
+                if (channel)   channel.className   = 'scada-iec-channel inactive';
+                if (svgLed)    svgLed.className.baseVal = 'mpls-status-led mpls-led-idle';
+                if (logEl) logEl.innerHTML = `<span class="scada-iec-log-idle">${d?.error || 'Container offline or log empty'}</span>`;
+                if (failoverBar) failoverBar.style.display = 'none';
+                return;
+            }
+
+            const up       = d.sessionUp;
+            const fo       = d.failedOver;
+            const iface    = d.activeIface || '—';
+            // eth2 = primary (normal operation); eth1 = backup (failover state)
+            const onBackup = iface === 'eth1' || fo;
+
+            // ── Session badge ──────────────────────────────────────────
+            sessionBadge.textContent = up ? (onBackup ? '▲ BACKUP' : '● SESSION UP') : '○ CONNECTING';
+            sessionBadge.className   = 'scada-iec-session-badge' + (up ? (onBackup ? ' failover' : ' up') : '');
+
+            // ── Node card states ───────────────────────────────────────
+            if (dotMaster) dotMaster.className = `scada-iec-dot ${up ? 'up' : 'down'}`;
+            if (dotRtu)    dotRtu.className    = `scada-iec-dot ${(up && d.lastVal !== null) ? 'up' : 'down'}`;
+            if (masterCard) masterCard.className = `scada-iec-node-card ${up ? 'session-up' : 'session-down'}`;
+            if (rtuCard)    rtuCard.className   = `scada-iec-node-card ${(up && d.lastVal !== null) ? 'session-up' : ''}`;
+
+            // ── Active interface badge ─────────────────────────────────
+            if (ifaceBadge) {
+                ifaceBadge.textContent = onBackup ? `${iface} BACKUP` : `${iface} PRIMARY`;
+                ifaceBadge.className   = 'scada-iec-iface-badge' + (onBackup ? ' backup' : '');
+            }
+            if (sessionVal) sessionVal.textContent = up ? 'ESTABLISHED' : 'DOWN';
+            if (lastTs)     lastTs.textContent     = d.lastTs || '—';
+
+            // ── RTU measurements ───────────────────────────────────────
+            if (measVal) measVal.textContent  = d.lastVal !== null ? d.lastVal.toFixed(3) : '—';
+            if (sendSeq) sendSeq.textContent  = d.lastSendSeq !== null ? d.lastSendSeq : '—';
+            if (quality) quality.textContent  = d.lastVal !== null ? 'GOOD' : '—';
+
+            // ── Channel visualiser ─────────────────────────────────────
+            if (channel) channel.className = 'scada-iec-channel' +
+                (!up ? ' inactive' : onBackup ? ' failover' : '');
+
+            // ── Failover bar ───────────────────────────────────────────
+            if (failoverBar) {
+                failoverBar.style.display = onBackup ? '' : 'none';
+                if (failoverIface) failoverIface.textContent = iface;
+            }
+
+            // ── Log lines ──────────────────────────────────────────────
+            if (logEl && d.lastLines?.length) {
+                logEl.innerHTML = d.lastLines.map(l => {
+                    const cls = classify(l);
+                    const safe = l.replace(/</g, '&lt;');
+                    return `<div class="${cls}">${safe}</div>`;
+                }).join('');
+                logEl.scrollTop = logEl.scrollHeight;
+            } else if (logEl) {
+                logEl.innerHTML = '<span class="scada-iec-log-idle">No log data yet</span>';
+            }
+
+            // ── SVG SCADA node ─────────────────────────────────────────
+            if (svgLed) {
+                const ledState = up ? 'mpls-led-ok' : 'mpls-led-idle';
+                svgLed.setAttribute('class', `mpls-status-led ${ledState}`);
+            }
+            // Normal state: eth2 is primary (active).  Failover: eth1 is backup (active).
+            if (svgIfaceText) {
+                svgIfaceText.textContent = onBackup ? 'eth1 BACKUP' : 'eth2 PRIMARY';
+                svgIfaceText.setAttribute('class', `scada-iface-badge${onBackup ? ' scada-on-backup' : ''}`);
+            }
+            // eth1 port: backup (standby when normal, active on failover)
+            if (svgEth1Port) svgEth1Port.setAttribute('class',
+                `scada-port ${onBackup ? 'scada-port-backup scada-port-active' : 'scada-port-backup'}`);
+            // eth2 port: primary (active when normal, standby on failover)
+            if (svgEth2Port) svgEth2Port.setAttribute('class',
+                `scada-port ${onBackup ? 'scada-port-primary scada-port-standby' : 'scada-port-primary'}`);
+            // Link lines: eth2→dc2 is primary (solid), eth1→dc1 is backup (dashed)
+            if (svgEth1Link) svgEth1Link.setAttribute('class',
+                `scada-link ${onBackup ? 'scada-link-backup scada-link-active' : 'scada-link-backup'}`);
+            if (svgEth2Link) svgEth2Link.setAttribute('class',
+                `scada-link ${onBackup ? 'scada-link-primary scada-link-standby' : 'scada-link-primary'}`);
+        }
+
+        async function poll() {
+            try {
+                const r = await fetch('/api/scada/status', { signal: AbortSignal.timeout(6000) });
+                render(r.ok ? await r.json() : null);
+            } catch {
+                render(null);
+            }
+        }
+
+        poll();
+        setInterval(poll, SCADA_POLL_MS);
+    })();
+
 });
 

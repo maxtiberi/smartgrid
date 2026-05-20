@@ -1208,6 +1208,99 @@ const server = http.createServer(async (req, res) => {
         });
         return; // response sent by child event handlers
     }
+    // ── IEC 60870-5-104 SCADA status ────────────────────────────────────────────
+    // GET /api/scada/status
+    // Reads the tail of /tmp/scada.log from the SCADA container and parses it into
+    // structured state: session up/down, active interface, last M_ME_TF_1 measurement.
+    else if (parsedUrl.pathname === '/api/scada/status' && req.method === 'GET') {
+        const result = await new Promise(resolve => {
+            // Read startup context (head -20) AND recent activity (tail -30) in one exec.
+            // This ensures we always see the initial "connecting via ethX" / "STARTDT_CON"
+            // lines even after the session has been running for hours and the tail window
+            // only contains measurement frames.
+            const proc = spawn('docker', [
+                'exec', 'SCADA', 'sh', '-c',
+                'head -20 /tmp/scada.log && echo "---SPLIT---" && tail -30 /tmp/scada.log',
+            ]);
+            let out = '', err = '';
+            proc.stdout.on('data', d => { out += d; });
+            proc.stderr.on('data', d => { err += d; });
+            proc.on('error', e => resolve({ ok: false, running: false, error: e.message }));
+            proc.on('close', code => {
+                if (code !== 0 && !out) {
+                    resolve({ ok: false, running: false,
+                              error: err.trim() || `docker exit ${code}` });
+                    return;
+                }
+                // Split into head (startup context) + tail (recent activity) sections.
+                const splitIdx = out.indexOf('---SPLIT---');
+                const headPart = splitIdx >= 0 ? out.slice(0, splitIdx) : '';
+                const tailPart = splitIdx >= 0 ? out.slice(splitIdx + 11) : out;
+                const headLines = headPart.split('\n').filter(l => l.trim());
+                const tailLines = tailPart.split('\n').filter(l => l.trim());
+                // allLines: head first (for context), then tail (for recency).
+                // Duplicates are fine — later entries overwrite state variables.
+                const allLines = [...headLines, ...tailLines];
+
+                let activeIface = null, sessionUp = false, failedOver = false;
+                let lastVal = null, lastTs = null, lastIoa = null, lastSendSeq = null;
+                for (const line of allLines) {
+                    // "connecting via ethX ->" → new attempt on that iface
+                    let m = line.match(/connecting via (\w+)/);
+                    if (m) { activeIface = m[1]; sessionUp = false; }
+                    // "TCP up on ethX;" → TCP connected (before STARTDT_CON)
+                    m = line.match(/TCP up on (\w+);/);
+                    if (m) activeIface = m[1];
+                    // Session established
+                    if (line.includes('STARTDT_CON received')) sessionUp = true;
+                    // Session lost
+                    if ((line.includes('session on') && line.includes('failed')) ||
+                        line.includes('session lost') ||
+                        line.includes('session ended')) sessionUp = false;
+                    // Failover triggered (primary → backup)
+                    if (line.includes('failing over') || line.includes('failed over to backup'))
+                        failedOver = true;
+                    // Measurement: "<- RTU I send=N ioa=4001 val=132.043 q=0x00"
+                    m = line.match(/ioa=(\d+)\s+val=([\d.]+)/);
+                    if (m) {
+                        lastIoa = parseInt(m[1], 10);
+                        lastVal = parseFloat(m[2]);
+                        const tsM = line.match(/^\[(\d+:\d+:\d+)\]/);
+                        if (tsM) lastTs = tsM[1];
+                        const seqM = line.match(/send=(\d+)/);
+                        if (seqM) lastSendSeq = parseInt(seqM[1], 10);
+                    }
+                }
+
+                // Inference: active measurements prove the session is alive even when
+                // STARTDT_CON scrolled past the log window captured above.
+                if (!sessionUp && lastVal !== null) sessionUp = true;
+
+                // If no interface was found in either window, default to primary (eth2).
+                // This can happen if both windows are filled with measurement frames only.
+                if (!activeIface) activeIface = failedOver ? 'eth1' : 'eth2';
+
+                resolve({
+                    ok: true,
+                    running: allLines.length > 0,
+                    activeIface,
+                    sessionUp,
+                    failedOver,
+                    lastVal,
+                    lastTs,
+                    lastIoa,
+                    lastSendSeq,
+                    lastLines: tailLines.slice(-12),   // show recent tail lines in the log UI
+                });
+            });
+            setTimeout(() => {
+                try { proc.kill(); } catch {}
+                resolve({ ok: false, running: false, error: 'timeout' });
+            }, 5000);
+        });
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+    }
     // ── MPLS Access Node Health ──────────────────────────────────────────────
     // GET /api/mpls/access-health
     // Returns container liveness + RTU-facing port oper-state for ACCESS1-1 and ACCESS1-3.

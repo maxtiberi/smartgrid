@@ -1861,6 +1861,40 @@
             <!-- GOOSE PDU packets removed — flow driven by initMplsTrafficFlow() -->
 
             <!-- ========================================================== -->
+            <!-- SCADA CLIENT NODE — CORE zone (550, 68)                    -->
+            <!-- eth2 primary → dc2:c3/1  |  eth1 backup → dc1:c3/1        -->
+            <!-- ========================================================== -->
+
+            <!-- eth1 backup link: SCADA(526,78) → dc1-c3-port(357,118) -->
+            <line id="scada-eth1-link" class="scada-link scada-link-backup"
+                  x1="526" y1="78" x2="357" y2="107"/>
+            <!-- eth2 primary link: SCADA(574,78) → dc2-c3-port(743,118) -->
+            <line id="scada-eth2-link" class="scada-link scada-link-primary"
+                  x1="574" y1="78" x2="743" y2="107"/>
+
+            <!-- Port labels on the links -->
+            <text class="mpls-port-lbl" x="470" y="86"  text-anchor="middle">eth1 · c3/1</text>
+            <text class="mpls-port-lbl" x="630" y="86"  text-anchor="middle">eth2 · c3/1</text>
+
+            <!-- SCADA node -->
+            <g id="mpls-node-scada" class="mpls-node mpls-node-scada" transform="translate(550, 68)">
+                <rect class="scada-chassis" x="-36" y="-14" width="72" height="26" rx="4"/>
+                <rect class="scada-panel-cell" x="-28" y="-9" width="14" height="9" rx="2"/>
+                <rect class="scada-panel-cell" x="-11" y="-9" width="14" height="9" rx="2"/>
+                <rect class="scada-panel-cell" x="6"   y="-9" width="14" height="9" rx="2"/>
+                <circle id="scada-svg-led" class="mpls-status-led mpls-led-ok" cx="28" cy="-9" r="4"/>
+                <!-- eth1 / eth2 port rectangles — JS toggles opacity to show active NIC -->
+                <rect id="scada-eth1-port" class="scada-port scada-port-backup"  x="-32" y="6" width="13" height="5" rx="1"/>
+                <rect id="scada-eth2-port" class="scada-port scada-port-primary" x="-17" y="6" width="13" height="5" rx="1"/>
+                <!-- Active interface text badge -->
+                <text id="scada-svg-iface" class="scada-iface-badge" x="1" y="18" text-anchor="middle">eth2 PRIMARY</text>
+                <!-- Node labels (right-of-node) -->
+                <text class="mpls-node-label" x="40" y="-4"  text-anchor="start">SCADA</text>
+                <text class="mpls-node-ip"    x="40" y="8"   text-anchor="start">192.168.30.50</text>
+                <text class="mpls-node-ip"    x="40" y="19"  text-anchor="start">IEC 104 · .200.1/29</text>
+            </g>
+
+            <!-- ========================================================== -->
             <!-- PORT LABELS on inter-layer links                            -->
             <!-- ========================================================== -->
             <!-- dc1 → ACC1 port label -->
@@ -2165,6 +2199,126 @@
              aria-label="GOOSE PDU detail" aria-modal="false"></div>
 
         </div><!-- end tpt-panel -->
+
+        <!-- ================================================================ -->
+        <!-- IEC 60870-5-104 SCADA Supervisory Channel Panel                  -->
+        <!-- ================================================================ -->
+        <div class="scada-iec-panel">
+            <div class="scada-iec-header">
+                <svg width="20" height="20" viewBox="0 0 24 24" class="scada-iec-icon" aria-hidden="true">
+                    <rect x="2" y="3" width="20" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <rect x="5" y="6"  width="4" height="3" rx="1" fill="currentColor" opacity="0.6"/>
+                    <rect x="10" y="6" width="4" height="3" rx="1" fill="currentColor" opacity="0.6"/>
+                    <rect x="15" y="6" width="4" height="3" rx="1" fill="currentColor" opacity="0.6"/>
+                </svg>
+                <span class="scada-iec-title">IEC 60870-5-104 &mdash; SCADA Supervisory Channel</span>
+                <span class="scada-iec-std">IEC 60870-5-104 &middot; TCP/2404 &middot; L3VPN</span>
+                <span class="scada-iec-session-badge" id="scada-session-badge">OFFLINE</span>
+            </div>
+
+            <div class="scada-iec-body">
+
+                <!-- SCADA master node card -->
+                <div class="scada-iec-node-card" id="scada-iec-master-card">
+                    <div class="scada-iec-node-header">
+                        <span class="scada-iec-dot" id="scada-dot-master"></span>
+                        <span class="scada-iec-node-name">SCADA Master</span>
+                    </div>
+                    <div class="scada-iec-node-ip">192.168.200.1/29</div>
+                    <div class="scada-iec-iface-row">
+                        <span class="scada-iec-iface-badge" id="scada-iface-badge">—</span>
+                        <span class="scada-iec-iface-sub">mgmt 192.168.30.50</span>
+                    </div>
+                    <div class="scada-iec-stats">
+                        <div class="scada-iec-stat">
+                            <span class="scada-iec-stat-val" id="scada-session-val">—</span>
+                            <span class="scada-iec-stat-lbl">Session</span>
+                        </div>
+                        <div class="scada-iec-stat">
+                            <span class="scada-iec-stat-val" id="scada-last-ts">—</span>
+                            <span class="scada-iec-stat-lbl">Last frame</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Animated IEC 104 channel -->
+                <div class="scada-iec-channel" id="scada-iec-channel">
+                    <div class="scada-iec-ch-line">
+                        <div class="scada-iec-pulse" id="scada-pulse-fwd"></div>
+                    </div>
+                    <div class="scada-iec-ch-label">TCP/2404<br>IEC 104</div>
+                    <div class="scada-iec-ch-line">
+                        <div class="scada-iec-pulse scada-iec-pulse-rev" id="scada-pulse-rev"></div>
+                    </div>
+                </div>
+
+                <!-- RTU1 slave card -->
+                <div class="scada-iec-node-card" id="scada-iec-rtu-card">
+                    <div class="scada-iec-node-header">
+                        <span class="scada-iec-dot" id="scada-dot-rtu"></span>
+                        <span class="scada-iec-node-name">RTU1 Slave</span>
+                    </div>
+                    <div class="scada-iec-node-ip">192.168.200.20/29</div>
+                    <div class="scada-iec-stats">
+                        <div class="scada-iec-stat">
+                            <span class="scada-iec-stat-val scada-val-kv" id="scada-meas-val">—</span>
+                            <span class="scada-iec-stat-lbl">kV (IOA 4001)</span>
+                        </div>
+                        <div class="scada-iec-stat">
+                            <span class="scada-iec-stat-val" id="scada-send-seq">—</span>
+                            <span class="scada-iec-stat-lbl">send seq</span>
+                        </div>
+                        <div class="scada-iec-stat">
+                            <span class="scada-iec-stat-val" id="scada-quality">—</span>
+                            <span class="scada-iec-stat-lbl">quality</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Frame log -->
+                <div class="scada-iec-log-wrap">
+                    <div class="scada-iec-log-hdr">
+                        <span>IEC 104 Frame Log</span>
+                        <span class="scada-iec-log-hint">Last 12 lines &middot; M_ME_TF_1 type&nbsp;36 &middot; IOA&nbsp;4001</span>
+                    </div>
+                    <div class="scada-iec-log" id="scada-iec-log">
+                        <div class="scada-iec-log-idle">Waiting for SCADA container&hellip;</div>
+                    </div>
+                </div>
+
+            </div><!-- end scada-iec-body -->
+
+            <!-- Failover indicator bar -->
+            <div class="scada-iec-failover-bar" id="scada-failover-bar" style="display:none">
+                &#9888;&nbsp;Active path: <strong id="scada-failover-iface">eth2</strong> (backup) — primary eth1 failed over
+            </div>
+
+            <!-- Protocol description -->
+            <div class="scada-iec-description">
+                <p>
+                    <strong>IEC&nbsp;60870-5-104</strong> is the TCP/IP companion to IEC&nbsp;60870-5-101, carrying
+                    SCADA supervisory data over routed IP networks (here: an MPLS L3VPN). Unlike
+                    IEC&nbsp;61850&nbsp;GOOSE — which uses multicast Ethernet for sub-4&nbsp;ms protection — IEC&nbsp;104
+                    uses reliable TCP/2404 and targets monitoring workloads where latency is measured in
+                    seconds, not milliseconds.
+                </p>
+                <p>
+                    The SCADA master (<code>192.168.200.1/29</code>) maintains a persistent TCP session to RTU1
+                    (<code>192.168.200.20/29</code>) via the MPLS L3VPN:
+                    <em>SCADA:eth1 → dc1 → SR1-ACC1 → ACCESS1-1 → RTU1:eth2</em> (primary), with
+                    automatic application-level failover to eth2&nbsp;→&nbsp;dc2 if the primary link fails.
+                    Failover is driven by a <strong>TESTFR keepalive timeout</strong> (T3&nbsp;=&nbsp;20&nbsp;s,
+                    T1&nbsp;=&nbsp;15&nbsp;s); the service IP migrates between NICs via gratuitous&nbsp;ARP.
+                </p>
+                <p>
+                    RTU1 publishes spontaneous <strong>M_ME_TF_1</strong> (type&nbsp;36) frames every second:
+                    a simulated 132&nbsp;kV grid voltage at IOA&nbsp;4001 with a CP56Time2a millisecond timestamp.
+                    The SCADA master acknowledges with S-frames every 8 I-frames (k&nbsp;=&nbsp;8 window).
+                </p>
+            </div>
+        </div><!-- end scada-iec-panel -->
 
     </div><!-- end mpls-section -->
 
