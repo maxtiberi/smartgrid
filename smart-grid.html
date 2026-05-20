@@ -1861,23 +1861,24 @@
             <!-- GOOSE PDU packets removed — flow driven by initMplsTrafficFlow() -->
 
             <!-- ========================================================== -->
-            <!-- SCADA CLIENT NODE — CORE zone (550, 68)                    -->
+            <!-- SCADA CLIENT NODE — CORE zone (550, 40)                    -->
             <!-- eth2 primary → dc2:c3/1  |  eth1 backup → dc1:c3/1        -->
+            <!-- SCADA chassis bottom: y=52  dc1/dc2 chassis top: y=80      -->
             <!-- ========================================================== -->
 
-            <!-- eth1 backup link: SCADA(526,78) → dc1-c3-port(357,118) -->
+            <!-- eth1 backup link: SCADA eth1-port bottom (525,52) → dc1 chassis top (360,80) -->
             <line id="scada-eth1-link" class="scada-link scada-link-backup"
-                  x1="526" y1="78" x2="357" y2="107"/>
-            <!-- eth2 primary link: SCADA(574,78) → dc2-c3-port(743,118) -->
+                  x1="525" y1="52" x2="360" y2="80"/>
+            <!-- eth2 primary link: SCADA eth2-port bottom (540,52) → dc2 chassis top (740,80) -->
             <line id="scada-eth2-link" class="scada-link scada-link-primary"
-                  x1="574" y1="78" x2="743" y2="107"/>
+                  x1="540" y1="52" x2="740" y2="80"/>
 
-            <!-- Port labels on the links -->
-            <text class="mpls-port-lbl" x="470" y="86"  text-anchor="middle">eth1 · c3/1</text>
-            <text class="mpls-port-lbl" x="630" y="86"  text-anchor="middle">eth2 · c3/1</text>
+            <!-- Port labels — positioned at line midpoints, in the gap between nodes -->
+            <text class="mpls-port-lbl" x="443" y="67"  text-anchor="middle">eth1 · c3/1</text>
+            <text class="mpls-port-lbl" x="640" y="67"  text-anchor="middle">eth2 · c3/1</text>
 
             <!-- SCADA node -->
-            <g id="mpls-node-scada" class="mpls-node mpls-node-scada" transform="translate(550, 68)">
+            <g id="mpls-node-scada" class="mpls-node mpls-node-scada" transform="translate(550, 40)">
                 <rect class="scada-chassis" x="-36" y="-14" width="72" height="26" rx="4"/>
                 <rect class="scada-panel-cell" x="-28" y="-9" width="14" height="9" rx="2"/>
                 <rect class="scada-panel-cell" x="-11" y="-9" width="14" height="9" rx="2"/>
