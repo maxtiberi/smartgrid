@@ -3541,7 +3541,36 @@ document.addEventListener('DOMContentLoaded', () => {
         const svgEth1Link   = document.getElementById('scada-eth1-link');
         const svgEth2Link   = document.getElementById('scada-eth2-link');
 
+        // DOM refs — Frame Log popup
+        const logOverlay    = document.getElementById('scada-log-overlay');
+        const logOpenBtn    = document.getElementById('scada-log-open-btn');
+        const logCloseBtn   = document.getElementById('scada-log-close-btn');
+
         if (!sessionBadge) return; // panel not in DOM
+
+        // ── Frame Log popup open / close ───────────────────────────────
+        function openLogPopup() {
+            if (!logOverlay) return;
+            logOverlay.style.display = 'flex';
+            logOverlay.setAttribute('aria-hidden', 'false');
+            if (logEl) logEl.scrollTop = logEl.scrollHeight;
+            if (logCloseBtn) logCloseBtn.focus();
+        }
+        function closeLogPopup() {
+            if (!logOverlay) return;
+            logOverlay.style.display = 'none';
+            logOverlay.setAttribute('aria-hidden', 'true');
+        }
+        if (logOpenBtn)  logOpenBtn.addEventListener('click', openLogPopup);
+        if (logCloseBtn) logCloseBtn.addEventListener('click', closeLogPopup);
+        // Click on backdrop (outside modal) closes the popup
+        if (logOverlay) logOverlay.addEventListener('click', e => {
+            if (e.target === logOverlay) closeLogPopup();
+        });
+        // Escape key closes
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && logOverlay?.style.display !== 'none') closeLogPopup();
+        });
 
         function classify(line) {
             if (line.includes('ioa='))            return 'scada-log-line-measure';

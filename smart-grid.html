@@ -2169,6 +2169,9 @@
                 </svg>
                 <span class="scada-iec-title">IEC 60870-5-104 &mdash; SCADA Supervisory Channel</span>
                 <span class="scada-iec-std">IEC 60870-5-104 &middot; TCP/2404 &middot; L3VPN</span>
+                <button class="scada-iec-log-btn" id="scada-log-open-btn" title="Open IEC 104 Frame Log">
+                    &#9783;&nbsp;Frame Log
+                </button>
                 <span class="scada-iec-session-badge" id="scada-session-badge">OFFLINE</span>
             </div>
 
@@ -2231,17 +2234,6 @@
                     </div>
                 </div>
 
-                <!-- Frame log -->
-                <div class="scada-iec-log-wrap">
-                    <div class="scada-iec-log-hdr">
-                        <span>IEC 104 Frame Log</span>
-                        <span class="scada-iec-log-hint">Last 12 lines &middot; M_ME_TF_1 type&nbsp;36 &middot; IOA&nbsp;4001</span>
-                    </div>
-                    <div class="scada-iec-log" id="scada-iec-log">
-                        <div class="scada-iec-log-idle">Waiting for SCADA container&hellip;</div>
-                    </div>
-                </div>
-
             </div><!-- end scada-iec-body -->
 
             <!-- Failover indicator bar -->
@@ -2273,6 +2265,36 @@
                 </p>
             </div>
         </div><!-- end scada-iec-panel -->
+
+        <!-- ============================================================ -->
+        <!-- IEC 104 FRAME LOG POPUP                                       -->
+        <!-- Opened via "Frame Log" button in SCADA panel header.          -->
+        <!-- position:fixed escapes the panel's overflow:hidden.           -->
+        <!-- ============================================================ -->
+        <div class="scada-log-overlay" id="scada-log-overlay"
+             style="display:none" aria-hidden="true" role="dialog"
+             aria-label="IEC 104 Frame Log">
+            <div class="scada-log-modal">
+                <div class="scada-log-modal-hdr">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round" style="flex-shrink:0;color:#3a6090">
+                        <rect x="2" y="3" width="20" height="14" rx="2"/>
+                        <line x1="8" y1="21" x2="16" y2="21"/>
+                        <line x1="12" y1="17" x2="12" y2="21"/>
+                    </svg>
+                    <span class="scada-log-modal-title">IEC 104 Frame Log</span>
+                    <span class="scada-iec-log-hint">
+                        Last 12 lines &middot; M_ME_TF_1 type&nbsp;36 &middot; IOA&nbsp;4001
+                    </span>
+                    <button class="scada-log-modal-close" id="scada-log-close-btn"
+                            aria-label="Close frame log">&#x2715;</button>
+                </div>
+                <div class="scada-iec-log" id="scada-iec-log">
+                    <div class="scada-iec-log-idle">Waiting for SCADA container&hellip;</div>
+                </div>
+            </div>
+        </div>
 
     </div><!-- end mpls-section -->
 
