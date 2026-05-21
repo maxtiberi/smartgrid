@@ -2146,53 +2146,6 @@
                     <em>teleprotection</em> (IEC&nbsp;61850-90-1). The <em>StNum</em> counter increments
                     on every state change; <em>SqNum</em> tracks retransmissions within the same event.
                 </p>
-                <p>
-                    <strong>What happens when you press Trip RTU1:</strong>
-                </p>
-                <ol class="tpt-trip-steps">
-                    <li>
-                        The dashboard sends <code>POST /api/tpt/trip</code> to the backend, which
-                        forwards it to the <em>tpt-daemon</em> running on RTU1
-                        (<code>192.168.30.7:8850</code>).
-                    </li>
-                    <li>
-                        The daemon sets <code>trip = True</code> on the dataset and increments
-                        <em>StNum</em> — the IEC&nbsp;61850 state-change counter. This single
-                        increment is the signal that tells every subscriber something has changed.
-                    </li>
-                    <li>
-                        RTU1 immediately fires a <strong>rapid-retransmit burst</strong> following
-                        the schedule mandated by the standard:
-                        <code>T1 (2 ms) × 2 → T2 (10 ms) → T3 (100 ms) × 2</code>, then falls
-                        back to the steady heartbeat at <code>T0 = 1 s</code>. Each retransmission
-                        increments <em>SqNum</em> while keeping <em>StNum</em> unchanged, so
-                        subscribers can distinguish retransmits from new events.
-                    </li>
-                    <li>
-                        The PDUs travel over the <strong>MPLS ACCESS layer</strong>
-                        (RTU1 → ACCESS1-1 → SR1-ACC1 → … → ACCESS1-3 → RTU2). RTU2's subscriber
-                        receives the burst, reads <code>trip = True</code>, logs the entry, and
-                        would assert its own relay output in a real substation.
-                    </li>
-                    <li>
-                        The panel updates within 1.5 s (next poll): RTU1's card turns red
-                        (<em>TRIPPED</em>), <em>StNum</em> is one higher than before, and the PDU
-                        log shows a burst of <strong>⚡ TRIP</strong> rows with sequential
-                        <em>SqNum</em> values close together in time.
-                    </li>
-                    <li>
-                        If the MPLS path is broken while the trip is active, RTU2 stops receiving
-                        heartbeats; after 5 × T0 (5 s) the dashboard raises a
-                        <strong>COMM LOSS</strong> banner and the main-dashboard teleprotection
-                        state changes to <em>open</em>.
-                    </li>
-                </ol>
-                <p class="tpt-desc-note">
-                    &#9432;&nbsp;Press <strong>Clear</strong> to de-assert the trip signal
-                    (another <em>StNum</em> increment, new retransmit burst, <code>trip = False</code>).
-                    Press <strong>Stop</strong> to halt both daemons; when RTU2 detects the
-                    heartbeat timeout it will raise COMM LOSS on its own.
-                </p>
             </div>
         <!-- PDU Detail Popover — shown on click of a log row (Option 5) -->
         <div id="tpt-pdu-backdrop" class="tpt-pdu-backdrop" style="display:none;" aria-hidden="true"></div>
