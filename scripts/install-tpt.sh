@@ -49,32 +49,54 @@ docker inspect "${RTU1_CONTAINER}" &>/dev/null || die "Container not found: ${RT
 docker inspect "${RTU2_CONTAINER}" &>/dev/null || die "Container not found: ${RTU2_CONTAINER}"
 ok "Both containers reachable"
 
+# Corporate HTTP proxy — used by apk inside containers (no direct internet)
+HTTP_PROXY_URL="http://135.245.192.7:8000"
+
 # ── Install python3 if missing (Alpine or Debian) ──────────────────
 install_python() {
     local cname="$1"
     info "Checking python3 in ${cname}..."
     if docker exec "${cname}" python3 --version &>/dev/null; then
         ok "python3 already present in ${cname}"
-    else
-        warn "python3 not found — attempting install (Alpine apk / Debian apt)"
-        docker exec "${cname}" sh -c 'apk add --no-cache python3 2>/dev/null || apt-get install -y python3 2>/dev/null' \
-            || die "Could not install python3 in ${cname}. Install manually."
-        ok "python3 installed in ${cname}"
+        return 0
     fi
+    warn "python3 not found — installing via apk (using corporate proxy)..."
+
+    # Switch Alpine repos to HTTP to avoid corporate SSL-inspection failures,
+    # then install python3 with the proxy set.
+    docker exec "${cname}" sh -c "
+        sed -i 's/https:/http:/g' /etc/apk/repositories 2>/dev/null || true
+        rm -f /var/cache/apk/.lock /lib/apk/db/lock 2>/dev/null || true
+        http_proxy=${HTTP_PROXY_URL} apk update &&
+        http_proxy=${HTTP_PROXY_URL} apk add --no-cache python3
+    " || {
+        # Fallback: try Debian/Ubuntu apt with proxy
+        warn "apk failed — trying apt-get..."
+        docker exec "${cname}" sh -c "
+            http_proxy=${HTTP_PROXY_URL} apt-get update -qq &&
+            http_proxy=${HTTP_PROXY_URL} apt-get install -y --no-install-recommends python3
+        " || die "Could not install python3 in ${cname}. Run manually:
+  docker exec ${cname} sh -c 'sed -i s/https:/http:/g /etc/apk/repositories && http_proxy=${HTTP_PROXY_URL} apk add --no-cache python3'"
+    }
+    ok "python3 installed in ${cname}"
 }
 
 install_python "${RTU1_CONTAINER}"
 install_python "${RTU2_CONTAINER}"
 
-# ── Copy daemon script ─────────────────────────────────────────────
-info "Copying tpt-daemon.py to containers..."
-docker exec "${RTU1_CONTAINER}" mkdir -p /app
-docker exec "${RTU2_CONTAINER}" mkdir -p /app
-docker cp "${DAEMON_SRC}" "${RTU1_CONTAINER}:${DAEMON_DST}"
-docker cp "${DAEMON_SRC}" "${RTU2_CONTAINER}:${DAEMON_DST}"
-docker exec "${RTU1_CONTAINER}" chmod +x "${DAEMON_DST}"
-docker exec "${RTU2_CONTAINER}" chmod +x "${DAEMON_DST}"
-ok "Daemon copied to both containers"
+# ── Ensure daemon script is present ───────────────────────────────
+# tpt-daemon.py is bind-mounted read-only via network.yaml at /app/tpt-daemon.py.
+# docker cp is used as fallback in case the container was started without the mount.
+info "Verifying tpt-daemon.py is present in containers..."
+for CTR in "${RTU1_CONTAINER}" "${RTU2_CONTAINER}"; do
+    if ! docker exec "${CTR}" test -f "${DAEMON_DST}" 2>/dev/null; then
+        warn "${DAEMON_DST} not found in ${CTR} — copying from host..."
+        docker exec "${CTR}" mkdir -p /app
+        docker cp "${DAEMON_SRC}" "${CTR}:${DAEMON_DST}" \
+            || die "Could not copy daemon to ${CTR}:${DAEMON_DST}"
+    fi
+done
+ok "Daemon script present in both containers"
 
 # ── Kill any previous instance ─────────────────────────────────────
 kill_prev() {
@@ -113,7 +135,7 @@ sleep 2
 check_api() {
     local ip="$1"
     local name="$2"
-    if curl -sf --max-time 3 "http://${ip}:${API_PORT}/health" | grep -q 'local_ip'; then
+    if NO_PROXY="*" no_proxy="*" curl -sf --max-time 3 "http://${ip}:${API_PORT}/health" | grep -q 'local_ip'; then
         ok "${name} API reachable at http://${ip}:${API_PORT}"
     else
         warn "${name} API not yet responding at http://${ip}:${API_PORT} — check logs"

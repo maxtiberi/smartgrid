@@ -83,17 +83,16 @@ const ALLOWED_IPS = [
 ];
 
 // ── gnmic helper ─────────────────────────────────────────────────────────────
-// Runs a gnmic GET via `docker exec` in the gnmic container.
+// Runs gnmic directly on the host against the router management IPs.
 // Returns a Promise<object[]> (the parsed updates array).
-const MPLS_CFG = CONFIG.mplsNetwork;
-const GNMIC_CONTAINER = MPLS_CFG.gnmicContainer || 'gnmic';
-const GNMIC_BIN       = MPLS_CFG.gnmicBinary    || '/app/gnmic';
-const GNMIC_CREDS     = MPLS_CFG.credentials;
+const MPLS_CFG  = CONFIG.mplsNetwork;
+const GNMIC_BIN = MPLS_CFG.gnmicHostBinary || '/usr/local/bin/gnmic';
+const GNMIC_CREDS = MPLS_CFG.credentials;
 
 function gnmicGet(host, gnmiPort, gnmiPath) {
     return new Promise((resolve, reject) => {
         const cmd = [
-            'docker', 'exec', '-i', GNMIC_CONTAINER, GNMIC_BIN,
+            GNMIC_BIN,
             '-a', `${host}:${gnmiPort}`,
             '-u', GNMIC_CREDS.username,
             '-p', GNMIC_CREDS.password,
@@ -115,6 +114,36 @@ function gnmicGet(host, gnmiPort, gnmiPath) {
                 resolve(updates);
             } catch (e) {
                 reject(new Error('Failed to parse gnmic JSON: ' + e.message));
+            }
+        });
+    });
+}
+
+// ── gnmic SET helper ──────────────────────────────────────────────────────────
+// Sends a gNMI SET (update) to a single path on a Nokia SR-OS node.
+// Uses spawn (not exec) so port-id slashes and brackets are never shell-expanded.
+// adminState must be 'enable' or 'disable'.
+function gnmicSet(host, gnmiPort, portId, adminState) {
+    return new Promise((resolve, reject) => {
+        const args = [
+            '-a', `${host}:${gnmiPort}`,
+            '-u', GNMIC_CREDS.username,
+            '-p', GNMIC_CREDS.password,
+            '--insecure',
+            'set',
+            '--update-path', `/configure/port[port-id=${portId}]/admin-state`,
+            '--update-value', adminState,
+        ];
+        const proc = spawn(GNMIC_BIN, args, { timeout: 12000 });
+        let out = '', errBuf = '';
+        proc.stdout.on('data', d => { out    += d.toString(); });
+        proc.stderr.on('data', d => { errBuf += d.toString(); });
+        proc.on('error', e  => reject(new Error(e.message)));
+        proc.on('close', code => {
+            if (code !== 0) {
+                reject(new Error(errBuf.trim() || `gnmic set exited ${code}`));
+            } else {
+                resolve(out.trim());
             }
         });
     });
@@ -714,7 +743,6 @@ function startNodeSubscription(nodeId) {
     }
 
     const args = [
-        'exec', '-i', GNMIC_CONTAINER, GNMIC_BIN,
         '-a', `${cfg.host}:${cfg.gnmiPort||57400}`,
         '-u', GNMIC_CREDS.username, '-p', GNMIC_CREDS.password,
         '--insecure',
@@ -723,7 +751,7 @@ function startNodeSubscription(nodeId) {
     ];
     for (const p of paths) args.push('--path', p);
 
-    const proc   = spawn('docker', args);
+    const proc   = spawn(GNMIC_BIN, args);
     const parser = makeJsonStreamParser(notif => handleSubscribeNotification(nodeId, notif));
 
     proc.stdout.on('data', c => parser(c.toString()));
@@ -740,16 +768,12 @@ function startNodeSubscription(nodeId) {
 }
 
 // ── Kill orphan gnmic subscribe processes from previous server runs ────────
-// Each restart of ping-service.js leaves subscribe processes running inside
-// the gnmic container.  Nokia SR OS TIMOS caps gRPC connections per source IP;
-// accumulated orphans exhaust that cap and make GET requests fail with EOF.
+// Each restart of ping-service.js leaves subscribe processes running on the host.
+// Nokia SR OS TIMOS caps gRPC connections per source IP; accumulated orphans
+// exhaust that cap and make GET requests fail with EOF.
 async function killOrphanSubscriptions() {
     return new Promise(resolve => {
-        exec(
-            `docker exec ${GNMIC_CONTAINER} sh -c ` +
-            `"ps aux | grep 'gnmic.*--mode stream' | grep -v grep | awk '{print \\$1}' | xargs -r kill 2>/dev/null; echo done"`,
-            () => resolve()
-        );
+        exec(`pkill -f 'gnmic.*--mode stream' 2>/dev/null; true`, () => resolve());
     });
 }
 
@@ -997,7 +1021,7 @@ function dockerContainerRunning(cLabNodeName) {
 function gnmicAllPortStates(host, gnmiPort) {
     return new Promise((resolve) => {
         const cmd = [
-            'docker', 'exec', '-i', GNMIC_CONTAINER, GNMIC_BIN,
+            GNMIC_BIN,
             '-a', `${host}:${gnmiPort}`,
             '-u', GNMIC_CREDS.username,
             '-p', GNMIC_CREDS.password,
@@ -1043,7 +1067,7 @@ const MPLS_LINKS = [
 function gnmicPortState(host, gnmiPort, portId) {
     return new Promise((resolve) => {
         const cmd = [
-            'docker', 'exec', '-i', GNMIC_CONTAINER, GNMIC_BIN,
+            GNMIC_BIN,
             '-a', `${host}:${gnmiPort}`,
             '-u', GNMIC_CREDS.username,
             '-p', GNMIC_CREDS.password,
@@ -1132,8 +1156,13 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'ok', service: 'ping-service' }));
     }
+    // Serve centralized config — frontend loads this at startup
+    else if (parsedUrl.pathname === '/api/config' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(CONFIG));
+    }
     // gnmic live node telemetry — GET /gnmic/node/:nodeId
-    // Runs docker exec gnmic queries and returns live port+interface data.
+    // Runs gnmic directly on the host and returns live port+interface data.
     else if (parsedUrl.pathname.startsWith('/gnmic/node/') && req.method === 'GET') {
         const nodeId = parsedUrl.pathname.replace('/gnmic/node/', '');
         res.setHeader('Content-Type', 'application/json');
@@ -1697,20 +1726,104 @@ const server = http.createServer(async (req, res) => {
         req.on('close', () => { clearInterval(hb); sseClients.delete(res); });
     }
 
-    // Not found
+    // ── Fault simulation: port-state control ─────────────────────────────────
+    // POST /api/sim/port-state?action=shutdown|noshutdown&node=mpls-a1-1
+    //
+    // Iterates over the node's `ports` array from config.json and sends a
+    // gNMI SET (admin-state disable/enable) to each port on the SR-OS router.
+    // Returns { node, action, results: [{port, ok, detail}] }.
+    //
+    // The visual simulation in the dashboard is independent of this call —
+    // the frontend applies CSS fault state immediately on button press and
+    // calls this endpoint in the background to reflect the change in hardware.
+    else if (parsedUrl.pathname === '/api/sim/port-state' && req.method === 'POST') {
+        const action = parsedUrl.query.action;                       // 'shutdown' | 'noshutdown'
+        const nodeKey = parsedUrl.query.node || 'mpls-a1-1';
+
+        if (!action || !['shutdown', 'noshutdown'].includes(action)) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'action must be shutdown or noshutdown' }));
+            return;
+        }
+
+        const nodeCfg = (MPLS_CFG.nodes || {})[nodeKey];
+        if (!nodeCfg) {
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: `node ${nodeKey} not in config` }));
+            return;
+        }
+
+        const adminState = action === 'shutdown' ? 'disable' : 'enable';
+        const ports = nodeCfg.ports || [];
+
+        // Fire all port SETs in parallel; collect individual results.
+        const settled = await Promise.allSettled(
+            ports.map(portId => gnmicSet(nodeCfg.host, nodeCfg.gnmiPort, portId, adminState))
+        );
+
+        const results = ports.map((portId, i) => ({
+            port:   portId,
+            ok:     settled[i].status === 'fulfilled',
+            detail: settled[i].status === 'fulfilled'
+                        ? settled[i].value || 'ok'
+                        : settled[i].reason?.message || 'error',
+        }));
+
+        const allOk = results.every(r => r.ok);
+        res.writeHead(allOk ? 200 : 207, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+            node:   nodeKey,
+            host:   nodeCfg.host,
+            action,
+            adminState,
+            results,
+        }));
+    }
+
+    // ── Static file serving ──────────────────────────────────────────────────
+    // Serves dashboard assets directly so the browser opens http://localhost:3000
+    // instead of file://, avoiding corporate-proxy interception of localhost fetches.
     else {
-        res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Not found' }));
+        const MIME = {
+            '.html': 'text/html; charset=utf-8',
+            '.js':   'application/javascript; charset=utf-8',
+            '.css':  'text/css; charset=utf-8',
+            '.json': 'application/json; charset=utf-8',
+            '.svg':  'image/svg+xml',
+            '.png':  'image/png',
+            '.ico':  'image/x-icon',
+        };
+
+        // Rewrite bare "/" to the main dashboard
+        const filePath = parsedUrl.pathname === '/'
+            ? path.join(__dirname, 'smart-grid.html')
+            : path.join(__dirname, parsedUrl.pathname);
+
+        // Block path traversal outside the project directory
+        if (!filePath.startsWith(__dirname)) {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Forbidden' }));
+            return;
+        }
+
+        fs.readFile(filePath, (err, data) => {
+            if (err) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Not found' }));
+                return;
+            }
+            const ext  = path.extname(filePath).toLowerCase();
+            const mime = MIME[ext] || 'application/octet-stream';
+            res.writeHead(200, { 'Content-Type': mime });
+            res.end(data);
+        });
     }
 });
 
 // Kill orphan subscription processes when this process exits so the next
 // start begins with a clean slate (no accumulated connection-slot leak).
 function cleanupOnExit() {
-    exec(
-        `docker exec ${GNMIC_CONTAINER} sh -c ` +
-        `"ps aux | grep 'gnmic.*--mode stream' | grep -v grep | awk '{print \\$1}' | xargs -r kill 2>/dev/null" 2>/dev/null`
-    );
+    exec(`pkill -f 'gnmic.*--mode stream' 2>/dev/null`);
 }
 process.on('exit',    cleanupOnExit);
 process.on('SIGTERM', () => { cleanupOnExit(); process.exit(0); });

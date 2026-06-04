@@ -185,7 +185,7 @@ body{font-family:'Inter',sans-serif;background:#eef0f5;padding:40px 0;display:fl
       <!-- ARROW 1 -->
       <div class="arch-arrow">
         <svg width="16" height="22" viewBox="0 0 16 22"><path d="M8 0 L8 14 M3 9 L8 14 L13 9" stroke="#9ca3af" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>REST + SSE  ·  http://localhost:3000</span>
+        <span>REST + SSE  ·  <span id="arch-api-url">http://localhost:3000</span></span>
         <svg width="16" height="22" viewBox="0 0 16 22"><path d="M8 22 L8 8 M3 13 L8 8 L13 13" stroke="#9ca3af" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
 
@@ -828,5 +828,9 @@ body{font-family:'Inter',sans-serif;background:#eef0f5;padding:40px 0;display:fl
   </div>
 </div>
 
+<script>
+  const el = document.getElementById('arch-api-url');
+  if (el) el.textContent = window.location.origin;
+</script>
 </body>
 </html>

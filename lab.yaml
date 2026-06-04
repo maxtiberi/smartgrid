@@ -74,11 +74,15 @@ topology:
       kind: linux
       image: ghcr.io/hellt/network-multitool
       mgmt-ipv4: 172.20.20.20
+      binds:
+        - scada-simulator:/opt/scada
       exec:
         - ip link set address 00:c1:ab:00:00:01 dev eth1
         - ip link set address 00:c1:ab:00:10:01 dev eth2
         - ip addr add 192.168.100.1/24 dev eth1
         - ip addr add 192.168.110.1/24 dev eth1
+        # SCADA-RTU dual-homing: place 192.168.200.2/24 on eth1, eth2 standby
+        - sh /opt/scada/setup.sh rtu
 
       labels:
         graph-posX: "655"
@@ -118,6 +122,26 @@ topology:
       kind: linux
       image: ghcr.io/hellt/network-multitool
       mgmt-ipv4: 172.20.20.23
+
+    ### SCADA master station — primary link eth1 (via leaf-1),
+    ### backup link eth2 (via leaf-2). App-level failover; both
+    ### links share the service IP 192.168.200.1/24 (only one is
+    ### active at a time, managed by scada-simulator/failover.sh).
+    SCADA:
+      kind: linux
+      image: ghcr.io/hellt/network-multitool
+      mgmt-ipv4: 172.20.20.30
+      binds:
+        - scada-simulator:/opt/scada
+      exec:
+        - ip link set address 00:5c:ad:a0:00:01 dev eth1
+        - ip link set address 00:5c:ad:a0:00:02 dev eth2
+        - sh /opt/scada/setup.sh scada
+      labels:
+        graph-posX: "455"
+        graph-posY: "435"
+        graph-groupLabelPos: bottom-center
+
     leaf-3:
       kind: nokia_srlinux
       type: ixrd1
@@ -141,4 +165,10 @@ topology:
     - endpoints: [ "leaf-4:e1-1", "DC-1:e1-4" ]
     - endpoints: [ "leaf-4:e1-2", "DC-2:e1-4" ]
     - endpoints: [ "leaf-4:e1-3", "RTU-4:eth1" ]
+
+    ### SCADA dual-homing (primary via leaf-1, backup via leaf-2)
+    - endpoints: [ "SCADA:eth1",  "leaf-1:e1-6" ]
+    - endpoints: [ "SCADA:eth2",  "leaf-2:e1-6" ]
+    ### RTU-1 backup link (primary eth1 -> leaf-1 already declared above)
+    - endpoints: [ "RTU-1:eth2",  "leaf-2:e1-4" ]
 

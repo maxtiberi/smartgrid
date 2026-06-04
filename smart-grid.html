@@ -1671,6 +1671,40 @@
             <g id="mpls-traffic-packets" pointer-events="none"></g>
             <!-- SR-TE LSP overlay — drawn by initSrteLspOverlay() in smart-grid.js -->
             <g id="mpls-srte-overlay" pointer-events="none"></g>
+
+            <!-- Fault simulation overlay — shown/hidden by initFaultSimulation() -->
+            <g id="mpls-sim-overlay" display="none" pointer-events="none">
+                <!-- pulsing halo around ACCESS1-1 (250,367) -->
+                <circle cx="250" cy="367" r="46" fill="rgba(220,53,69,.05)">
+                    <animate attributeName="r"            values="44;50;44" dur="1.6s" repeatCount="indefinite"/>
+                    <animate attributeName="fill-opacity" values=".05;.12;.05" dur="1.6s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="250" cy="367" r="46" fill="none" stroke="#dc3545" stroke-width="1.2" stroke-dasharray="5 3" opacity="0.55">
+                    <animateTransform attributeName="transform" type="rotate"
+                                      from="0 250 367" to="360 250 367" dur="10s" repeatCount="indefinite"/>
+                </circle>
+                <!-- SIM FAULT badge above node -->
+                <rect x="196" y="326" width="108" height="17" rx="4" fill="#dc3545" fill-opacity="0.88"/>
+                <text x="250" y="338" text-anchor="middle"
+                      font-family="IBM Plex Mono,monospace" font-size="8.5" font-weight="700"
+                      fill="white" letter-spacing="1.2">SIM FAULT ACTIVE</text>
+                <!-- ✕ markers at midpoint of each faulted link -->
+                <!-- link-acc1-a1-1 midpoint ≈ (315, 301) -->
+                <circle cx="315" cy="301" r="7" fill="#dc3545" fill-opacity="0.15"/>
+                <text x="315" y="305" text-anchor="middle"
+                      font-family="IBM Plex Mono,monospace" font-size="11" font-weight="900"
+                      fill="#dc3545" opacity="0.85">✕</text>
+                <!-- link-a1-1-a1-2 midpoint ≈ (400, 367) -->
+                <circle cx="400" cy="367" r="7" fill="#dc3545" fill-opacity="0.15"/>
+                <text x="400" y="371" text-anchor="middle"
+                      font-family="IBM Plex Mono,monospace" font-size="11" font-weight="900"
+                      fill="#dc3545" opacity="0.85">✕</text>
+                <!-- link-a1-1-rtu1 midpoint ≈ (250, 427) -->
+                <circle cx="250" cy="427" r="7" fill="#dc3545" fill-opacity="0.15"/>
+                <text x="250" y="431" text-anchor="middle"
+                      font-family="IBM Plex Mono,monospace" font-size="11" font-weight="900"
+                      fill="#dc3545" opacity="0.85">✕</text>
+            </g>
             <!-- Status label (bottom of diagram) -->
             <g id="mpls-path-status-group" visibility="hidden" pointer-events="none">
                 <rect id="mpls-path-status-bg" x="270" y="553" width="560" height="20" rx="6"/>
@@ -1687,17 +1721,29 @@
                transform="translate(360, 105)" role="button" tabindex="0"
                aria-label="dc1 — click to view live telemetry">
                 <rect class="mpls-hit-area" x="-30" y="-28" width="60" height="60" rx="6" fill="transparent"/>
-                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="4"/>
-                <rect class="mpls-panel-cell" x="-16" y="-17" width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="2"   y="-17" width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="-16" y="-4"  width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="2"   y="-4"  width="14" height="10" rx="2"/>
-                <rect class="mpls-port" id="dc1-svg-port-c1" x="-26" y="13" width="8" height="6" rx="1" fill="#3a6a4a"/>
-                <rect class="mpls-port" id="dc1-svg-port-c2" x="-15" y="13" width="8" height="6" rx="1" fill="#3a6a4a"/>
-                <rect class="mpls-port" id="dc1-svg-port-c3" x="-4"  y="13" width="8" height="6" rx="1" fill="#3a3a4a"/>
-                <rect class="mpls-port" id="dc1-svg-port-c4" x="7"   y="13" width="8" height="6" rx="1" fill="#3a3a4a"/>
-                <rect class="mpls-port" id="dc1-svg-port-c5" x="18"  y="13" width="8" height="6" rx="1" fill="#3a3a4a"/>
-                <circle class="mpls-status-led mpls-led-ok" id="dc1-svg-status-led" cx="21" cy="-20" r="4"/>
+                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="3"/>
+                <rect x="-27" y="-24" width="54" height="1.2" rx=".4" fill="white" fill-opacity="0.07"/>
+                <rect x="-25" y="-21.5" width="42" height="1.3" rx=".4" fill="#3ecfb0" fill-opacity="0.14"/>
+                <circle cx="-21"   cy="-20.8" r="1.1" fill="#3ecfb0" fill-opacity="0.9"/>
+                <circle cx="-17.5" cy="-20.8" r="1.1" fill="#3ecfb0" fill-opacity="0.45"/>
+                <circle cx="-14"   cy="-20.8" r="1.1" fill="#3ecfb0" fill-opacity="0.2"/>
+                <rect class="mpls-port" id="dc1-svg-port-c1" x="-26" y="-16" width="9" height="4.5" rx=".5" fill="#2a7a5a"/>
+                <rect class="mpls-port" id="dc1-svg-port-c2" x="-15" y="-16" width="9" height="4.5" rx=".5" fill="#2a7a5a"/>
+                <rect class="mpls-port" id="dc1-svg-port-c3" x="-4"  y="-16" width="9" height="4.5" rx=".5" fill="#161f2a"/>
+                <rect class="mpls-port" id="dc1-svg-port-c4" x="7"   y="-16" width="9" height="4.5" rx=".5" fill="#161f2a"/>
+                <rect x="17.5" y="-17" width="8.5" height="6.5" rx=".8" fill="none" stroke="#3ecfb0" stroke-width="0.7" stroke-opacity="0.5"/>
+                <line x1="21.7" y1="-17" x2="21.7" y2="-10.5" stroke="#3ecfb0" stroke-width="0.4" stroke-opacity="0.3"/>
+                <rect class="mpls-port" id="dc1-svg-port-c5" x="-26" y="-9"  width="6" height="2.5" rx=".3" fill="#161f2a"/>
+                <rect x="-19"  y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="-12"  y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="-5"   y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="2"    y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="9"    y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="17.5" y="-7"  width="8.5" height="3.5" rx=".4" fill="none" stroke="#3ecfb0" stroke-width="0.5" stroke-opacity="0.35"/>
+                <rect x="-28" y="-23" width="1.5" height="4" rx=".3" fill="#3ecfb0" fill-opacity="0.22"/>
+                <rect x="26.5" y="-23" width="1.5" height="4" rx=".3" fill="#3ecfb0" fill-opacity="0.22"/>
+                <circle class="mpls-status-led mpls-led-ok" id="dc1-svg-status-led" cx="22" cy="-20.8" r="2.5"/>
+                <rect x="-28" y="21.5" width="56" height="3" rx="1.5" fill="#3ecfb0" fill-opacity="0.18"/>
                 <text class="mpls-node-label" x="-32" y="4" text-anchor="end">dc1</text>
                 <text class="mpls-node-ip"   x="-32" y="17" text-anchor="end">192.168.30.2</text>
                 <g class="mpls-click-hint" transform="translate(0, 58)">
@@ -1711,17 +1757,29 @@
                transform="translate(740, 105)" role="button" tabindex="0"
                aria-label="dc2 — click to view live telemetry">
                 <rect class="mpls-hit-area" x="-30" y="-28" width="60" height="60" rx="6" fill="transparent"/>
-                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="4"/>
-                <rect class="mpls-panel-cell" x="-16" y="-17" width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="2"   y="-17" width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="-16" y="-4"  width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="2"   y="-4"  width="14" height="10" rx="2"/>
-                <rect class="mpls-port" id="dc2-svg-port-c1" x="-26" y="13" width="8" height="6" rx="1" fill="#3a6a4a"/>
-                <rect class="mpls-port" id="dc2-svg-port-c2" x="-15" y="13" width="8" height="6" rx="1" fill="#3a6a4a"/>
-                <rect class="mpls-port" id="dc2-svg-port-c3" x="-4"  y="13" width="8" height="6" rx="1" fill="#3a3a4a"/>
-                <rect class="mpls-port" id="dc2-svg-port-c4" x="7"   y="13" width="8" height="6" rx="1" fill="#3a3a4a"/>
-                <rect class="mpls-port" id="dc2-svg-port-c5" x="18"  y="13" width="8" height="6" rx="1" fill="#3a3a4a"/>
-                <circle class="mpls-status-led mpls-led-ok" id="dc2-svg-status-led" cx="21" cy="-20" r="4"/>
+                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="3"/>
+                <rect x="-27" y="-24" width="54" height="1.2" rx=".4" fill="white" fill-opacity="0.07"/>
+                <rect x="-25" y="-21.5" width="42" height="1.3" rx=".4" fill="#3ecfb0" fill-opacity="0.14"/>
+                <circle cx="-21"   cy="-20.8" r="1.1" fill="#3ecfb0" fill-opacity="0.9"/>
+                <circle cx="-17.5" cy="-20.8" r="1.1" fill="#3ecfb0" fill-opacity="0.45"/>
+                <circle cx="-14"   cy="-20.8" r="1.1" fill="#3ecfb0" fill-opacity="0.2"/>
+                <rect class="mpls-port" id="dc2-svg-port-c1" x="-26" y="-16" width="9" height="4.5" rx=".5" fill="#2a7a5a"/>
+                <rect class="mpls-port" id="dc2-svg-port-c2" x="-15" y="-16" width="9" height="4.5" rx=".5" fill="#2a7a5a"/>
+                <rect class="mpls-port" id="dc2-svg-port-c3" x="-4"  y="-16" width="9" height="4.5" rx=".5" fill="#161f2a"/>
+                <rect class="mpls-port" id="dc2-svg-port-c4" x="7"   y="-16" width="9" height="4.5" rx=".5" fill="#161f2a"/>
+                <rect x="17.5" y="-17" width="8.5" height="6.5" rx=".8" fill="none" stroke="#3ecfb0" stroke-width="0.7" stroke-opacity="0.5"/>
+                <line x1="21.7" y1="-17" x2="21.7" y2="-10.5" stroke="#3ecfb0" stroke-width="0.4" stroke-opacity="0.3"/>
+                <rect class="mpls-port" id="dc2-svg-port-c5" x="-26" y="-9"  width="6" height="2.5" rx=".3" fill="#161f2a"/>
+                <rect x="-19"  y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="-12"  y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="-5"   y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="2"    y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="9"    y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="17.5" y="-7"  width="8.5" height="3.5" rx=".4" fill="none" stroke="#3ecfb0" stroke-width="0.5" stroke-opacity="0.35"/>
+                <rect x="-28" y="-23" width="1.5" height="4" rx=".3" fill="#3ecfb0" fill-opacity="0.22"/>
+                <rect x="26.5" y="-23" width="1.5" height="4" rx=".3" fill="#3ecfb0" fill-opacity="0.22"/>
+                <circle class="mpls-status-led mpls-led-ok" id="dc2-svg-status-led" cx="22" cy="-20.8" r="2.5"/>
+                <rect x="-28" y="21.5" width="56" height="3" rx="1.5" fill="#3ecfb0" fill-opacity="0.18"/>
                 <text class="mpls-node-label" x="32" y="4" text-anchor="start">dc2</text>
                 <text class="mpls-node-ip"   x="32" y="17" text-anchor="start">192.168.30.3</text>
                 <g class="mpls-click-hint" transform="translate(0, 58)">
@@ -1735,34 +1793,58 @@
             <!-- ========================================================== -->
             <!-- SR1-ACC1 at (360, 235) -->
             <g id="mpls-node-mpls-acc1" class="mpls-node mpls-node-agg" transform="translate(360, 235)">
-                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="4"/>
-                <rect class="mpls-panel-cell" x="-16" y="-17" width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="2"   y="-17" width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="-16" y="-4"  width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="2"   y="-4"  width="14" height="10" rx="2"/>
-                <rect class="mpls-port mpls-port-active" x="-26" y="13" width="8" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-active" x="-15" y="13" width="8" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-active" x="-4"  y="13" width="8" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="7"   y="13" width="8" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="18"  y="13" width="8" height="6" rx="1"/>
-                <circle class="mpls-status-led mpls-led-ok" cx="21" cy="-20" r="4"/>
+                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="3"/>
+                <rect x="-27" y="-24" width="54" height="1.2" rx=".4" fill="white" fill-opacity="0.07"/>
+                <rect x="-25" y="-21.5" width="42" height="1.3" rx=".4" fill="#9b7cee" fill-opacity="0.14"/>
+                <circle cx="-21"   cy="-20.8" r="1.1" fill="#9b7cee" fill-opacity="0.9"/>
+                <circle cx="-17.5" cy="-20.8" r="1.1" fill="#9b7cee" fill-opacity="0.45"/>
+                <circle cx="-14"   cy="-20.8" r="1.1" fill="#9b7cee" fill-opacity="0.2"/>
+                <rect class="mpls-port mpls-port-active" x="-26" y="-16" width="9" height="4.5" rx=".5"/>
+                <rect class="mpls-port mpls-port-active" x="-15" y="-16" width="9" height="4.5" rx=".5"/>
+                <rect class="mpls-port mpls-port-active" x="-4"  y="-16" width="9" height="4.5" rx=".5"/>
+                <rect class="mpls-port mpls-port-idle"   x="7"   y="-16" width="9" height="4.5" rx=".5"/>
+                <rect x="17.5" y="-17" width="8.5" height="6.5" rx=".8" fill="none" stroke="#9b7cee" stroke-width="0.7" stroke-opacity="0.5"/>
+                <line x1="21.7" y1="-17" x2="21.7" y2="-10.5" stroke="#9b7cee" stroke-width="0.4" stroke-opacity="0.3"/>
+                <rect x="-26"  y="-9"  width="6" height="2.5" rx=".3" fill="#161f2a" fill-opacity="0.9"/>
+                <rect x="-19"  y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="-12"  y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="-5"   y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="2"    y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="9"    y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="17.5" y="-7"  width="8.5" height="3.5" rx=".4" fill="none" stroke="#9b7cee" stroke-width="0.5" stroke-opacity="0.35"/>
+                <rect x="-28" y="-23" width="1.5" height="4" rx=".3" fill="#9b7cee" fill-opacity="0.22"/>
+                <rect x="26.5" y="-23" width="1.5" height="4" rx=".3" fill="#9b7cee" fill-opacity="0.22"/>
+                <circle class="mpls-status-led mpls-led-ok" cx="22" cy="-20.8" r="2.5"/>
+                <rect x="-28" y="21.5" width="56" height="3" rx="1.5" fill="#9b7cee" fill-opacity="0.18"/>
                 <text class="mpls-node-label" x="-32" y="4" text-anchor="end">SR1-ACC1</text>
                 <text class="mpls-node-ip"   x="-32" y="17" text-anchor="end">192.168.30.4</text>
             </g>
 
             <!-- SR1-ACC2 at (740, 235) -->
             <g id="mpls-node-mpls-acc2" class="mpls-node mpls-node-agg" transform="translate(740, 235)">
-                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="4"/>
-                <rect class="mpls-panel-cell" x="-16" y="-17" width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="2"   y="-17" width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="-16" y="-4"  width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="2"   y="-4"  width="14" height="10" rx="2"/>
-                <rect class="mpls-port mpls-port-active" x="-26" y="13" width="8" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-active" x="-15" y="13" width="8" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-active" x="-4"  y="13" width="8" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="7"   y="13" width="8" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="18"  y="13" width="8" height="6" rx="1"/>
-                <circle class="mpls-status-led mpls-led-ok" cx="21" cy="-20" r="4"/>
+                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="3"/>
+                <rect x="-27" y="-24" width="54" height="1.2" rx=".4" fill="white" fill-opacity="0.07"/>
+                <rect x="-25" y="-21.5" width="42" height="1.3" rx=".4" fill="#9b7cee" fill-opacity="0.14"/>
+                <circle cx="-21"   cy="-20.8" r="1.1" fill="#9b7cee" fill-opacity="0.9"/>
+                <circle cx="-17.5" cy="-20.8" r="1.1" fill="#9b7cee" fill-opacity="0.45"/>
+                <circle cx="-14"   cy="-20.8" r="1.1" fill="#9b7cee" fill-opacity="0.2"/>
+                <rect class="mpls-port mpls-port-active" x="-26" y="-16" width="9" height="4.5" rx=".5"/>
+                <rect class="mpls-port mpls-port-active" x="-15" y="-16" width="9" height="4.5" rx=".5"/>
+                <rect class="mpls-port mpls-port-active" x="-4"  y="-16" width="9" height="4.5" rx=".5"/>
+                <rect class="mpls-port mpls-port-idle"   x="7"   y="-16" width="9" height="4.5" rx=".5"/>
+                <rect x="17.5" y="-17" width="8.5" height="6.5" rx=".8" fill="none" stroke="#9b7cee" stroke-width="0.7" stroke-opacity="0.5"/>
+                <line x1="21.7" y1="-17" x2="21.7" y2="-10.5" stroke="#9b7cee" stroke-width="0.4" stroke-opacity="0.3"/>
+                <rect x="-26"  y="-9"  width="6" height="2.5" rx=".3" fill="#161f2a" fill-opacity="0.9"/>
+                <rect x="-19"  y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="-12"  y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="-5"   y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="2"    y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="9"    y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="17.5" y="-7"  width="8.5" height="3.5" rx=".4" fill="none" stroke="#9b7cee" stroke-width="0.5" stroke-opacity="0.35"/>
+                <rect x="-28" y="-23" width="1.5" height="4" rx=".3" fill="#9b7cee" fill-opacity="0.22"/>
+                <rect x="26.5" y="-23" width="1.5" height="4" rx=".3" fill="#9b7cee" fill-opacity="0.22"/>
+                <circle class="mpls-status-led mpls-led-ok" cx="22" cy="-20.8" r="2.5"/>
+                <rect x="-28" y="21.5" width="56" height="3" rx="1.5" fill="#9b7cee" fill-opacity="0.18"/>
                 <text class="mpls-node-label" x="32" y="4" text-anchor="start">SR1-ACC2</text>
                 <text class="mpls-node-ip"   x="32" y="17" text-anchor="start">192.168.30.5</text>
             </g>
@@ -1775,17 +1857,29 @@
                transform="translate(250, 367)" role="button" tabindex="0"
                aria-label="ACCESS1-1 — click to view live telemetry">
                 <rect class="mpls-hit-area" x="-30" y="-28" width="60" height="60" rx="6" fill="transparent"/>
-                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="4"/>
-                <rect class="mpls-panel-cell" x="-16" y="-17" width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="2"   y="-17" width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="-16" y="-4"  width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="2"   y="-4"  width="14" height="10" rx="2"/>
-                <rect class="mpls-port" id="a11-svg-port-c1" x="-26" y="13" width="8" height="6" rx="1" fill="#3a6a4a"/>
-                <rect class="mpls-port" id="a11-svg-port-c2" x="-15" y="13" width="8" height="6" rx="1" fill="#3a6a4a"/>
-                <rect class="mpls-port" id="a11-svg-port-c3" x="-4"  y="13" width="8" height="6" rx="1" fill="#3a6a4a"/>
-                <rect class="mpls-port" id="a11-svg-port-c4" x="7"   y="13" width="8" height="6" rx="1" fill="#8a4a2a"/>
-                <rect class="mpls-port" id="a11-svg-port-c5" x="18"  y="13" width="8" height="6" rx="1" fill="#3a3a4a"/>
-                <circle class="mpls-status-led mpls-led-ok" id="a11-svg-status-led" cx="21" cy="-20" r="4"/>
+                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="3"/>
+                <rect x="-27" y="-24" width="54" height="1.2" rx=".4" fill="white" fill-opacity="0.07"/>
+                <rect x="-25" y="-21.5" width="42" height="1.3" rx=".4" fill="#3dbb8a" fill-opacity="0.14"/>
+                <circle cx="-21"   cy="-20.8" r="1.1" fill="#3dbb8a" fill-opacity="0.9"/>
+                <circle cx="-17.5" cy="-20.8" r="1.1" fill="#3dbb8a" fill-opacity="0.45"/>
+                <circle cx="-14"   cy="-20.8" r="1.1" fill="#3dbb8a" fill-opacity="0.2"/>
+                <rect class="mpls-port" id="a11-svg-port-c1" x="-26" y="-16" width="9" height="4.5" rx=".5" fill="#2a7a5a"/>
+                <rect class="mpls-port" id="a11-svg-port-c2" x="-15" y="-16" width="9" height="4.5" rx=".5" fill="#2a7a5a"/>
+                <rect class="mpls-port" id="a11-svg-port-c3" x="-4"  y="-16" width="9" height="4.5" rx=".5" fill="#2a7a5a"/>
+                <rect class="mpls-port" id="a11-svg-port-c4" x="7"   y="-16" width="9" height="4.5" rx=".5" fill="#c07840"/>
+                <rect x="17.5" y="-17" width="8.5" height="6.5" rx=".8" fill="none" stroke="#3dbb8a" stroke-width="0.7" stroke-opacity="0.5"/>
+                <line x1="21.7" y1="-17" x2="21.7" y2="-10.5" stroke="#3dbb8a" stroke-width="0.4" stroke-opacity="0.3"/>
+                <rect class="mpls-port" id="a11-svg-port-c5" x="-26" y="-9"  width="6" height="2.5" rx=".3" fill="#161f2a"/>
+                <rect x="-19"  y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="-12"  y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="-5"   y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="2"    y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="9"    y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="17.5" y="-7"  width="8.5" height="3.5" rx=".4" fill="none" stroke="#3dbb8a" stroke-width="0.5" stroke-opacity="0.35"/>
+                <rect x="-28" y="-23" width="1.5" height="4" rx=".3" fill="#3dbb8a" fill-opacity="0.22"/>
+                <rect x="26.5" y="-23" width="1.5" height="4" rx=".3" fill="#3dbb8a" fill-opacity="0.22"/>
+                <circle class="mpls-status-led mpls-led-ok" id="a11-svg-status-led" cx="22" cy="-20.8" r="2.5"/>
+                <rect x="-28" y="21.5" width="56" height="3" rx="1.5" fill="#3dbb8a" fill-opacity="0.18"/>
                 <text class="mpls-node-label" x="-32" y="4" text-anchor="end">ACCESS1-1</text>
                 <text class="mpls-node-ip"   x="-32" y="17" text-anchor="end">192.168.30.11</text>
                 <g class="mpls-click-hint" transform="translate(0, 58)">
@@ -1796,34 +1890,58 @@
 
             <!-- ACCESS1-2 at (550, 367) -->
             <g id="mpls-node-mpls-a1-2" class="mpls-node mpls-node-access" transform="translate(550, 367)">
-                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="4"/>
-                <rect class="mpls-panel-cell" x="-16" y="-17" width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="2"   y="-17" width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="-16" y="-4"  width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="2"   y="-4"  width="14" height="10" rx="2"/>
-                <rect class="mpls-port mpls-port-active" x="-26" y="13" width="8" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-active" x="-15" y="13" width="8" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="-4"  y="13" width="8" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="7"   y="13" width="8" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="18"  y="13" width="8" height="6" rx="1"/>
-                <circle class="mpls-status-led mpls-led-ok" cx="21" cy="-20" r="4"/>
+                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="3"/>
+                <rect x="-27" y="-24" width="54" height="1.2" rx=".4" fill="white" fill-opacity="0.07"/>
+                <rect x="-25" y="-21.5" width="42" height="1.3" rx=".4" fill="#3dbb8a" fill-opacity="0.14"/>
+                <circle cx="-21"   cy="-20.8" r="1.1" fill="#3dbb8a" fill-opacity="0.9"/>
+                <circle cx="-17.5" cy="-20.8" r="1.1" fill="#3dbb8a" fill-opacity="0.45"/>
+                <circle cx="-14"   cy="-20.8" r="1.1" fill="#3dbb8a" fill-opacity="0.2"/>
+                <rect class="mpls-port mpls-port-active" x="-26" y="-16" width="9" height="4.5" rx=".5"/>
+                <rect class="mpls-port mpls-port-active" x="-15" y="-16" width="9" height="4.5" rx=".5"/>
+                <rect class="mpls-port mpls-port-idle"   x="-4"  y="-16" width="9" height="4.5" rx=".5"/>
+                <rect class="mpls-port mpls-port-idle"   x="7"   y="-16" width="9" height="4.5" rx=".5"/>
+                <rect x="17.5" y="-17" width="8.5" height="6.5" rx=".8" fill="none" stroke="#3dbb8a" stroke-width="0.7" stroke-opacity="0.5"/>
+                <line x1="21.7" y1="-17" x2="21.7" y2="-10.5" stroke="#3dbb8a" stroke-width="0.4" stroke-opacity="0.3"/>
+                <rect x="-26"  y="-9"  width="6" height="2.5" rx=".3" fill="#161f2a" fill-opacity="0.9"/>
+                <rect x="-19"  y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="-12"  y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="-5"   y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="2"    y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="9"    y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="17.5" y="-7"  width="8.5" height="3.5" rx=".4" fill="none" stroke="#3dbb8a" stroke-width="0.5" stroke-opacity="0.35"/>
+                <rect x="-28" y="-23" width="1.5" height="4" rx=".3" fill="#3dbb8a" fill-opacity="0.22"/>
+                <rect x="26.5" y="-23" width="1.5" height="4" rx=".3" fill="#3dbb8a" fill-opacity="0.22"/>
+                <circle class="mpls-status-led mpls-led-ok" cx="22" cy="-20.8" r="2.5"/>
+                <rect x="-28" y="21.5" width="56" height="3" rx="1.5" fill="#3dbb8a" fill-opacity="0.18"/>
                 <text class="mpls-node-label" x="0" y="38" text-anchor="middle">ACCESS1-2</text>
                 <text class="mpls-node-ip"   x="0" y="49" text-anchor="middle">192.168.30.12</text>
             </g>
 
             <!-- ACCESS1-3 at (820, 367) -->
             <g id="mpls-node-mpls-a1-3" class="mpls-node mpls-node-access" transform="translate(820, 367)">
-                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="4"/>
-                <rect class="mpls-panel-cell" x="-16" y="-17" width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="2"   y="-17" width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="-16" y="-4"  width="14" height="10" rx="2"/>
-                <rect class="mpls-panel-cell" x="2"   y="-4"  width="14" height="10" rx="2"/>
-                <rect class="mpls-port mpls-port-active" x="-26" y="13" width="8" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-active" x="-15" y="13" width="8" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-active" x="-4"  y="13" width="8" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-rtu"    x="7"   y="13" width="8" height="6" rx="1"/>
-                <rect class="mpls-port mpls-port-idle"   x="18"  y="13" width="8" height="6" rx="1"/>
-                <circle class="mpls-status-led mpls-led-ok" cx="21" cy="-20" r="4"/>
+                <rect class="mpls-chassis" x="-28" y="-25" width="56" height="50" rx="3"/>
+                <rect x="-27" y="-24" width="54" height="1.2" rx=".4" fill="white" fill-opacity="0.07"/>
+                <rect x="-25" y="-21.5" width="42" height="1.3" rx=".4" fill="#3dbb8a" fill-opacity="0.14"/>
+                <circle cx="-21"   cy="-20.8" r="1.1" fill="#3dbb8a" fill-opacity="0.9"/>
+                <circle cx="-17.5" cy="-20.8" r="1.1" fill="#3dbb8a" fill-opacity="0.45"/>
+                <circle cx="-14"   cy="-20.8" r="1.1" fill="#3dbb8a" fill-opacity="0.2"/>
+                <rect class="mpls-port mpls-port-active" x="-26" y="-16" width="9" height="4.5" rx=".5"/>
+                <rect class="mpls-port mpls-port-active" x="-15" y="-16" width="9" height="4.5" rx=".5"/>
+                <rect class="mpls-port mpls-port-active" x="-4"  y="-16" width="9" height="4.5" rx=".5"/>
+                <rect class="mpls-port mpls-port-rtu"    x="7"   y="-16" width="9" height="4.5" rx=".5"/>
+                <rect x="17.5" y="-17" width="8.5" height="6.5" rx=".8" fill="none" stroke="#3dbb8a" stroke-width="0.7" stroke-opacity="0.5"/>
+                <line x1="21.7" y1="-17" x2="21.7" y2="-10.5" stroke="#3dbb8a" stroke-width="0.4" stroke-opacity="0.3"/>
+                <rect x="-26"  y="-9"  width="6" height="2.5" rx=".3" fill="#161f2a" fill-opacity="0.9"/>
+                <rect x="-19"  y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="-12"  y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="-5"   y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="2"    y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="9"    y="-9"  width="6" height="2.5" rx=".3" fill="#141c26" fill-opacity="0.9"/>
+                <rect x="17.5" y="-7"  width="8.5" height="3.5" rx=".4" fill="none" stroke="#3dbb8a" stroke-width="0.5" stroke-opacity="0.35"/>
+                <rect x="-28" y="-23" width="1.5" height="4" rx=".3" fill="#3dbb8a" fill-opacity="0.22"/>
+                <rect x="26.5" y="-23" width="1.5" height="4" rx=".3" fill="#3dbb8a" fill-opacity="0.22"/>
+                <circle class="mpls-status-led mpls-led-ok" cx="22" cy="-20.8" r="2.5"/>
+                <rect x="-28" y="21.5" width="56" height="3" rx="1.5" fill="#3dbb8a" fill-opacity="0.18"/>
                 <text class="mpls-node-label" x="32" y="4" text-anchor="start">ACCESS1-3</text>
                 <text class="mpls-node-ip"   x="32" y="17" text-anchor="start">192.168.30.13</text>
             </g>
@@ -1833,22 +1951,40 @@
             <!-- ========================================================== -->
             <!-- RTU1 at (250, 475) -->
             <g class="mpls-node mpls-node-rtu" transform="translate(250, 475)">
-                <rect class="mpls-chassis mpls-rtu-chassis" x="-26" y="-16" width="52" height="32" rx="4"/>
-                <circle class="mpls-status-led mpls-led-ok"   cx="-10" cy="-2" r="4"/>
-                <circle class="mpls-status-led mpls-led-ok"   cx="2"   cy="-2" r="4"/>
-                <circle class="mpls-status-led mpls-led-idle" cx="14"  cy="-2" r="4"/>
-                <rect x="-22" y="7" width="10" height="6" fill="#5a5a6a" rx="1"/>
+                <rect class="mpls-chassis mpls-rtu-chassis" x="-26" y="-16" width="52" height="32" rx="3"/>
+                <rect x="-25" y="-15" width="50" height="1" rx=".3" fill="white" fill-opacity="0.07"/>
+                <rect x="-23" y="-12.5" width="30" height="1.1" rx=".3" fill="#e0aa4a" fill-opacity="0.14"/>
+                <circle cx="-19"   cy="-11.8" r="1" fill="#e0aa4a" fill-opacity="0.9"/>
+                <circle cx="-15.5" cy="-11.8" r="1" fill="#e0aa4a" fill-opacity="0.45"/>
+                <circle cx="-12"   cy="-11.8" r="1" fill="#e0aa4a" fill-opacity="0.2"/>
+                <circle class="mpls-status-led mpls-led-ok"   cx="-10" cy="-2" r="3.5"/>
+                <circle class="mpls-status-led mpls-led-ok"   cx="2"   cy="-2" r="3.5"/>
+                <circle class="mpls-status-led mpls-led-idle" cx="14"  cy="-2" r="3.5"/>
+                <rect x="-23" y="5"  width="12" height="7" rx=".8" fill="none" stroke="#e0aa4a" stroke-width="0.7" stroke-opacity="0.5"/>
+                <line x1="-17" y1="5" x2="-17" y2="12" stroke="#e0aa4a" stroke-width="0.4" stroke-opacity="0.3"/>
+                <rect x="-26" y="-14" width="1.5" height="4" rx=".3" fill="#e0aa4a" fill-opacity="0.22"/>
+                <rect x="24.5" y="-14" width="1.5" height="4" rx=".3" fill="#e0aa4a" fill-opacity="0.22"/>
+                <rect x="-26" y="12" width="52" height="2.5" rx="1.2" fill="#e0aa4a" fill-opacity="0.18"/>
                 <text class="mpls-node-label" x="-30" y="4" text-anchor="end">RTU1</text>
                 <text class="mpls-node-ip"   x="-30" y="17" text-anchor="end">192.168.30.7</text>
             </g>
 
             <!-- RTU2 at (820, 475) -->
             <g class="mpls-node mpls-node-rtu" transform="translate(820, 475)">
-                <rect class="mpls-chassis mpls-rtu-chassis" x="-26" y="-16" width="52" height="32" rx="4"/>
-                <circle class="mpls-status-led mpls-led-ok"   cx="-10" cy="-2" r="4"/>
-                <circle class="mpls-status-led mpls-led-ok"   cx="2"   cy="-2" r="4"/>
-                <circle class="mpls-status-led mpls-led-idle" cx="14"  cy="-2" r="4"/>
-                <rect x="-22" y="7" width="10" height="6" fill="#5a5a6a" rx="1"/>
+                <rect class="mpls-chassis mpls-rtu-chassis" x="-26" y="-16" width="52" height="32" rx="3"/>
+                <rect x="-25" y="-15" width="50" height="1" rx=".3" fill="white" fill-opacity="0.07"/>
+                <rect x="-23" y="-12.5" width="30" height="1.1" rx=".3" fill="#e0aa4a" fill-opacity="0.14"/>
+                <circle cx="-19"   cy="-11.8" r="1" fill="#e0aa4a" fill-opacity="0.9"/>
+                <circle cx="-15.5" cy="-11.8" r="1" fill="#e0aa4a" fill-opacity="0.45"/>
+                <circle cx="-12"   cy="-11.8" r="1" fill="#e0aa4a" fill-opacity="0.2"/>
+                <circle class="mpls-status-led mpls-led-ok"   cx="-10" cy="-2" r="3.5"/>
+                <circle class="mpls-status-led mpls-led-ok"   cx="2"   cy="-2" r="3.5"/>
+                <circle class="mpls-status-led mpls-led-idle" cx="14"  cy="-2" r="3.5"/>
+                <rect x="-23" y="5"  width="12" height="7" rx=".8" fill="none" stroke="#e0aa4a" stroke-width="0.7" stroke-opacity="0.5"/>
+                <line x1="-17" y1="5" x2="-17" y2="12" stroke="#e0aa4a" stroke-width="0.4" stroke-opacity="0.3"/>
+                <rect x="-26" y="-14" width="1.5" height="4" rx=".3" fill="#e0aa4a" fill-opacity="0.22"/>
+                <rect x="24.5" y="-14" width="1.5" height="4" rx=".3" fill="#e0aa4a" fill-opacity="0.22"/>
+                <rect x="-26" y="12" width="52" height="2.5" rx="1.2" fill="#e0aa4a" fill-opacity="0.18"/>
                 <text class="mpls-node-label" x="30" y="4" text-anchor="start">RTU2</text>
                 <text class="mpls-node-ip"   x="30" y="17" text-anchor="start">192.168.30.6</text>
             </g>
@@ -1931,6 +2067,32 @@
         </svg>
 
         <!-- Protocol / node type info bar -->
+        <!-- ═══════════════════════════════════════════════════════════
+             FAULT SIMULATION PANEL
+             Manually isolate ACCESS1-1 to observe rerouting + grid impact
+             ═══════════════════════════════════════════════════════════ -->
+        <div class="mpls-sim-panel" id="mpls-sim-panel">
+            <div class="mpls-sim-header">
+                <span class="mpls-sim-label">Fault Simulation</span>
+                <span class="mpls-sim-badge mpls-sim-badge-inactive" id="mpls-sim-badge">INACTIVE</span>
+                <span class="mpls-sim-hint">Toggle link failures to observe network rerouting &amp; grid impact</span>
+            </div>
+            <button class="mpls-sim-btn" id="mpls-sim-a11-btn" aria-pressed="false" type="button">
+                <span class="mpls-sim-btn-icon">⏻</span>
+                <span class="mpls-sim-btn-text">
+                    <span class="mpls-sim-btn-name">ACCESS1-1 Node Isolation</span>
+                    <span class="mpls-sim-btn-desc">Faults all 3 links: SR1-ACC1 ↔ ACCESS1-1 &nbsp;·&nbsp; ACCESS1-1 ↔ ACCESS1-2 &nbsp;·&nbsp; ACCESS1-1 ↔ RTU1</span>
+                </span>
+                <span class="mpls-sim-btn-state" id="mpls-sim-a11-state">OFF</span>
+            </button>
+            <div class="mpls-sim-status" id="mpls-sim-status" style="display:none">
+                <span class="mpls-sim-status-icon">⚠</span>
+                <span>ACCESS1-1 isolated — RTU1 unreachable · GOOSE comm loss · city grid offline</span>
+                <button class="mpls-sim-clear-btn" id="mpls-sim-clear-btn" type="button">CLEAR FAULT</button>
+            </div>
+            <div class="mpls-sim-net-row" id="mpls-sim-net-row" style="display:none"></div>
+        </div>
+
         <div class="mpls-info-bar">
             <div class="mpls-info-card mpls-info-core">
                 <span class="mpls-info-label">CORE — SR-1</span>

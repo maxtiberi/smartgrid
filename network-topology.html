@@ -1,0 +1,1815 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>IP/MPLS Topology — 3-Node Core</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+<style>
+  :root{
+    --bg:        #07090c;
+    --bg-2:      #0b0f14;
+    --panel:     #0e1419;
+    --panel-2:   #131b22;
+    --line:      #1a242d;
+    --line-2:    #243240;
+    --ink:       #d7e3ee;
+    --ink-dim:   #7a8a99;
+    --ink-mute:  #4a5764;
+    --accent:    #5ce1c2;  /* teal — link up */
+    --accent-2:  #f0c674;  /* amber — selected */
+    --warn:      #ff6b6b;
+    --grid:      rgba(92, 225, 194, 0.05);
+    --grid-bold: rgba(92, 225, 194, 0.10);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Space Grotesk",system-ui,sans-serif;overflow:hidden}
+
+  /* ============ LAYOUT ============ */
+  .app{
+    display:grid;
+    grid-template-columns: 240px 1fr 280px;
+    grid-template-rows: 52px 1fr 28px;
+    height:100vh;
+    min-width:0;
+  }
+  @media (max-width: 1280px){
+    .app{ grid-template-columns: 220px 1fr 260px; }
+  }
+  @media (max-width: 1080px){
+    .app{ grid-template-columns: 200px 1fr 240px; }
+  }
+  .topbar{
+    grid-column:1 / -1;
+    display:flex; align-items:center; gap:24px;
+    padding:0 20px;
+    background:var(--bg-2);
+    border-bottom:1px solid var(--line);
+    font-family:"JetBrains Mono",monospace;
+    font-size:12px;
+  }
+  .brand{
+    display:flex;align-items:center;gap:10px;
+    font-weight:600; letter-spacing:.08em; text-transform:uppercase;
+  }
+  .brand .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--accent);
+    box-shadow:0 0 8px var(--accent);
+    animation:pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{opacity:1; box-shadow:0 0 8px var(--accent)}
+    50%{opacity:.5; box-shadow:0 0 4px var(--accent)}
+  }
+  .brand .name{color:var(--ink)}
+  .brand .sub{color:var(--ink-dim); margin-left:6px}
+
+  .crumbs{display:flex;gap:14px;color:var(--ink-dim)}
+  .crumbs .crumb{display:flex;align-items:center;gap:6px}
+  .crumbs .crumb.active{color:var(--ink)}
+  .crumbs .sep{color:var(--ink-mute)}
+
+  .topbar .spacer{flex:1}
+
+  .meta{display:flex;gap:18px;color:var(--ink-dim)}
+  .meta b{color:var(--ink);font-weight:500}
+  .meta .live{color:var(--accent)}
+
+  /* ============ LEFT PANEL ============ */
+  .left{
+    background:var(--panel);
+    border-right:1px solid var(--line);
+    overflow-y:auto;
+    padding:18px 16px 24px;
+  }
+  .sec-label{
+    font-family:"JetBrains Mono",monospace;
+    font-size:10px; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--ink-mute);
+    margin:18px 0 10px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .sec-label::after{content:"";flex:1;height:1px;background:var(--line)}
+  .sec-label:first-child{margin-top:0}
+
+  .palette{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .tile{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px;
+    cursor:grab;
+    transition:border-color .15s, transform .15s;
+    user-select:none;
+  }
+  .tile:hover{border-color:var(--line-2); transform:translateY(-1px)}
+  .tile:active{cursor:grabbing}
+  .tile .glyph{width:32px;height:32px;margin-bottom:6px}
+  .tile .t-name{font-size:11px; color:var(--ink); font-weight:500}
+  .tile .t-sub{font-size:10px; color:var(--ink-dim); font-family:"JetBrains Mono",monospace}
+
+  .nodes-list{display:flex;flex-direction:column;gap:10px}
+  .role-group{display:flex;flex-direction:column;gap:3px}
+  .rg-h{
+    font-family:"JetBrains Mono",monospace;
+    font-size:9px; letter-spacing:.14em; color:var(--ink-mute);
+    text-transform:uppercase;
+    padding:0 4px 2px;
+  }
+  .nrow{
+    display:flex;align-items:center;gap:10px;
+    background:transparent;
+    border:1px solid transparent;
+    border-radius:6px;
+    padding:6px 8px;
+    cursor:pointer;
+    transition:background .12s, border-color .12s;
+  }
+  .nrow.muted .ico{color:var(--ink-dim)}
+  .nrow.muted .badge{color:var(--ink-dim); background:rgba(122,138,153,.08); border-color:rgba(122,138,153,.2)}
+  .nrow:hover{background:var(--panel-2)}
+  .nrow.active{background:var(--panel-2); border-color:var(--line-2)}
+  .nrow .ico{
+    width:24px;height:24px;display:grid;place-items:center;
+    color:var(--accent); flex-shrink:0;
+  }
+  .nrow .nl{flex:1; min-width:0}
+  .nrow .nl .nm{font-size:13px; font-weight:500; color:var(--ink)}
+  .nrow .nl .lp{font-size:10.5px; color:var(--ink-dim); font-family:"JetBrains Mono",monospace}
+  .nrow .badge{
+    font-family:"JetBrains Mono",monospace;
+    font-size:9px;
+    color:var(--accent);
+    background:rgba(92,225,194,.08);
+    border:1px solid rgba(92,225,194,.18);
+    padding:2px 5px;
+    border-radius:3px;
+  }
+
+  .legend{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+  .lg{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--ink-dim)}
+  .lg .swatch{width:16px;height:3px;border-radius:2px}
+  .lg .swatch.up{background:var(--accent); box-shadow:0 0 6px var(--accent)}
+  .lg .swatch.sel{background:var(--accent-2)}
+  .lg .swatch.proto{background:repeating-linear-gradient(90deg, var(--ink-mute) 0 3px, transparent 3px 6px)}
+
+  /* ============ CANVAS ============ */
+  .canvas-wrap{
+    position:relative;
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(92,225,194,.04), transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(240,198,116,.03), transparent 55%),
+      var(--bg);
+    overflow:hidden;
+  }
+  .grid-bg{
+    position:absolute; inset:0;
+    background-image:
+      linear-gradient(to right, var(--grid) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid) 1px, transparent 1px),
+      linear-gradient(to right, var(--grid-bold) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid-bold) 1px, transparent 1px);
+    background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px;
+    pointer-events:none;
+  }
+  .canvas-frame{
+    position:absolute; inset:14px;
+    border:1px dashed var(--line);
+    pointer-events:none;
+    border-radius:2px;
+  }
+  .canvas-frame::before, .canvas-frame::after,
+  .corners::before, .corners::after{
+    content:""; position:absolute;
+    width:12px; height:12px;
+    border:1px solid var(--accent);
+  }
+  .canvas-frame::before{top:-1px; left:-1px; border-right:none; border-bottom:none}
+  .canvas-frame::after{top:-1px; right:-1px; border-left:none; border-bottom:none}
+  .corners::before{bottom:-1px; left:-1px; border-right:none; border-top:none}
+  .corners::after{bottom:-1px; right:-1px; border-left:none; border-top:none}
+  .corners{position:absolute;inset:14px;pointer-events:none}
+
+  .canvas-meta{
+    position:absolute; top:18px; left:24px;
+    font-family:"JetBrains Mono",monospace; font-size:10px;
+    color:var(--ink-mute); letter-spacing:.12em; text-transform:uppercase;
+    pointer-events:none;
+  }
+  .canvas-meta .l{color:var(--ink-dim)}
+
+  .canvas-meta-r{
+    position:absolute; top:18px; right:24px;
+    font-family:"JetBrains Mono",monospace; font-size:10px;
+    color:var(--ink-mute); letter-spacing:.12em;
+    display:flex; gap:14px;
+    pointer-events:none;
+  }
+  @media (max-width: 1280px){ .canvas-meta-r{display:none} }
+  .canvas-meta-r .k{color:var(--ink-dim)}
+
+  .stage{
+    position:absolute; inset:0;
+    cursor: default;
+  }
+  .stage.panning{cursor:grabbing}
+
+  svg.links{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    pointer-events:none;
+  }
+  .link-base{
+    stroke:var(--line-2);
+    stroke-width:1.5;
+    fill:none;
+  }
+  .link-glow{
+    stroke:var(--accent);
+    stroke-width:2;
+    fill:none;
+    opacity:.85;
+    filter:drop-shadow(0 0 4px rgba(92,225,194,.6));
+  }
+  .link-flow{
+    stroke:var(--accent);
+    stroke-width:2;
+    stroke-dasharray:6 10;
+    fill:none;
+    opacity:.9;
+    animation:flow 1.2s linear infinite;
+  }
+  @keyframes flow{ to { stroke-dashoffset:-32 } }
+  .link.selected .link-glow{stroke:var(--accent-2); filter:drop-shadow(0 0 6px rgba(240,198,116,.7))}
+  .link.selected .link-flow{stroke:var(--accent-2)}
+
+  .link-hit{
+    stroke:transparent;
+    stroke-width:18;
+    fill:none;
+    pointer-events:stroke;
+    cursor:pointer;
+  }
+  .link-label{
+    font-family:"JetBrains Mono", monospace;
+    font-size:10px;
+    fill:var(--ink);
+    pointer-events:none;
+  }
+  .link-label-bg{
+    fill:var(--bg-2);
+    stroke:var(--line-2);
+    stroke-width:1;
+    pointer-events:none;
+  }
+  .link-label-sub{
+    font-family:"JetBrains Mono", monospace;
+    font-size:9px;
+    fill:var(--accent);
+    pointer-events:none;
+  }
+
+  /* nodes */
+  .node{
+    position:absolute;
+    width:118px;
+    transform:translate(-50%,-50%);
+    cursor:grab;
+    user-select:none;
+  }
+  .node.dragging{cursor:grabbing; z-index:20}
+  .node-card{
+    position:relative;
+    background:rgba(14,20,25,.72);
+    border:1px solid rgba(92,225,194,.15);
+    border-radius:10px;
+    padding:8px 10px;
+    transition:border-color .2s, box-shadow .2s;
+    display:flex; align-items:center; gap:8px;
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    box-shadow:inset 0 1px 0 rgba(92,225,194,.08), 0 4px 16px rgba(0,0,0,.4);
+  }
+  .node:hover .node-card{
+    border-color:rgba(92,225,194,.4);
+    box-shadow:inset 0 1px 0 rgba(92,225,194,.14), 0 4px 20px rgba(0,0,0,.5);
+  }
+  .node.selected .node-card{
+    border-color:var(--accent-2);
+    box-shadow:0 0 0 1px var(--accent-2), 0 0 24px rgba(240,198,116,.15), inset 0 1px 0 rgba(240,198,116,.1);
+  }
+
+  .node-head{
+    display:flex; align-items:center; gap:8px;
+    flex:1; min-width:0;
+  }
+  .node-ico{
+    width:24px;height:24px;
+    flex-shrink:0;
+    color:var(--accent);
+  }
+  .node.muted .node-ico{color:var(--ink-dim)}
+  .node.muted .node-card{border-color:rgba(74,87,100,.2); box-shadow:none}
+  .node.selected .node-ico{color:var(--accent-2)}
+
+  .node-titles{flex:1; min-width:0}
+  .node-name{
+    font-family:"Space Grotesk",sans-serif;
+    font-weight:600; font-size:11.5px;
+    color:var(--ink);
+    line-height:1.1;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .node-role{
+    font-family:"JetBrains Mono", monospace;
+    font-size:8.5px; color:var(--ink-dim);
+    letter-spacing:.08em; text-transform:uppercase;
+    margin-top:1px;
+  }
+
+  .node-body{ display:none; }
+
+  .status-pill{
+    position:absolute; top:-4px; right:-4px;
+    width:8px; height:8px; border-radius:50%;
+    background:var(--accent); box-shadow:0 0 6px var(--accent);
+    border:1.5px solid var(--bg);
+    padding:0;
+  }
+  .status-pill .d{display:none}
+  .node.muted .status-pill{background:var(--ink-dim); box-shadow:0 0 4px var(--ink-dim)}
+
+  .port-anchor{
+    position:absolute;
+    width:6px; height:6px; border-radius:50%;
+    background:var(--bg);
+    border:1px solid var(--accent);
+    box-shadow:0 0 4px var(--accent);
+    pointer-events:none;
+  }
+
+  /* ============ RIGHT INSPECTOR ============ */
+  .right{
+    background:var(--panel);
+    border-left:1px solid var(--line);
+    overflow-y:auto;
+    padding:18px 18px 24px;
+  }
+  .insp-h{
+    display:flex; align-items:center; gap:10px;
+    margin-bottom:14px;
+  }
+  .insp-h .ic{width:36px;height:36px;color:var(--accent)}
+  .insp-h.sel .ic{color:var(--accent-2)}
+  .insp-h .t{font-size:16px; font-weight:600; color:var(--ink)}
+  .insp-h .s{font-family:"JetBrains Mono",monospace; font-size:10px; color:var(--ink-dim); letter-spacing:.1em; text-transform:uppercase; margin-top:2px}
+
+  .kv{
+    display:grid; grid-template-columns: 1fr auto;
+    gap:8px 12px;
+    font-size:12px;
+    margin-bottom:18px;
+  }
+  .kv .k{color:var(--ink-dim); font-family:"JetBrains Mono",monospace; font-size:11px}
+  .kv .v{color:var(--ink); text-align:right; font-family:"JetBrains Mono",monospace; font-size:11px}
+  .kv .v.ok{color:var(--accent)}
+  .kv .v.warn{color:var(--accent-2)}
+
+  .iface-list{display:flex; flex-direction:column; gap:6px; margin-bottom:18px}
+  .iface{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:8px 10px;
+    font-family:"JetBrains Mono", monospace;
+    font-size:10.5px;
+  }
+  .iface .top{display:flex; justify-content:space-between; align-items:center}
+  .iface .nm{color:var(--ink); font-weight:500}
+  .iface .stat{display:flex; align-items:center; gap:5px; color:var(--accent); font-size:9px; letter-spacing:.1em}
+  .iface .stat .d{width:5px;height:5px;border-radius:50%; background:var(--accent); box-shadow:0 0 4px var(--accent)}
+  .iface .desc{color:var(--ink-dim); margin-top:3px; font-size:9.5px}
+  .iface .met{display:flex; gap:12px; color:var(--ink-dim); margin-top:5px; font-size:9.5px}
+  .iface .met b{color:var(--ink); font-weight:500}
+
+  .empty{
+    color:var(--ink-dim);
+    font-size:12px;
+    line-height:1.5;
+    padding:20px 0;
+    text-align:center;
+  }
+  .empty .ic{width:40px;height:40px;color:var(--ink-mute); margin:0 auto 10px; display:block}
+  .empty kbd{
+    font-family:"JetBrains Mono",monospace;
+    background:var(--panel-2); border:1px solid var(--line-2);
+    padding:1px 5px; border-radius:3px; font-size:10px;
+    color:var(--ink);
+  }
+
+  /* ============ STATUSBAR ============ */
+  .statusbar{
+    grid-column:1 / -1;
+    background:var(--bg-2);
+    border-top:1px solid var(--line);
+    display:flex; align-items:center; gap:24px;
+    padding:0 20px;
+    font-family:"JetBrains Mono",monospace;
+    font-size:10px;
+    color:var(--ink-dim);
+    letter-spacing:.08em;
+  }
+  .statusbar .item{display:flex; align-items:center; gap:6px}
+  .statusbar .item b{color:var(--ink); font-weight:500}
+  .statusbar .item .dt{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 4px var(--accent)}
+  .statusbar .spacer{flex:1}
+
+  /* ============ TWEAKS PANEL ============ */
+  .tweaks{
+    position:absolute; bottom:46px; right:340px;
+    width:260px;
+    background:var(--panel);
+    border:1px solid var(--line-2);
+    border-radius:10px;
+    padding:14px;
+    z-index:30;
+    box-shadow:0 8px 32px rgba(0,0,0,.5);
+    display:none;
+  }
+  .tweaks.open{display:block}
+  .tweaks h4{
+    margin:0 0 12px;
+    font-family:"JetBrains Mono",monospace; font-size:10px; letter-spacing:.15em;
+    color:var(--ink-mute); text-transform:uppercase;
+    display:flex; align-items:center; gap:8px;
+  }
+  .tweaks h4::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  .tw-row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; font-size:11.5px}
+  .tw-row .lab{color:var(--ink-dim)}
+  .tw-row input[type=range]{flex:1; max-width:120px}
+  .tw-toggle{
+    display:inline-flex; background:var(--panel-2); border:1px solid var(--line);
+    border-radius:5px; padding:2px;
+  }
+  .tw-toggle button{
+    background:transparent; border:0; color:var(--ink-dim);
+    padding:3px 8px; border-radius:3px; cursor:pointer; font-size:10px;
+    font-family:"JetBrains Mono",monospace;
+  }
+  .tw-toggle button.on{background:var(--accent); color:var(--bg)}
+
+  .canvas-toolbar{
+    position:absolute; bottom:18px; left:50%; transform:translateX(-50%);
+    background:var(--panel);
+    border:1px solid var(--line-2);
+    border-radius:8px;
+    display:flex; align-items:center;
+    padding:4px;
+    gap:2px;
+    z-index:5;
+    box-shadow:0 4px 16px rgba(0,0,0,.4);
+  }
+  .canvas-toolbar button{
+    background:transparent; border:0;
+    color:var(--ink-dim);
+    padding:8px 10px;
+    border-radius:5px;
+    cursor:pointer;
+    display:flex; align-items:center; gap:6px;
+    font-family:"JetBrains Mono",monospace; font-size:10.5px;
+    transition:background .12s, color .12s;
+  }
+  .canvas-toolbar button:hover{background:var(--panel-2); color:var(--ink)}
+  .canvas-toolbar button svg{width:14px;height:14px}
+  .canvas-toolbar .div{width:1px; height:18px; background:var(--line); margin:0 2px}
+  .canvas-toolbar .zoom{font-family:"JetBrains Mono",monospace; font-size:10.5px; color:var(--ink); padding:0 8px}
+
+  .hint{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    background:var(--panel); border:1px solid var(--line-2);
+    padding:6px 12px; border-radius:4px;
+    font-family:"JetBrains Mono",monospace; font-size:10px;
+    color:var(--ink-dim);
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .3s;
+  }
+  .hint.show{opacity:1}
+
+  /* ============ YAML DRAWER ============ */
+  .yaml-drawer{
+    position:absolute;
+    top:14px; bottom:64px; right:14px;
+    width:480px; max-width: calc(100% - 28px);
+    background:var(--panel);
+    border:1px solid var(--line-2);
+    border-radius:10px;
+    z-index:25;
+    display:flex; flex-direction:column;
+    transform: translateX(calc(100% + 28px));
+    opacity:0;
+    transition: transform .25s cubic-bezier(.2,.7,.2,1), opacity .2s;
+    box-shadow: 0 16px 48px rgba(0,0,0,.55), 0 0 0 1px rgba(92,225,194,.04);
+    pointer-events:none;
+  }
+  .yaml-drawer.open{ transform: translateX(0); opacity:1; pointer-events:auto; }
+  .yd-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 14px;
+    border-bottom:1px solid var(--line);
+  }
+  .yd-title{display:flex; align-items:center; gap:10px}
+  .yd-tag{
+    font-family:"JetBrains Mono",monospace; font-size:9px; letter-spacing:.18em;
+    color:var(--accent); background:rgba(92,225,194,.08); border:1px solid rgba(92,225,194,.2);
+    padding:2px 6px; border-radius:3px;
+  }
+  .yd-name{
+    font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--ink); font-weight:500;
+  }
+  .yd-actions{display:flex; gap:4px}
+  .yd-actions button{
+    background:transparent; border:1px solid var(--line-2); color:var(--ink-dim);
+    font-family:"JetBrains Mono",monospace; font-size:10.5px;
+    padding:5px 9px; border-radius:4px; cursor:pointer;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .yd-actions button:hover{background:var(--panel-2); color:var(--ink); border-color:#2e3e4e}
+  .yd-actions button.primary{
+    background:rgba(92,225,194,.1); color:var(--accent); border-color:rgba(92,225,194,.35);
+  }
+  .yd-actions button.primary:hover{background:rgba(92,225,194,.16); color:var(--accent)}
+  .yd-status{
+    padding:7px 14px;
+    font-family:"JetBrains Mono",monospace; font-size:10px;
+    color:var(--ink-dim); letter-spacing:.06em;
+    border-bottom:1px solid var(--line);
+    background:var(--bg-2);
+  }
+  .yd-status.ok{color:var(--accent)}
+  .yd-status.err{color:var(--warn)}
+  .yd-body{
+    flex:1; display:flex;
+    overflow:hidden;
+    background:var(--bg-2);
+  }
+  .yd-gutter{
+    width:38px; flex-shrink:0;
+    padding:10px 6px 10px 0;
+    font-family:"JetBrains Mono",monospace; font-size:11px;
+    line-height:1.55;
+    color:var(--ink-mute);
+    text-align:right;
+    background:var(--bg);
+    border-right:1px solid var(--line);
+    overflow:hidden;
+    user-select:none;
+  }
+  #yd-text{
+    flex:1; min-width:0;
+    background:transparent;
+    color:var(--ink);
+    border:0; outline:0; resize:none;
+    padding:10px 14px;
+    font-family:"JetBrains Mono",monospace; font-size:11.5px; line-height:1.55;
+    white-space:pre;
+    tab-size:2;
+  }
+  .yd-foot{
+    display:flex; justify-content:space-between;
+    padding:8px 14px;
+    font-family:"JetBrains Mono",monospace; font-size:9.5px;
+    color:var(--ink-mute); letter-spacing:.08em;
+    border-top:1px solid var(--line);
+  }
+  .yd-foot code{color:var(--ink-dim)}
+
+  /* scrollbar */
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--line-2); border-radius:4px}
+  ::-webkit-scrollbar-thumb:hover{background:#2e3e4e}
+</style>
+</head>
+<body>
+
+<!-- ============ SVG ICON DEFS ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- Style E: Dense Port Matrix — P-router (1U single chassis) -->
+    <symbol id="i-router" viewBox="0 0 32 32">
+      <rect x="1" y="8" width="30" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/>
+      <rect x="3" y="10" width="26" height="1.8" rx=".5" fill="currentColor" opacity=".15"/>
+      <circle cx="5"  cy="10.9" r=".8" fill="currentColor"/>
+      <circle cx="8"  cy="10.9" r=".8" fill="currentColor" opacity=".5"/>
+      <circle cx="11" cy="10.9" r=".8" fill="currentColor" opacity=".5"/>
+      <circle cx="14" cy="10.9" r=".8" fill="currentColor" opacity=".3"/>
+      <rect x="3"    y="13.5" width="3.5" height="2.5" rx=".5" fill="currentColor" opacity=".45"/>
+      <rect x="7.5"  y="13.5" width="3.5" height="2.5" rx=".5" fill="currentColor" opacity=".45"/>
+      <rect x="12"   y="13.5" width="3.5" height="2.5" rx=".5" fill="currentColor" opacity=".45"/>
+      <rect x="16.5" y="13.5" width="3.5" height="2.5" rx=".5" fill="currentColor" opacity=".45"/>
+      <rect x="21.5" y="13"   width="5"   height="4"   rx=".8" fill="none" stroke="currentColor" stroke-width="1" opacity=".7"/>
+      <line x1="24" y1="13" x2="24" y2="17" stroke="currentColor" stroke-width=".6" opacity=".4"/>
+      <rect x="27.5" y="10" width="2.5" height="2" rx=".3" fill="none" stroke="currentColor" stroke-width=".9" opacity=".5"/>
+      <rect x="3"  y="18" width="2" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+      <rect x="6"  y="18" width="2" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+      <rect x="9"  y="18" width="2" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+      <rect x="12" y="18" width="2" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+      <rect x="15" y="18" width="2" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+      <rect x="18" y="18" width="2" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+      <rect x="1"    y="9" width="1.5" height="3" rx=".4" fill="currentColor" opacity=".3"/>
+      <rect x="29.5" y="9" width="1.5" height="3" rx=".4" fill="currentColor" opacity=".3"/>
+      <path d="M7 8 V5 M16 8 V5 M25 8 V5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".7"/>
+      <path d="M5.8 5.8 L7 5 L8.2 5.8"   stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
+      <path d="M14.8 5.8 L16 5 L17.2 5.8" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
+      <path d="M7 24 V27 M16 24 V27 M25 24 V27" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".7"/>
+      <path d="M5.8 26.2 L7 27 L8.2 26.2"   stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
+      <path d="M14.8 26.2 L16 27 L17.2 26.2" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
+    </symbol>
+
+    <!-- Style E: Dense Port Matrix — PE-router (2U dual chassis) -->
+    <symbol id="i-pe-router" viewBox="0 0 32 32">
+      <rect x="1" y="5"  width="30" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <rect x="1" y="17" width="30" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <circle cx="4"   cy="7" r=".8" fill="currentColor"/>
+      <circle cx="6.5" cy="7" r=".8" fill="currentColor" opacity=".5"/>
+      <circle cx="9"   cy="7" r=".8" fill="currentColor" opacity=".5"/>
+      <rect x="12"   y="6"   width="3.5" height="2.2" rx=".4" fill="currentColor" opacity=".4"/>
+      <rect x="16.5" y="6"   width="3.5" height="2.2" rx=".4" fill="currentColor" opacity=".4"/>
+      <rect x="21.5" y="5.8" width="4"   height="2.6" rx=".6" fill="none" stroke="currentColor" stroke-width=".9" opacity=".6"/>
+      <rect x="3"    y="9.5" width="2.5" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+      <rect x="6.5"  y="9.5" width="2.5" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+      <rect x="10"   y="9.5" width="2.5" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+      <rect x="13.5" y="9.5" width="2.5" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+      <circle cx="4"   cy="19" r=".8" fill="currentColor"/>
+      <circle cx="6.5" cy="19" r=".8" fill="currentColor" opacity=".4"/>
+      <rect x="9"    y="18"   width="3.5" height="2.2" rx=".4" fill="currentColor" opacity=".35"/>
+      <rect x="13.5" y="18"   width="3.5" height="2.2" rx=".4" fill="currentColor" opacity=".35"/>
+      <rect x="18.5" y="17.8" width="4"   height="2.6" rx=".6" fill="none" stroke="currentColor" stroke-width=".9" opacity=".55"/>
+      <rect x="3"   y="21.5" width="2.5" height="1.5" rx=".3" fill="currentColor" opacity=".2"/>
+      <rect x="6.5" y="21.5" width="2.5" height="1.5" rx=".3" fill="currentColor" opacity=".2"/>
+      <rect x="10"  y="21.5" width="2.5" height="1.5" rx=".3" fill="currentColor" opacity=".2"/>
+    </symbol>
+
+    <!-- Style E: Dense Port Matrix — Switch -->
+    <symbol id="i-switch" viewBox="0 0 32 32">
+      <rect x="1" y="10" width="30" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <rect x="3"    y="12.5" width="2.5" height="5" rx=".5" fill="currentColor" opacity=".4"/>
+      <rect x="6.5"  y="12.5" width="2.5" height="5" rx=".5" fill="currentColor" opacity=".4"/>
+      <rect x="10"   y="12.5" width="2.5" height="5" rx=".5" fill="currentColor" opacity=".4"/>
+      <rect x="13.5" y="12.5" width="2.5" height="5" rx=".5" fill="currentColor" opacity=".4"/>
+      <rect x="17"   y="12.5" width="2.5" height="5" rx=".5" fill="currentColor" opacity=".4"/>
+      <rect x="20.5" y="12.5" width="2.5" height="5" rx=".5" fill="currentColor" opacity=".4"/>
+      <circle cx="26" cy="15" r="1.2" fill="currentColor"/>
+      <circle cx="29" cy="15" r="1.2" fill="currentColor" opacity=".3"/>
+    </symbol>
+
+    <!-- Firewall -->
+    <symbol id="i-fw" viewBox="0 0 32 32">
+      <path d="M16 4 L26 8 V16 C26 22 21 26 16 28 C11 26 6 22 6 16 V8 Z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M12 16 L15 19 L20 13" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+
+    <!-- chevron -->
+    <symbol id="i-chev" viewBox="0 0 16 16">
+      <path d="M6 4 L10 8 L6 12" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-plus" viewBox="0 0 16 16">
+      <path d="M8 3 V13 M3 8 H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-minus" viewBox="0 0 16 16">
+      <path d="M3 8 H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-fit" viewBox="0 0 16 16">
+      <path d="M3 6 V3 H6 M10 3 H13 V6 M13 10 V13 H10 M6 13 H3 V10" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-grid" viewBox="0 0 16 16">
+      <path d="M3 3 H13 V13 H3 Z M3 8 H13 M8 3 V13" stroke="currentColor" stroke-width="1.2" fill="none"/>
+    </symbol>
+    <symbol id="i-snap" viewBox="0 0 16 16">
+      <circle cx="4" cy="4" r="1" fill="currentColor"/>
+      <circle cx="8" cy="4" r="1" fill="currentColor"/>
+      <circle cx="12" cy="4" r="1" fill="currentColor"/>
+      <circle cx="4" cy="8" r="1" fill="currentColor"/>
+      <circle cx="8" cy="8" r="1.5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+      <circle cx="12" cy="8" r="1" fill="currentColor"/>
+      <circle cx="4" cy="12" r="1" fill="currentColor"/>
+      <circle cx="8" cy="12" r="1" fill="currentColor"/>
+      <circle cx="12" cy="12" r="1" fill="currentColor"/>
+    </symbol>
+    <symbol id="i-flow" viewBox="0 0 16 16">
+      <path d="M2 8 H14" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 2"/>
+      <path d="M11 5 L14 8 L11 11" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-info" viewBox="0 0 32 32">
+      <circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M16 14 V22 M16 10 V11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+
+    <!-- Server / container host (telemetry stack) -->
+    <symbol id="i-server" viewBox="0 0 32 32">
+      <rect x="5" y="5" width="22" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <rect x="5" y="13.5" width="22" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <rect x="5" y="22" width="22" height="5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="9" cy="8.5" r="0.9" fill="currentColor"/>
+      <circle cx="9" cy="17" r="0.9" fill="currentColor"/>
+      <circle cx="9" cy="24.5" r="0.9" fill="currentColor"/>
+      <path d="M14 8.5 H22 M14 17 H22 M14 24.5 H18" stroke="currentColor" stroke-width="1" opacity=".55"/>
+    </symbol>
+
+    <!-- RTU / IED endpoint (industrial controller) -->
+    <symbol id="i-rtu" viewBox="0 0 32 32">
+      <rect x="5" y="7" width="22" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <rect x="8" y="10" width="16" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1"/>
+      <circle cx="10" cy="20" r="1" fill="currentColor"/>
+      <circle cx="14" cy="20" r="1" fill="currentColor" opacity=".5"/>
+      <circle cx="18" cy="20" r="1" fill="currentColor" opacity=".5"/>
+      <path d="M22 20 H24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M11 4 V7 M21 4 V7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+    </symbol>
+
+    <!-- Cloud / DC region -->
+    <symbol id="i-dc" viewBox="0 0 32 32">
+      <path d="M9 22 H23 C26 22 28 20 28 17 C28 14 25 12 22 12.5 C21 8 17 6 13 8 C9 9 8 13 9 15 C6 15 4 17 4 19 C4 21 6 22 9 22 Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M12 17 H20 M12 19.5 H18" stroke="currentColor" stroke-width="1" opacity=".7"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="app">
+
+  <!-- ============ TOP BAR ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <span class="name">NOC // TOPOLOGY</span>
+      <span class="sub">v2.4</span>
+    </div>
+    <div class="crumbs">
+      <span class="crumb">EU-WEST</span>
+      <span class="sep">/</span>
+      <span class="crumb">CORE</span>
+      <span class="sep">/</span>
+      <span class="crumb active">MPLS-BACKBONE-01</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="meta">
+      <span>AS <b>65001</b></span>
+      <span>IGP <b>IS-IS L2</b></span>
+      <span>LDP <b>up</b></span>
+      <span>RSVP-TE <b>up</b></span>
+      <span class="live">● live</span>
+    </div>
+  </header>
+
+  <!-- ============ LEFT: PALETTE & NODES ============ -->
+  <aside class="left">
+    <div class="sec-label">Palette · drag to canvas</div>
+    <div class="palette" id="palette">
+      <div class="tile" data-add="P">
+        <svg class="glyph" style="color:var(--accent)"><use href="#i-router"/></svg>
+        <div class="t-name">P Router</div>
+        <div class="t-sub">core / MPLS-LSR</div>
+      </div>
+      <div class="tile" data-add="PE">
+        <svg class="glyph" style="color:var(--accent)"><use href="#i-pe-router"/></svg>
+        <div class="t-name">PE Router</div>
+        <div class="t-sub">edge / MPLS-LER</div>
+      </div>
+      <div class="tile" data-add="SW">
+        <svg class="glyph" style="color:var(--ink-dim)"><use href="#i-switch"/></svg>
+        <div class="t-name">Switch</div>
+        <div class="t-sub">L2 access</div>
+      </div>
+      <div class="tile" data-add="FW">
+        <svg class="glyph" style="color:var(--ink-dim)"><use href="#i-fw"/></svg>
+        <div class="t-name">Firewall</div>
+        <div class="t-sub">security</div>
+      </div>
+    </div>
+
+    <div class="sec-label nodes-h">Nodes</div>
+    <div class="nodes-list" id="nodes-list"></div>
+
+    <div class="sec-label">Legend</div>
+    <div class="legend">
+      <div class="lg"><span class="swatch up"></span><span>100G link · up</span></div>
+      <div class="lg"><span class="swatch sel"></span><span>Selected</span></div>
+      <div class="lg"><span class="swatch proto"></span><span>Protocol overlay</span></div>
+    </div>
+
+    <div class="sec-label">Source</div>
+    <div id="left-source" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-dim);line-height:1.7">
+      Loading <span style="color:var(--ink)">topology.yaml</span>…
+    </div>
+  </aside>
+  </aside>
+
+  <!-- ============ CANVAS ============ -->
+  <main class="canvas-wrap">
+    <div class="grid-bg" id="grid-bg"></div>
+    <div class="canvas-frame"></div>
+    <div class="corners"></div>
+
+    <div class="canvas-meta">
+      <span class="l">TOPOLOGY</span> · MPLS-BACKBONE-01 · FULL-MESH
+    </div>
+    <div class="canvas-meta-r">
+      <span><span class="k">GRID</span> 20 PX</span>
+      <span><span class="k">SNAP</span> ON</span>
+      <span><span class="k">LAT</span> 45.46 N · 9.18 E</span>
+    </div>
+
+    <div class="stage" id="stage">
+      <svg class="links" id="links-svg"></svg>
+      <div id="nodes-layer"></div>
+    </div>
+
+    <div class="canvas-toolbar">
+      <button id="btn-zoom-out" title="Zoom out"><svg><use href="#i-minus"/></svg></button>
+      <span class="zoom" id="zoom-val">100%</span>
+      <button id="btn-zoom-in" title="Zoom in"><svg><use href="#i-plus"/></svg></button>
+      <button id="btn-fit" title="Fit"><svg><use href="#i-fit"/></svg> FIT</button>
+      <span class="div"></span>
+      <button id="btn-snap" class="on" title="Snap to grid"><svg><use href="#i-snap"/></svg> SNAP</button>
+      <button id="btn-grid" class="on" title="Toggle grid"><svg><use href="#i-grid"/></svg> GRID</button>
+      <button id="btn-flow" class="on" title="Animate traffic"><svg><use href="#i-flow"/></svg> FLOW</button>
+      <span class="div"></span>
+      <button id="btn-yaml" title="YAML source">{ } YAML</button>
+      <button id="btn-tweaks" title="Tweaks">⚙ TWEAKS</button>
+    </div>
+
+    <div class="hint" id="hint">drag a router to reposition</div>
+
+    <!-- YAML DRAWER -->
+    <div class="yaml-drawer" id="yaml-drawer">
+      <div class="yd-head">
+        <div class="yd-title">
+          <span class="yd-tag">SOURCE</span>
+          <span class="yd-name">topology.yaml</span>
+        </div>
+        <div class="yd-actions">
+          <button id="yd-reload" title="Reload from disk">↻ reload</button>
+          <button id="yd-download" title="Download YAML">⤓ save</button>
+          <button id="yd-apply" class="primary" title="Apply edits (⌘↩)">apply ⌘↩</button>
+          <button id="yd-close" title="Close">✕</button>
+        </div>
+      </div>
+      <div class="yd-status" id="yd-status">loaded · 3 nodes · 3 links</div>
+      <div class="yd-body">
+        <div class="yd-gutter" id="yd-gutter"></div>
+        <textarea id="yd-text" spellcheck="false" wrap="off"></textarea>
+      </div>
+      <div class="yd-foot">
+        <span>schema: <code>network · nodes[] · links[]</code></span>
+        <span>edits redraw the canvas live</span>
+      </div>
+    </div>
+
+    <!-- TWEAKS PANEL -->
+    <div class="tweaks" id="tweaks">
+      <h4>TWEAKS</h4>
+      <div class="tw-row">
+        <span class="lab">Grid size</span>
+        <input type="range" min="10" max="40" step="5" value="20" id="tw-grid">
+      </div>
+      <div class="tw-row">
+        <span class="lab">Link style</span>
+        <span class="tw-toggle" id="tw-link-style">
+          <button data-v="straight" class="on">straight</button>
+          <button data-v="curve">curve</button>
+        </span>
+      </div>
+      <div class="tw-row">
+        <span class="lab">Theme accent</span>
+        <span class="tw-toggle" id="tw-accent">
+          <button data-v="#5ce1c2" class="on" style="background:#5ce1c2"></button>
+          <button data-v="#8b9cff" style="background:#8b9cff"></button>
+          <button data-v="#f0c674" style="background:#f0c674"></button>
+        </span>
+      </div>
+      <div class="tw-row">
+        <span class="lab">Show ports</span>
+        <span class="tw-toggle" id="tw-ports">
+          <button data-v="1" class="on">on</button>
+          <button data-v="0">off</button>
+        </span>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ============ RIGHT INSPECTOR ============ -->
+  <aside class="right" id="inspector">
+    <!-- populated by JS -->
+  </aside>
+
+  <!-- ============ STATUS BAR ============ -->
+  <footer class="statusbar">
+    <span class="item"><span class="dt"></span> ROUTERS <b>3/3 UP</b></span>
+    <span class="item">LINKS <b>3/3 UP</b></span>
+    <span class="item">CAPACITY <b>300 G</b></span>
+    <span class="item">UTILIZATION <b>34%</b></span>
+    <span class="spacer"></span>
+    <span class="item">LAST SYNC <b>12 MAY 2026 · 14:32:07 UTC</b></span>
+    <span class="item">USER <b>noc-operator</b></span>
+  </footer>
+
+</div>
+
+<script>
+/* ============================================================
+   STATE
+============================================================ */
+const state = {
+  nodes: [],
+  links: [],
+  network: {},
+  selection: { type:null, id:null },
+  zoom: 1,
+  pan: {x:0, y:0},
+  grid: 20,
+  snap: true,
+  flow: true,
+  showGrid: true,
+  showPorts: true,
+  linkStyle: "straight"
+};
+
+/* ============================================================
+   RENDER
+============================================================ */
+const nodesLayer = document.getElementById('nodes-layer');
+const linksSvg = document.getElementById('links-svg');
+const nodesList = document.getElementById('nodes-list');
+const inspector = document.getElementById('inspector');
+
+function findNode(id){ return state.nodes.find(n=>n.id===id) }
+
+function renderNodes(){
+  nodesLayer.innerHTML = "";
+  state.nodes.forEach(n=>{
+    const el = document.createElement('div');
+    el.className = 'node n-' + (n.role||'').toLowerCase() + (state.selection.type==='node' && state.selection.id===n.id ? ' selected' : '') + (n.accent === false ? ' muted' : '');
+    el.dataset.id = n.id;
+    el.style.left = n.x + 'px';
+    el.style.top  = n.y + 'px';
+    const icon = n.icon || 'i-router';
+    el.innerHTML = `
+      <div class="node-card">
+        <div class="status-pill"></div>
+        <div class="node-head">
+          <svg class="node-ico"><use href="#${icon}"/></svg>
+          <div class="node-titles">
+            <div class="node-name">${n.name}</div>
+            <div class="node-role">${n.role} · ${n.id}</div>
+          </div>
+        </div>
+      </div>
+    `;
+    nodesLayer.appendChild(el);
+    bindNodeDrag(el, n);
+  });
+  renderPorts();
+}
+
+function renderPorts(){
+  // remove old port anchors
+  document.querySelectorAll('.port-anchor').forEach(el=>el.remove());
+  if(!state.showPorts) return;
+  state.links.forEach(L=>{
+    const A = findNode(L.a), B = findNode(L.b);
+    if(!A || !B) return;
+    [A, B].forEach((N, idx)=>{
+      const dot = document.createElement('div');
+      dot.className = 'port-anchor';
+      // place at node center; visually it will overlap card edge based on connection direction
+      const other = idx===0 ? B : A;
+      const dx = other.x - N.x, dy = other.y - N.y;
+      const len = Math.hypot(dx,dy) || 1;
+      const r = 56; // ~half card width
+      const px = N.x + (dx/len)*r;
+      const py = N.y + (dy/len)*22;
+      dot.style.left = (px-3)+'px';
+      dot.style.top  = (py-3)+'px';
+      nodesLayer.appendChild(dot);
+    });
+  });
+}
+
+function renderLinks(){
+  linksSvg.innerHTML = "";
+  state.links.forEach(L=>{
+    const A = findNode(L.a), B = findNode(L.b);
+    if(!A || !B) return;
+    const isSel = state.selection.type==='link' && state.selection.id===L.id;
+
+    const g = document.createElementNS("http://www.w3.org/2000/svg","g");
+    g.classList.add('link');
+    if(isSel) g.classList.add('selected');
+    g.dataset.id = L.id;
+
+    let d;
+    if(state.linkStyle === 'curve'){
+      const mx = (A.x+B.x)/2, my = (A.y+B.y)/2;
+      const dx = B.x-A.x, dy = B.y-A.y;
+      const len = Math.hypot(dx,dy) || 1;
+      const nx = -dy/len * 60, ny = dx/len * 60;
+      d = `M${A.x},${A.y} Q${mx+nx},${my+ny} ${B.x},${B.y}`;
+    } else {
+      d = `M${A.x},${A.y} L${B.x},${B.y}`;
+    }
+
+    // base
+    const base = document.createElementNS("http://www.w3.org/2000/svg","path");
+    base.setAttribute("d", d);
+    base.setAttribute("class","link-base");
+    g.appendChild(base);
+
+    // glow
+    const glow = document.createElementNS("http://www.w3.org/2000/svg","path");
+    glow.setAttribute("d", d);
+    glow.setAttribute("class","link-glow");
+    g.appendChild(glow);
+
+    // flow animation
+    if(state.flow){
+      const fl = document.createElementNS("http://www.w3.org/2000/svg","path");
+      fl.setAttribute("d", d);
+      fl.setAttribute("class","link-flow");
+      g.appendChild(fl);
+    }
+
+    // hit area
+    const hit = document.createElementNS("http://www.w3.org/2000/svg","path");
+    hit.setAttribute("d", d);
+    hit.setAttribute("class","link-hit");
+    hit.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      state.selection = { type:'link', id:L.id };
+      renderAll();
+    });
+    g.appendChild(hit);
+
+    // label
+    const mx = (A.x+B.x)/2, my = (A.y+B.y)/2;
+    const bg = document.createElementNS("http://www.w3.org/2000/svg","rect");
+    const hasSub = L.subnet && L.subnet !== '—';
+    bg.setAttribute("x", mx-30);
+    bg.setAttribute("y", my - (hasSub ? 16 : 10));
+    bg.setAttribute("width", 60);
+    bg.setAttribute("height", hasSub ? 32 : 20);
+    bg.setAttribute("rx", 4);
+    bg.setAttribute("class","link-label-bg");
+    g.appendChild(bg);
+
+    const t1 = document.createElementNS("http://www.w3.org/2000/svg","text");
+    t1.setAttribute("x", mx);
+    t1.setAttribute("y", L.subnet && L.subnet !== '—' ? my-3 : my+3);
+    t1.setAttribute("text-anchor","middle");
+    t1.setAttribute("class","link-label");
+    t1.textContent = `${L.speed}`;
+    g.appendChild(t1);
+
+    if(L.subnet && L.subnet !== '—'){
+      const t2 = document.createElementNS("http://www.w3.org/2000/svg","text");
+      t2.setAttribute("x", mx);
+      t2.setAttribute("y", my+10);
+      t2.setAttribute("text-anchor","middle");
+      t2.setAttribute("class","link-label-sub");
+      t2.textContent = `${L.subnet}`;
+      g.appendChild(t2);
+    }
+
+    linksSvg.appendChild(g);
+  });
+}
+
+function renderNodesList(){
+  // group by role for readability
+  const byRole = {};
+  state.nodes.forEach(n=>{
+    const k = n.role || 'NODE';
+    (byRole[k] = byRole[k] || []).push(n);
+  });
+  const order = ['DC','PE','AGG','P','ACCESS','RTU','TELEMETRY','HOST','NODE'];
+  const keys = Object.keys(byRole).sort((a,b)=>{
+    const ia = order.indexOf(a), ib = order.indexOf(b);
+    return (ia<0?99:ia) - (ib<0?99:ib);
+  });
+  document.querySelector('.left .sec-label.nodes-h').textContent = `Nodes (${state.nodes.length})`;
+  nodesList.innerHTML = keys.map(role => {
+    const rows = byRole[role].map(n=>{
+      const active = state.selection.type==='node' && state.selection.id===n.id;
+      const sub = (n.mgmt_ipv4 && n.mgmt_ipv4 !== '—') ? n.mgmt_ipv4 : (n.loopback || '');
+      const ico = n.icon || 'i-router';
+      const muted = n.accent === false ? ' muted' : '';
+      return `<div class="nrow${active?' active':''}${muted}" data-id="${n.id}">
+        <div class="ico"><svg width="24" height="24"><use href="#${ico}"/></svg></div>
+        <div class="nl">
+          <div class="nm">${n.name}</div>
+          <div class="lp">${sub}</div>
+        </div>
+        <div class="badge">${n.role}</div>
+      </div>`;
+    }).join('');
+    return `<div class="role-group"><div class="rg-h">${role}</div>${rows}</div>`;
+  }).join('');
+  nodesList.querySelectorAll('.nrow').forEach(r=>{
+    r.addEventListener('click', ()=>{
+      state.selection = { type:'node', id:r.dataset.id };
+      renderAll();
+    });
+  });
+}
+
+function renderInspector(){
+  const sel = state.selection;
+  if(!sel.type){
+    inspector.innerHTML = `
+      <div class="insp-h">
+        <svg class="ic"><use href="#i-info"/></svg>
+        <div>
+          <div class="t">Inspector</div>
+          <div class="s">Nothing selected</div>
+        </div>
+      </div>
+      <div class="empty">
+        <svg class="ic"><use href="#i-router"/></svg>
+        Click any <b>router</b> or <b>link</b> to inspect.<br><br>
+        Drag a router card to reposition it on the grid.<br>
+        Hold <kbd>Space</kbd> + drag to pan the canvas.
+      </div>
+    `;
+    return;
+  }
+  if(sel.type==='node'){
+    const n = findNode(sel.id);
+    if(!n) return;
+    const ifaces = state.links.filter(L=>L.a===n.id || L.b===n.id).map(L=>{
+      const other = L.a===n.id ? findNode(L.b) : findNode(L.a);
+      const iface = L.a===n.id ? L.ifA : L.ifB;
+      return { L, other, iface };
+    });
+    const kv = [];
+    kv.push(['Hostname', n.name]);
+    kv.push(['Node ID', n.id]);
+    if(n.kind)                            kv.push(['Kind', n.kind]);
+    if(n.type && n.type !== '—')         kv.push(['Type', n.type]);
+    if(n.mgmt_ipv4 && n.mgmt_ipv4 !== '—') kv.push(['Mgmt IPv4', n.mgmt_ipv4]);
+    if(n.image && n.image !== '—')        kv.push(['Image', n.image]);
+    if(n.loopback)                         kv.push(['Loopback0', n.loopback + '/32']);
+    if(n.asn)                              kv.push(['ASN', n.asn]);
+    if(n.model)                            kv.push(['Model', n.model]);
+    if(n.os)                               kv.push(['OS', n.os]);
+    kv.push(['Status', '<span class="ok">running</span>']);
+
+    const icon = n.icon || 'i-router';
+    inspector.innerHTML = `
+      <div class="insp-h sel">
+        <svg class="ic"><use href="#${icon}"/></svg>
+        <div>
+          <div class="t">${n.name}</div>
+          <div class="s">${n.role} · ${n.id}</div>
+        </div>
+      </div>
+      <div class="kv">
+        ${kv.map(([k,v])=>`<div class="k">${k}</div><div class="v">${v}</div>`).join('')}
+      </div>
+      <div class="sec-label" style="margin-top:0">Interfaces (${ifaces.length})</div>
+      <div class="iface-list">
+        ${ifaces.length ? ifaces.map(({L, other, iface})=>`
+          <div class="iface">
+            <div class="top">
+              <span class="nm">${iface}</span>
+              <span class="stat"><span class="d"></span> UP/UP</span>
+            </div>
+            <div class="desc"># to ${other.name} (${other.id})</div>
+            <div class="met">
+              <span>SPD <b>${L.speed}</b></span>
+              ${L.subnet && L.subnet !== '—' ? `<span>NET <b>${L.subnet}</b></span>` : ''}
+            </div>
+          </div>
+        `).join('') : '<div class="empty" style="padding:8px 0;text-align:left">No links connected.</div>'}
+      </div>
+    `;
+  } else if(sel.type==='link'){
+    const L = state.links.find(x=>x.id===sel.id);
+    if(!L) return;
+    const A = findNode(L.a), B = findNode(L.b);
+    inspector.innerHTML = `
+      <div class="insp-h sel">
+        <svg class="ic"><use href="#i-flow"/></svg>
+        <div>
+          <div class="t">${A.name} ⇄ ${B.name}</div>
+          <div class="s">${L.speed} LINK · ${L.id}</div>
+        </div>
+      </div>
+      <div class="kv">
+        <div class="k">Endpoint A</div><div class="v">${A.name}:${L.ifA}</div>
+        <div class="k">Endpoint B</div><div class="v">${B.name}:${L.ifB}</div>
+        <div class="k">Speed</div><div class="v">${L.speed}</div>
+        <div class="k">Status</div><div class="v ok">up / up</div>
+        ${L.subnet && L.subnet !== '—' ? `<div class="k">Subnet</div><div class="v">${L.subnet}</div>` : ''}
+        <div class="k">Encap</div><div class="v">Ethernet · MTU 9216</div>
+      </div>
+    `;
+  }
+}
+
+function renderAll(){
+  renderLinks();
+  renderNodes();
+  renderNodesList();
+  renderInspector();
+}
+
+/* ============================================================
+   DRAGGING NODES
+============================================================ */
+function snap(v){
+  if(!state.snap) return v;
+  return Math.round(v / state.grid) * state.grid;
+}
+
+function bindNodeDrag(el, n){
+  let dragging=false, startX=0, startY=0, origX=0, origY=0;
+  const card = el.querySelector('.node-card');
+  card.addEventListener('mousedown', (e)=>{
+    if(e.button !== 0) return;
+    dragging = true;
+    el.classList.add('dragging');
+    startX = e.clientX; startY = e.clientY;
+    origX = n.x; origY = n.y;
+    state.selection = { type:'node', id:n.id };
+    renderInspector(); renderNodesList();
+    document.body.style.cursor='grabbing';
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', (e)=>{
+    if(!dragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    n.x = snap(origX + dx);
+    n.y = snap(origY + dy);
+    el.style.left = n.x + 'px';
+    el.style.top  = n.y + 'px';
+    renderLinks();
+    renderPorts();
+  });
+  window.addEventListener('mouseup', ()=>{
+    if(!dragging) return;
+    dragging = false;
+    el.classList.remove('dragging');
+    document.body.style.cursor='';
+  });
+}
+
+/* ============================================================
+   CANVAS CLICK / DESELECT
+============================================================ */
+document.getElementById('stage').addEventListener('click',(e)=>{
+  if(e.target.id === 'stage' || e.target === linksSvg){
+    state.selection = { type:null, id:null };
+    renderAll();
+  }
+});
+
+/* ============================================================
+   TOOLBAR
+============================================================ */
+document.getElementById('btn-snap').addEventListener('click', (e)=>{
+  state.snap = !state.snap;
+  e.currentTarget.classList.toggle('on', state.snap);
+});
+document.getElementById('btn-grid').addEventListener('click', (e)=>{
+  state.showGrid = !state.showGrid;
+  e.currentTarget.classList.toggle('on', state.showGrid);
+  document.getElementById('grid-bg').style.display = state.showGrid ? '' : 'none';
+});
+document.getElementById('btn-flow').addEventListener('click', (e)=>{
+  state.flow = !state.flow;
+  e.currentTarget.classList.toggle('on', state.flow);
+  renderLinks();
+});
+function layoutAuto(){
+  const stage = document.getElementById('stage');
+  const rect = stage.getBoundingClientRect();
+  const W = rect.width || 1000, H = rect.height || 600;
+  const CARDW = 118, CARDH = 48, GAP = 16, MIN_GAP = 8;
+
+  const tierMap = new Map();
+  const sideNodes = [];
+  state.nodes.forEach(n=>{
+    if(n.tier === -1) { sideNodes.push(n); return; }
+    if(!tierMap.has(n.tier)) tierMap.set(n.tier, []);
+    tierMap.get(n.tier).push(n);
+  });
+  const tiers = [...tierMap.keys()].sort((a,b)=>a-b);
+  const maxRow = tiers.reduce((m,t)=>Math.max(m, tierMap.get(t).length), 0) || 1;
+
+  // Determine if telemetry/side nodes get their own right column
+  const sideCount = sideNodes.length;
+  const sideColW = sideCount > 0 ? (CARDW + 36) : 0;
+  const minMainW = maxRow * CARDW + (maxRow - 1) * MIN_GAP + 80;
+  const useSideCol = sideCount > 0 && (W - minMainW) >= sideColW;
+
+  // Reserve bottom strip for the floating toolbar (measured live)
+  const toolbar = document.querySelector('.canvas-toolbar');
+  const tbH = toolbar ? toolbar.getBoundingClientRect().height : 36;
+  const padX  = CARDW/2 + 14;
+  const padTop = 32;
+  const padBottom = tbH + 18 /* bottom offset */ + CARDH/2 + 12 /* card half + buffer */;
+
+  const mainW = useSideCol ? (W - sideColW) : W;
+  const usableMainW = Math.max(0, mainW - 2*padX);
+  const usableH = Math.max(60, H - padTop - padBottom);
+
+  // If telemetry doesn't fit on side, append it as an extra bottom tier
+  let layoutTiers = tiers.slice();
+  let extraBottom = null;
+  if(sideCount > 0 && !useSideCol){
+    extraBottom = sideNodes;
+    layoutTiers = layoutTiers.concat([(tiers.length ? Math.max(...tiers) : 0) + 1]);
+  }
+
+  // Compute how many visual sub-rows each tier needs, so we can divide usableH fairly
+  function rowsNeeded(n){
+    if(n <= 1) return 1;
+    const availSpacing = usableMainW / (n - 1);
+    const minSpacing = CARDW + MIN_GAP;
+    if(availSpacing >= minSpacing) return 1;
+    const perRow = Math.max(1, Math.floor((usableMainW + MIN_GAP) / (CARDW + MIN_GAP)));
+    return Math.ceil(n / perRow);
+  }
+
+  const tierRowCounts = layoutTiers.map((tier, ti)=>{
+    const row = (extraBottom && ti === layoutTiers.length - 1) ? extraBottom : (tierMap.get(tier) || []);
+    return rowsNeeded(row.length);
+  });
+  const totalSubRows = tierRowCounts.reduce((a,b)=>a+b, 0);
+  const subRowH = totalSubRows > 1 ? usableH / (totalSubRows - 1) : 0;
+
+  // y centers for each tier (centered on its allocated sub-rows)
+  let cursor = 0;
+  const tierY = layoutTiers.map((_, ti) => {
+    const rc = tierRowCounts[ti];
+    const yStart = padTop + cursor * subRowH;
+    const yEnd   = padTop + (cursor + rc - 1) * subRowH;
+    cursor += rc;
+    return (yStart + yEnd) / 2;
+  });
+
+  function placeTier(row, yCenter){
+    const n = row.length;
+    if(n === 0) return;
+    if(n === 1){
+      row[0].x = snap(mainW/2);
+      row[0].y = snap(yCenter);
+      return;
+    }
+    const availSpacing = usableMainW / (n - 1);
+    const minSpacing = CARDW + MIN_GAP;
+
+    if(availSpacing >= minSpacing){
+      // single row
+      const spacing = Math.min(CARDW + GAP*3, availSpacing);
+      const totalW = spacing * (n - 1);
+      const startX = (mainW - totalW) / 2;
+      row.forEach((node, i)=>{
+        node.x = snap(startX + i * spacing);
+        node.y = snap(yCenter);
+      });
+    } else {
+      // wrap into sub-rows
+      const perRow = Math.max(1, Math.floor((usableMainW + MIN_GAP) / (CARDW + MIN_GAP)));
+      const rows = Math.ceil(n / perRow);
+      const subH = CARDH + 14;
+      const totalSubH = (rows - 1) * subH;
+      const yStart = yCenter - totalSubH / 2;
+      for(let r = 0; r < rows; r++){
+        const slice = row.slice(r * perRow, (r+1) * perRow);
+        const m = slice.length;
+        if(m === 1){
+          slice[0].x = snap(mainW/2);
+          slice[0].y = snap(yStart + r * subH);
+          continue;
+        }
+        const spacing = Math.min(CARDW + GAP*2, usableMainW / (m - 1));
+        const totalW = spacing * (m - 1);
+        const startX = (mainW - totalW) / 2;
+        slice.forEach((node, i)=>{
+          node.x = snap(startX + i * spacing);
+          node.y = snap(yStart + r * subH);
+        });
+      }
+    }
+  }
+
+  layoutTiers.forEach((tier, ti)=>{
+    const row = (extraBottom && ti === layoutTiers.length - 1) ? extraBottom : (tierMap.get(tier) || []);
+    placeTier(row, tierY[ti]);
+  });
+
+  // Side column for telemetry/hosts
+  if(useSideCol){
+    const colX = mainW + sideColW/2;
+    const step = sideCount > 1 ? Math.min(CARDH + 14, usableH / (sideCount - 1)) : 0;
+    const totalH = step * (sideCount - 1);
+    const startY = padTop + (usableH - totalH) / 2;
+    sideNodes.forEach((node, i)=>{
+      node.x = snap(colX);
+      node.y = snap(sideCount === 1 ? padTop + usableH/2 : startY + i * step);
+    });
+  }
+}
+document.getElementById('btn-fit').addEventListener('click', ()=>{
+  layoutAuto();
+  setZoom(1);
+  renderAll();
+});
+
+window.addEventListener('resize', ()=>{
+  layoutAuto();
+  renderAll();
+});
+
+let zoom = 1;
+function setZoom(z){
+  zoom = Math.max(0.5, Math.min(1.6, z));
+  document.getElementById('stage').style.transform = `scale(${zoom})`;
+  document.getElementById('stage').style.transformOrigin = '0 0';
+  document.getElementById('zoom-val').textContent = Math.round(zoom*100)+'%';
+}
+document.getElementById('btn-zoom-in').addEventListener('click', ()=>setZoom(zoom+0.1));
+document.getElementById('btn-zoom-out').addEventListener('click', ()=>setZoom(zoom-0.1));
+
+/* ============================================================
+   TWEAKS
+============================================================ */
+const tweaksEl = document.getElementById('tweaks');
+document.getElementById('btn-tweaks').addEventListener('click', ()=>{
+  tweaksEl.classList.toggle('open');
+});
+
+document.getElementById('tw-grid').addEventListener('input', (e)=>{
+  state.grid = parseInt(e.target.value,10);
+  const g = state.grid;
+  document.getElementById('grid-bg').style.backgroundSize =
+    `${g}px ${g}px, ${g}px ${g}px, ${g*5}px ${g*5}px, ${g*5}px ${g*5}px`;
+});
+
+document.querySelectorAll('#tw-link-style button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('#tw-link-style button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    state.linkStyle = b.dataset.v;
+    renderLinks();
+  });
+});
+document.querySelectorAll('#tw-accent button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('#tw-accent button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    document.documentElement.style.setProperty('--accent', b.dataset.v);
+    document.documentElement.style.setProperty('--grid', b.dataset.v + '14');
+    document.documentElement.style.setProperty('--grid-bold', b.dataset.v + '24');
+  });
+});
+document.querySelectorAll('#tw-ports button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('#tw-ports button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    state.showPorts = b.dataset.v === '1';
+    renderPorts();
+  });
+});
+
+/* ============================================================
+   PALETTE DRAG (placeholder feedback only — keeps 3-router core)
+============================================================ */
+document.querySelectorAll('.tile').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    showHint('core topology is locked to 3 routers in this view');
+  });
+});
+
+const hintEl = document.getElementById('hint');
+let hintTimer;
+function showHint(msg){
+  hintEl.textContent = msg;
+  hintEl.classList.add('show');
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(()=>hintEl.classList.remove('show'), 1800);
+}
+
+/* show drag hint once */
+setTimeout(()=>showHint('drag a router to reposition · click a link to inspect'), 500);
+
+/* ============================================================
+   YAML DRAWER
+============================================================ */
+const yamlDrawer = document.getElementById('yaml-drawer');
+const ydText = document.getElementById('yd-text');
+const ydStatus = document.getElementById('yd-status');
+const ydGutter = document.getElementById('yd-gutter');
+let yamlSource = '';
+
+function openDrawer(){ yamlDrawer.classList.add('open'); ydText.focus(); }
+function closeDrawer(){ yamlDrawer.classList.remove('open'); }
+document.getElementById('btn-yaml').addEventListener('click', ()=>{
+  yamlDrawer.classList.contains('open') ? closeDrawer() : openDrawer();
+});
+document.getElementById('yd-close').addEventListener('click', closeDrawer);
+
+function setStatus(msg, kind){
+  ydStatus.textContent = msg;
+  ydStatus.classList.remove('ok','err');
+  if(kind) ydStatus.classList.add(kind);
+}
+
+function updateGutter(){
+  const lines = ydText.value.split('\n').length;
+  let g = '';
+  for(let i=1;i<=lines;i++) g += i+'\n';
+  ydGutter.textContent = g;
+}
+ydText.addEventListener('input', updateGutter);
+ydText.addEventListener('scroll', ()=>{ ydGutter.scrollTop = ydText.scrollTop });
+
+function classifyNode(n){
+  const name = (n.id || n.name || '').toString();
+  const k = (n.kind || '').toLowerCase();
+  const role = (n.role || '').toUpperCase();
+  // explicit role wins
+  if(role){
+    if(role==='DC')        return {role:'DC',        tier:0, icon:'i-router', accent:true};
+    if(role==='PE')        return {role:'PE',        tier:1, icon:'i-pe-router', accent:true};
+    if(role==='P')         return {role:'P',         tier:1, icon:'i-router',    accent:true};
+    if(role==='AGG')       return {role:'AGG',       tier:1, icon:'i-router', accent:true};
+    if(role==='ACCESS')    return {role:'ACCESS',    tier:2, icon:'i-router', accent:true};
+    if(role==='RTU')       return {role:'RTU',       tier:3, icon:'i-rtu',   accent:false};
+    if(role==='TELEMETRY' || role==='HOST') return {role, tier:-1, icon:'i-server', accent:false};
+  }
+  // infer from name + kind
+  if(/^dc\d*/i.test(name))              return {role:'DC',     tier:0, icon:'i-router', accent:true};
+  if(/^pe[\d-]/i.test(name))                    return {role:'PE',  tier:1, icon:'i-pe-router', accent:true};
+  if(/^sr1?-acc|^p[\d-]|^agg/i.test(name))     return {role:'P',   tier:1, icon:'i-router',    accent:true};
+  if(/^access/i.test(name))              return {role:'ACCESS', tier:2, icon:'i-router', accent:true};
+  if(/^rtu|^ied/i.test(name))            return {role:'RTU',    tier:3, icon:'i-rtu',    accent:false};
+  if(/grafana|prom|gnmic|relay|telem/i.test(name)) return {role:'TELEMETRY', tier:-1, icon:'i-server', accent:false};
+  if(k==='linux' || k==='host' || k==='container') return {role:'HOST', tier:-1, icon:'i-server', accent:false};
+  return {role:'NODE', tier:1, icon:'i-router', accent:true};
+}
+
+function parseEndpoint(ep){
+  // "node:iface" → {node, iface}
+  if(typeof ep !== 'string') return null;
+  const ix = ep.indexOf(':');
+  if(ix < 0) return { node: ep, iface: '—' };
+  return { node: ep.slice(0,ix).trim(), iface: ep.slice(ix+1).trim() };
+}
+
+function inferSpeed(ifA, ifB){
+  const has100 = (s) => /\/c\d+/i.test(s) || /100g/i.test(s);
+  if(has100(ifA) && has100(ifB)) return '100G';
+  if(has100(ifA) || has100(ifB)) return '100G';
+  if(/eth\d+/i.test(ifA) && /eth\d+/i.test(ifB)) return '1G';
+  return '10G';
+}
+
+function normalizeTopology(data){
+  // Detect containerlab schema vs flat schema
+  if(data && data.topology && (data.topology.nodes || data.topology.links)){
+    const t = data.topology;
+    const network = {
+      name: data.name || 'TOPOLOGY',
+      region: (data.mgmt && data.mgmt.network) || '—',
+      asn: '—',
+      igp: '—',
+      mgmt_subnet: (data.mgmt && data.mgmt['ipv4-subnet']) || '',
+      kinds: t.kinds || {}
+    };
+    const nodesMap = t.nodes || {};
+    const nodes = Object.entries(nodesMap).map(([id, def])=>{
+      const kindDef = (t.kinds && def.kind && t.kinds[def.kind]) || {};
+      return {
+        id,
+        name: id,
+        kind: def.kind || 'unknown',
+        type: def.type || '—',
+        mgmt_ipv4: def['mgmt-ipv4'] || def.mgmt_ipv4 || '—',
+        image: def.image || kindDef.image || '—',
+        role: def.role || '',
+        components: def.components || []
+      };
+    });
+    const links = (t.links || []).map((L,i)=>{
+      const eps = (L.endpoints || []).map(parseEndpoint).filter(Boolean);
+      const A = eps[0] || {node:'?', iface:'?'};
+      const B = eps[1] || {node:'?', iface:'?'};
+      const speed = inferSpeed(A.iface, B.iface);
+      return {
+        id: 'L' + (i+1),
+        a: A.node, b: B.node,
+        ifA: A.iface, ifB: B.iface,
+        speed,
+        subnet: '—',
+        metric: 10,
+        util: 0, txGbps: 0, rxGbps: 0
+      };
+    });
+    return { network, nodes, links };
+  }
+
+  // flat schema (our original)
+  return {
+    network: data.network || {},
+    nodes: (data.nodes || []).map(n => ({
+      id: n.id, name: n.name || n.id,
+      kind: n.kind || 'router',
+      type: n.type || '—',
+      mgmt_ipv4: n['mgmt-ipv4'] || n.mgmt_ipv4 || '',
+      loopback: n.loopback || '',
+      asn: n.asn,
+      model: n.model,
+      os: n.os,
+      role: n.role || ''
+    })),
+    links: (data.links || []).map((L,i)=>({
+      id: L.id || ('L'+(i+1)),
+      a: L.a, b: L.b,
+      ifA: L.ifA || '—', ifB: L.ifB || '—',
+      speed: L.speed || '100G',
+      subnet: L.subnet || '—',
+      metric: L.metric ?? 10,
+      util: L.util ?? 0,
+      txGbps: L.txGbps ?? 0,
+      rxGbps: L.rxGbps ?? 0
+    }))
+  };
+}
+
+function applyTopology(rawData){
+  const data = normalizeTopology(rawData);
+  if(!data.nodes.length) throw new Error('schema: no nodes found');
+
+  // preserve previous x/y if a node id still exists
+  const prevPos = {};
+  state.nodes.forEach(n => { prevPos[n.id] = {x:n.x, y:n.y}; });
+
+  state.nodes = data.nodes.map(n => {
+    const c = classifyNode(n);
+    return {
+      ...n,
+      role: n.role || c.role,
+      tier: c.tier,
+      icon: c.icon,
+      accent: c.accent,
+      x: prevPos[n.id]?.x || 0,
+      y: prevPos[n.id]?.y || 0
+    };
+  });
+
+  state.links = data.links.filter(L => {
+    // drop dangling links
+    return state.nodes.some(n=>n.id===L.a) && state.nodes.some(n=>n.id===L.b);
+  });
+
+  state.network = data.network || {};
+
+  // refresh topbar / crumbs
+  const m = state.network;
+  const crumbs = document.querySelectorAll('.crumbs .crumb');
+  if(crumbs[0]) crumbs[0].textContent = (m.region || '').toString().toUpperCase().replace(/_/g,' ') || 'LAB';
+  if(crumbs[1]) crumbs[1].textContent = 'CORE';
+  const active = document.querySelector('.crumbs .crumb.active');
+  if(active) active.textContent = (m.name || 'TOPOLOGY').toString().toUpperCase();
+
+  const meta = document.querySelector('.topbar .meta');
+  if(meta){
+    meta.innerHTML = `
+      <span>MGMT <b>${m.mgmt_subnet || '—'}</b></span>
+      <span>NODES <b>${state.nodes.length}</b></span>
+      <span>LINKS <b>${state.links.length}</b></span>
+      <span class="live">● live</span>`;
+  }
+
+  // left-side source summary
+  const leftSource = document.getElementById('left-source');
+  if(leftSource){
+    const kinds = {};
+    state.nodes.forEach(n => { kinds[n.kind || 'unknown'] = (kinds[n.kind]||0) + 1; });
+    const roles = {};
+    state.nodes.forEach(n => { roles[n.role || 'NODE'] = (roles[n.role]||0) + 1; });
+    leftSource.innerHTML = `
+      Name: <span style="color:var(--ink)">${m.name || '—'}</span><br>
+      Mgmt net: <span style="color:var(--ink)">${m.mgmt_subnet || '—'}</span><br>
+      Kinds: <span style="color:var(--ink)">${Object.entries(kinds).map(([k,v])=>`${k} ×${v}`).join(', ') || '—'}</span><br>
+      Roles: <span style="color:var(--ink)">${Object.entries(roles).map(([k,v])=>`${k} ×${v}`).join(', ') || '—'}</span>
+    `;
+  }
+
+  // re-layout if any node lost its position
+  if(state.nodes.some(n => !n.x || !n.y)) layoutAuto();
+
+  // clear stale selection
+  if(state.selection.id){
+    const ok = state.selection.type==='node'
+      ? state.nodes.some(n=>n.id===state.selection.id)
+      : state.links.some(l=>l.id===state.selection.id);
+    if(!ok) state.selection = {type:null, id:null};
+  }
+
+  // statusbar counts
+  const sb = document.querySelectorAll('.statusbar .item b');
+  if(sb[0]) sb[0].textContent = `${state.nodes.length}/${state.nodes.length} UP`;
+  if(sb[1]) sb[1].textContent = `${state.links.length}/${state.links.length} UP`;
+  if(sb[2]){
+    const total = state.links.reduce((s,l)=>{
+      const m = String(l.speed).match(/(\d+)/); return s + (m ? parseInt(m[1],10) : 0);
+    },0);
+    sb[2].textContent = `${total} G`;
+  }
+  if(sb[3]){
+    const avg = state.links.length
+      ? Math.round(state.links.reduce((s,l)=>s+(l.util||0),0)/state.links.length)
+      : 0;
+    sb[3].textContent = `${avg}%`;
+  }
+
+  renderAll();
+  setStatus(`applied · ${state.nodes.length} nodes · ${state.links.length} links`, 'ok');
+}
+
+function applyFromText(){
+  try{
+    const data = jsyaml.load(ydText.value);
+    applyTopology(data);
+    yamlSource = ydText.value;
+  } catch(err){
+    setStatus('error: ' + err.message, 'err');
+  }
+}
+document.getElementById('yd-apply').addEventListener('click', applyFromText);
+ydText.addEventListener('keydown',(e)=>{
+  if((e.metaKey||e.ctrlKey) && e.key==='Enter'){ e.preventDefault(); applyFromText(); }
+});
+
+async function loadYamlFromDisk(){
+  try{
+    const r = await fetch('topology.yaml', {cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const txt = await r.text();
+    ydText.value = txt;
+    yamlSource = txt;
+    updateGutter();
+    const data = jsyaml.load(txt);
+    applyTopology(data);
+  } catch(err){
+    setStatus('could not load topology.yaml — ' + err.message, 'err');
+    // fall back to embedded default already in state
+    ydText.value = jsyaml.dump(serializeState(), {lineWidth:120});
+    updateGutter();
+  }
+}
+document.getElementById('yd-reload').addEventListener('click', loadYamlFromDisk);
+
+function serializeState(){
+  return {
+    network: { name:'MPLS-BACKBONE-01', region:'EU-WEST', asn:65001, igp:'IS-IS L2', area:'49.0001' },
+    nodes: state.nodes.map(n=>({
+      id:n.id, name:n.name, role:n.role, loopback:n.loopback,
+      asn:n.asn, model:n.model, os:n.os
+    })),
+    links: state.links.map(L=>({
+      id:L.id, a:L.a, b:L.b, speed:L.speed,
+      ifA:L.ifA, ifB:L.ifB, subnet:L.subnet,
+      metric:L.metric, util:L.util, txGbps:L.txGbps, rxGbps:L.rxGbps
+    }))
+  };
+}
+
+document.getElementById('yd-download').addEventListener('click', ()=>{
+  const blob = new Blob([ydText.value || yamlSource], {type:'text/yaml'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'topology.yaml';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+});
+
+/* ============================================================
+   INIT
+============================================================ */
+layoutAuto();
+renderAll();
+loadYamlFromDisk();
+</script>
+</body>
+</html>

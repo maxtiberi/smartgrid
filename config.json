@@ -17,8 +17,7 @@
     "credentials": { "username": "admin", "password": "NokiaSros1!" },
     "sampleIntervalNs": 10000000000,
     "insecure": true,
-    "gnmicContainer": "gnmic",
-    "gnmicBinary": "/app/gnmic",
+    "gnmicHostBinary": "/usr/local/bin/gnmic",
     "nodes": {
       "mpls-dc1":    { "host": "192.168.30.2",  "name": "dc1",        "type": "SR-1",    "role": "core",        "gnmiPort": 57400,
                        "ports": ["1/1/c1/1","1/1/c2/1"],

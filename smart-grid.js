@@ -1,3 +1,8 @@
+// Base URL for ping-service API calls.
+// Derived from window.location.origin so the page works whether opened via
+// localhost, a server IP, or a VS Code SSH tunnel — no hardcoded hostname needed.
+const PING_SERVICE_BASE = window.location.origin;
+
 // Smart Grid Simulation Controller
 class SmartGrid {
     constructor() {
@@ -26,7 +31,7 @@ class SmartGrid {
         };
 
 
-        this.pingServiceUrl = 'http://localhost:3000';
+        this.pingServiceUrl = PING_SERVICE_BASE;
         this.config = null;
         this.activeTooltip = null;
         this.activePanel = null;
@@ -680,14 +685,22 @@ class SmartGrid {
     }
 
     _applyLinkHealth(links) {
-        const faultSet = new Set();
+        const simFaults = window._mplsSimFaults || new Set();
+        // Start faultSet with any active simulation faults so they persist
+        // across live poll cycles regardless of real port state.
+        const faultSet = new Set(simFaults);
         for (const [linkId, info] of Object.entries(links)) {
             const el = document.getElementById(linkId);
             if (!el) continue;
             const fault = info.status === 'down';
-            el.classList.toggle('mpls-link-fault', fault);
             if (fault) faultSet.add(linkId);
+            el.classList.toggle('mpls-link-fault', fault || simFaults.has(linkId));
         }
+        // Ensure sim-faulted links not present in the API response also get CSS
+        simFaults.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('mpls-link-fault');
+        });
         // Notify traffic-flow module so it can reroute (or signal comm-loss)
         window.mplsTrafficFlow?.onLinkHealthUpdate(faultSet);
     }
@@ -1449,7 +1462,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         async function check() {
             try {
-                const r = await fetch('http://localhost:3000/health',
+                const r = await fetch(`${PING_SERVICE_BASE}/health`,
                                       { signal: AbortSignal.timeout(4000) });
                 if (r.ok) {
                     container.dataset.state = 'running';
@@ -1468,10 +1481,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // DC1 LIVE TELEMETRY POPUP
     // Triggered by clicking the DC1 node in the MPLS topology SVG.
     // Fetches live data via GET /gnmic/node/mpls-dc1 (ping-service,
-    // port 3000) which runs docker exec gnmic internally.
+    // port 3000) which runs gnmic directly on the host.
     // ================================================================
     (function initDc1Popup() {
-        const PING_BASE   = 'http://localhost:3000';
+        const PING_BASE   = PING_SERVICE_BASE;
         const NODE_ID     = 'mpls-dc1';
         const NODE_NAME   = 'dc1';
 
@@ -1612,7 +1625,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Also update the matching SVG chassis port rect
                 const svgPort = svgPortMap[p.portId];
                 if (svgPort) {
-                    svgPort.setAttribute('fill', isUp ? '#3a6a4a' : '#3a3a4a');
+                    svgPort.setAttribute('fill', isUp ? '#2a7a5a' : '#161f2a');
                 }
             });
         }
@@ -1783,7 +1796,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // docker exec gnmic for ports, interfaces, IS-IS, and SR adj-SIDs.
     // ================================================================
     (function initDc2Popup() {
-        const PING_BASE = 'http://localhost:3000';
+        const PING_BASE = PING_SERVICE_BASE;
         const NODE_ID   = 'mpls-dc2';
 
         // DOM refs
@@ -1864,7 +1877,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="dc1-port-tile-id">${p.portId.replace('1/1/', '')}</span>`;
                 portGrid.appendChild(tile);
                 const svgPort = svgPortMap[p.portId];
-                if (svgPort) svgPort.setAttribute('fill', isUp ? '#3a6a4a' : '#3a3a4a');
+                if (svgPort) svgPort.setAttribute('fill', isUp ? '#2a7a5a' : '#161f2a');
             });
         }
 
@@ -2041,7 +2054,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fetches /gnmic/node/mpls-a1-1 from ping-service (port 3000).
     // ================================================================
     (function initA11Popup() {
-        const PING_BASE = 'http://localhost:3000';
+        const PING_BASE = PING_SERVICE_BASE;
         const NODE_ID   = 'mpls-a1-1';
 
         const overlay    = document.getElementById('a11-popup-overlay');
@@ -2122,7 +2135,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="dc1-port-tile-id">${p.portId.replace('1/1/', '')}</span>`;
                 portGrid.appendChild(tile);
                 const svgPort = svgPortMap[p.portId];
-                if (svgPort) svgPort.setAttribute('fill', isUp ? '#3a6a4a' : '#3a3a4a');
+                if (svgPort) svgPort.setAttribute('fill', isUp ? '#2a7a5a' : '#161f2a');
             });
         }
 
@@ -2337,7 +2350,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Polls /api/tpt/status and /api/tpt/log every 1.5 s while running.
     // ═══════════════════════════════════════════════════════════════════════
     (() => {
-        const API = 'http://localhost:3000';
+        const API = PING_SERVICE_BASE;
         let _pollTimer = null;
 
         // ── DOM refs ─────────────────────────────────────────────────────
@@ -3422,7 +3435,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const overlayG = document.getElementById('mpls-srte-overlay');
         if (!overlayG) return;
 
-        const BASE_URL = window.smartGrid?.pingServiceUrl || 'http://localhost:3000';
+        const BASE_URL = window.smartGrid?.pingServiceUrl || PING_SERVICE_BASE;
         const POLL_MS  = 20_000;
 
         // PRIMARY path (to-ACCESS1-3):        A1-1 → A1-2 → A1-3  (ACCESS ring)
@@ -3674,7 +3687,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         async function poll() {
             try {
-                const r = await fetch('http://localhost:3000/api/scada/status', { signal: AbortSignal.timeout(6000) });
+                const r = await fetch(`${PING_SERVICE_BASE}/api/scada/status`, { signal: AbortSignal.timeout(6000) });
                 render(r.ok ? await r.json() : null);
             } catch {
                 render(null);
@@ -3683,6 +3696,108 @@ document.addEventListener('DOMContentLoaded', () => {
 
         poll();
         setInterval(poll, SCADA_POLL_MS);
+    })();
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // FAULT SIMULATION
+    // Manually isolates ACCESS1-1 by faulting its 3 links, triggering the full
+    // reroute + comm-loss cascade: Dijkstra finds no RTU1↔RTU2 path →
+    // updateMplsTeleprotectionStatus(true) → city grid offline.
+    // window._mplsSimFaults persists across live poll cycles via _applyLinkHealth.
+    // ══════════════════════════════════════════════════════════════════════════
+    (function initFaultSimulation() {
+
+        const A11_LINKS  = ['link-acc1-a1-1', 'link-a1-1-a1-2', 'link-a1-1-rtu1'];
+        const NODE_ID    = 'mpls-a1-1';
+        const BASE_URL   = window.smartGrid?.pingServiceUrl || 'http://localhost:3000';
+        window._mplsSimFaults = new Set();
+
+        const panel    = document.getElementById('mpls-sim-panel');
+        const btn      = document.getElementById('mpls-sim-a11-btn');
+        const stateEl  = document.getElementById('mpls-sim-a11-state');
+        const badge    = document.getElementById('mpls-sim-badge');
+        const statusEl = document.getElementById('mpls-sim-status');
+        const clearBtn = document.getElementById('mpls-sim-clear-btn');
+        const netRow   = document.getElementById('mpls-sim-net-row');
+        const overlay  = document.getElementById('mpls-sim-overlay');
+        const led      = document.getElementById('a11-svg-status-led');
+
+        if (!btn) return;
+
+        // ── Visual layer ─────────────────────────────────────────────────────
+        function applyVisual(active) {
+            A11_LINKS.forEach(id => {
+                if (active) window._mplsSimFaults.add(id);
+                else        window._mplsSimFaults.delete(id);
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle('mpls-link-fault', active);
+            });
+            if (led) led.setAttribute('class',
+                active ? 'mpls-status-led mpls-led-fault' : 'mpls-status-led mpls-led-ok');
+            if (overlay) overlay.setAttribute('display', active ? 'block' : 'none');
+            window.mplsTrafficFlow?.onLinkHealthUpdate(new Set(window._mplsSimFaults));
+        }
+
+        // ── Network layer (backend gNMI SET) ─────────────────────────────────
+        function setNetRow(state, html) {
+            if (!netRow) return;
+            netRow.className = `mpls-sim-net-row net-${state}`;
+            netRow.innerHTML = html;
+            netRow.style.display = 'flex';
+        }
+
+        async function pushPortState(action) {
+            setNetRow('pending',
+                `<span>⟳</span> Sending gNMI SET <b>${action === 'shutdown' ? 'disable' : 'enable'}</b>`
+                + ` to ${NODE_ID} (192.168.30.11) …`);
+            try {
+                const r = await fetch(
+                    `${BASE_URL}/api/sim/port-state?action=${action}&node=${NODE_ID}`,
+                    { method: 'POST', signal: AbortSignal.timeout(15000) }
+                );
+                const data = await r.json();
+                const results = data.results || [];
+                const allOk   = results.every(p => p.ok);
+                const anyOk   = results.some(p => p.ok);
+                const cls     = allOk ? 'ok' : anyOk ? 'partial' : 'err';
+                const chips   = results.map(p =>
+                    `<span class="sim-port-chip ${p.ok ? 'ok' : 'err'}">`
+                    + `${p.ok ? '✓' : '✗'} ${p.port}</span>`
+                ).join('');
+                const label   = action === 'shutdown' ? 'disabled on router' : 're-enabled on router';
+                setNetRow(cls,
+                    `<span>${allOk ? '✓' : anyOk ? '⚠' : '✗'} Ports ${label}: </span>${chips}`
+                    + (allOk ? '' : ` <span style="opacity:.7;font-size:8.5px">`
+                       + results.filter(p => !p.ok).map(p => p.detail).join(' · ') + `</span>`)
+                );
+            } catch (err) {
+                setNetRow('err',
+                    `<span>✗ Network error: ${err.message}`
+                    + ` — visual simulation is still active</span>`);
+            }
+        }
+
+        // ── UI state ─────────────────────────────────────────────────────────
+        function setActive(active) {
+            btn.classList.toggle('active', active);
+            btn.setAttribute('aria-pressed', String(active));
+            stateEl.textContent = active ? 'ON' : 'OFF';
+            badge.textContent   = active ? 'FAULT ACTIVE' : 'INACTIVE';
+            badge.className     = active
+                ? 'mpls-sim-badge mpls-sim-badge-active'
+                : 'mpls-sim-badge mpls-sim-badge-inactive';
+            panel.classList.toggle('mpls-sim-active', active);
+            statusEl.style.display = active ? 'flex' : 'none';
+            if (!active && netRow) netRow.style.display = 'none';
+
+            // Visual simulation is instant; port-state call is async background
+            applyVisual(active);
+            pushPortState(active ? 'shutdown' : 'noshutdown');
+        }
+
+        btn.addEventListener('click',   () => setActive(btn.getAttribute('aria-pressed') !== 'true'));
+        clearBtn.addEventListener('click', () => setActive(false));
+
     })();
 
 });

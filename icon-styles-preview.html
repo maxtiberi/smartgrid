@@ -1,0 +1,1152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Router Icon Styles — Preview (before updating Network Topology.html)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #07090c;
+  --bg-2:     #0b0f14;
+  --panel:    #0e1419;
+  --panel-2:  #131b22;
+  --line:     #1a242d;
+  --line-2:   #243240;
+  --ink:      #d7e3ee;
+  --ink-dim:  #7a8a99;
+  --ink-mute: #4a5764;
+  --accent:   #5ce1c2;
+  --amber:    #f0c674;
+  --warn:     #ff6b6b;
+  --violet:   #a78bfa;
+  --sky:      #7dd3fc;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:"Space Grotesk",system-ui,sans-serif;min-height:100vh;padding:0 0 60px}
+
+/* ── TOPBAR ── */
+.topbar{
+  background:var(--bg-2);border-bottom:1px solid var(--line);
+  padding:14px 32px;display:flex;align-items:center;gap:16px;
+  position:sticky;top:0;z-index:40;
+}
+.topbar-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 2.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.topbar-title{font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink)}
+.topbar-sub{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--ink-mute)}
+.topbar-badge{
+  margin-left:auto;
+  background:rgba(240,198,116,.1);border:1px solid rgba(240,198,116,.3);
+  color:var(--amber);font-family:"JetBrains Mono",monospace;font-size:9px;
+  letter-spacing:.14em;padding:3px 9px;border-radius:4px;
+}
+.selected-indicator{
+  font-family:"JetBrains Mono",monospace;font-size:10px;
+  color:var(--accent);display:flex;align-items:center;gap:6px;
+}
+.selected-indicator span{color:var(--ink)}
+#apply-btn{
+  background:rgba(92,225,194,.12);border:1px solid rgba(92,225,194,.35);
+  color:var(--accent);font-family:"JetBrains Mono",monospace;font-size:10.5px;
+  padding:5px 14px;border-radius:5px;cursor:pointer;transition:background .15s;
+}
+#apply-btn:hover{background:rgba(92,225,194,.2)}
+#apply-btn:disabled{opacity:.35;cursor:default}
+
+/* ── PAGE SECTIONS ── */
+.section{max-width:1340px;margin:0 auto;padding:32px 32px 0}
+.section-header{
+  font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--ink-mute);
+  display:flex;align-items:center;gap:12px;margin-bottom:20px;
+}
+.section-header::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* ── STYLE CARDS GRID ── */
+.styles-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.style-card{
+  background:var(--panel);border:1px solid var(--line-2);border-radius:12px;
+  padding:20px;cursor:pointer;transition:border-color .2s,box-shadow .2s;
+  position:relative;
+}
+.style-card:hover{border-color:rgba(92,225,194,.3);box-shadow:0 0 0 1px rgba(92,225,194,.06)}
+.style-card.selected{
+  border-color:var(--accent);
+  box-shadow:0 0 0 1px var(--accent),0 0 24px rgba(92,225,194,.1);
+}
+.style-card.selected::after{
+  content:"SELECTED";
+  position:absolute;top:10px;right:10px;
+  font-family:"JetBrains Mono",monospace;font-size:8px;letter-spacing:.16em;
+  color:var(--bg);background:var(--accent);
+  padding:2px 6px;border-radius:3px;
+}
+.card-title{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:2px}
+.card-desc{font-size:11px;color:var(--ink-dim);margin-bottom:16px;line-height:1.5}
+
+/* Icon size showcase row */
+.icon-row{display:flex;align-items:flex-end;gap:14px;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.icon-cell{display:flex;flex-direction:column;align-items:center;gap:5px}
+.icon-cell span{font-family:"JetBrains Mono",monospace;font-size:8.5px;color:var(--ink-mute)}
+
+/* Role tags */
+.role-tags{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.rtag{
+  font-family:"JetBrains Mono",monospace;font-size:9px;
+  padding:2px 7px;border-radius:3px;border:1px solid;
+}
+.rtag.p{color:#5ce1c2;border-color:rgba(92,225,194,.3);background:rgba(92,225,194,.06)}
+.rtag.pe{color:#a78bfa;border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.06)}
+.rtag.ce{color:#7dd3fc;border-color:rgba(125,211,252,.3);background:rgba(125,211,252,.06)}
+.rtag.sw{color:#f0c674;border-color:rgba(240,198,116,.3);background:rgba(240,198,116,.06)}
+
+/* ── COMPARISON TABLE ── */
+.compare-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line);border-radius:10px;overflow:hidden}
+.compare-cell{background:var(--panel);padding:16px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:background .15s}
+.compare-cell:hover{background:var(--panel-2)}
+.compare-cell.selected{background:rgba(92,225,194,.06)}
+.compare-cell .label{font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-mute)}
+.compare-cell.selected .label{color:var(--accent)}
+
+/* ── NODE CARD VARIANTS ── */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.variant-card{background:var(--panel);border:1px solid var(--line-2);border-radius:12px;padding:20px;cursor:pointer;transition:border-color .2s}
+.variant-card:hover{border-color:rgba(92,225,194,.3)}
+.variant-card.selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.variant-title{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.variant-title .vtag{font-family:"JetBrains Mono",monospace;font-size:8px;color:var(--bg);background:var(--ink-mute);padding:1px 5px;border-radius:2px;letter-spacing:.1em}
+.variant-title .vtag.new{background:var(--accent);color:var(--bg)}
+
+/* Node card demo area */
+.demo-area{background:var(--bg-2);border-radius:8px;padding:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;min-height:80px}
+
+/* ── NODE CARD STYLES ── */
+/* V0: Current */
+.nc-v0{
+  background:linear-gradient(180deg,var(--panel-2) 0%,var(--panel) 100%);
+  border:1px solid var(--line-2);border-radius:8px;
+  padding:8px 9px;display:flex;align-items:center;gap:8px;width:118px;
+  position:relative;
+}
+.nc-v0 .pill{position:absolute;top:-4px;right:-4px;width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent);border:1.5px solid var(--bg)}
+
+/* V1: Vertical pill */
+.nc-v1{
+  background:var(--panel-2);border:1px solid var(--line-2);border-radius:10px;
+  padding:12px 8px 8px;display:flex;flex-direction:column;align-items:center;
+  gap:5px;width:80px;position:relative;
+  text-align:center;
+}
+.nc-v1 .status-bar{width:100%;height:2px;background:var(--accent);border-radius:1px;margin-top:2px;box-shadow:0 0 6px var(--accent)}
+
+/* V2: Bold badge */
+.nc-v2{
+  background:var(--panel);border:1px solid var(--line-2);border-radius:8px;
+  padding:0;overflow:hidden;width:120px;display:flex;flex-direction:column;
+}
+.nc-v2 .v2-accent{height:3px;background:linear-gradient(90deg,var(--accent),transparent)}
+.nc-v2 .v2-body{padding:8px 10px;display:flex;align-items:center;gap:8px}
+.nc-v2 .role-chip{
+  margin:0 8px 8px;align-self:flex-start;
+  font-family:"JetBrains Mono",monospace;font-size:8px;color:var(--accent);
+  background:rgba(92,225,194,.08);border:1px solid rgba(92,225,194,.2);
+  padding:1px 5px;border-radius:2px;letter-spacing:.1em;
+}
+
+/* V3: Minimal outline */
+.nc-v3{
+  border:1px solid var(--line-2);border-radius:6px;
+  padding:7px 10px;display:flex;align-items:center;gap:9px;width:118px;
+  background:transparent;
+}
+.nc-v3 .ico-wrap{
+  width:28px;height:28px;border-radius:50%;
+  background:rgba(92,225,194,.07);border:1px solid rgba(92,225,194,.2);
+  display:grid;place-items:center;flex-shrink:0;
+}
+
+/* V4: Glass morphism */
+.nc-v4{
+  background:rgba(14,20,25,.7);
+  border:1px solid rgba(92,225,194,.15);
+  border-radius:10px;backdrop-filter:blur(8px);
+  padding:8px 10px;display:flex;align-items:center;gap:8px;width:124px;
+  box-shadow:inset 0 1px 0 rgba(92,225,194,.08);
+}
+
+/* Shared inner text for demo cards */
+.nc-name{font-size:11.5px;font-weight:600;color:var(--ink);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nc-role{font-family:"JetBrains Mono",monospace;font-size:8.5px;color:var(--ink-dim);letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
+.nc-name-sm{font-size:10.5px;font-weight:600;color:var(--ink);line-height:1.1}
+.nc-role-sm{font-family:"JetBrains Mono",monospace;font-size:8px;color:var(--ink-dim);letter-spacing:.06em;text-transform:uppercase}
+
+/* ── MINI TOPOLOGY PREVIEW ── */
+.topo-preview-wrap{
+  background:var(--bg-2);border:1px solid var(--line);border-radius:8px;
+  padding:12px;margin-top:14px;
+}
+.topo-preview-wrap svg{display:block;width:100%;height:auto}
+</style>
+</head>
+<body>
+
+<!-- All SVG icon defs — 5 styles × 4 roles -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+
+<!-- ═══════════════════════════════════════
+     STYLE A — "Clean 1U Chassis"
+     Single rack unit, refined port row,
+     V-tail uplinks/downlinks, LED status
+     ═══════════════════════════════════════ -->
+<symbol id="sA-p"  viewBox="0 0 32 32">
+  <rect x="2" y="10" width="28" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+  <rect x="4.5" y="12.5" width="3" height="3" rx=".6" fill="currentColor" opacity=".5"/>
+  <rect x="8.5"  y="12.5" width="3" height="3" rx=".6" fill="currentColor" opacity=".5"/>
+  <rect x="12.5" y="12.5" width="3" height="3" rx=".6" fill="currentColor" opacity=".5"/>
+  <rect x="16.5" y="12.5" width="3" height="3" rx=".6" fill="currentColor" opacity=".5"/>
+  <circle cx="23" cy="14" r="1.2" fill="currentColor"/>
+  <circle cx="26.5" cy="14" r="1.2" fill="currentColor" opacity=".25"/>
+  <rect x="4.5" y="17.5" width="3" height="2" rx=".4" fill="currentColor" opacity=".25"/>
+  <rect x="8.5"  y="17.5" width="3" height="2" rx=".4" fill="currentColor" opacity=".25"/>
+  <rect x="12.5" y="17.5" width="3" height="2" rx=".4" fill="currentColor" opacity=".25"/>
+  <!-- uplinks -->
+  <path d="M8 10 V6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M6.5 7.5 L8 6 L9.5 7.5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M24 10 V6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M22.5 7.5 L24 6 L25.5 7.5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- downlinks -->
+  <path d="M8 22 V26" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M6.5 24.5 L8 26 L9.5 24.5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M24 22 V26" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M22.5 24.5 L24 26 L25.5 24.5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</symbol>
+
+<!-- PE variant: double chassis -->
+<symbol id="sA-pe" viewBox="0 0 32 32">
+  <rect x="2" y="7"  width="28" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <rect x="2" y="17" width="28" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <rect x="4.5" y="9"  width="2.5" height="2.5" rx=".5" fill="currentColor" opacity=".5"/>
+  <rect x="8"   y="9"  width="2.5" height="2.5" rx=".5" fill="currentColor" opacity=".5"/>
+  <rect x="11.5" y="9" width="2.5" height="2.5" rx=".5" fill="currentColor" opacity=".5"/>
+  <rect x="15"  y="9"  width="2.5" height="2.5" rx=".5" fill="currentColor" opacity=".5"/>
+  <circle cx="22.5" cy="11" r="1" fill="currentColor"/>
+  <circle cx="25.5" cy="11" r="1" fill="currentColor" opacity=".25"/>
+  <rect x="4.5" y="19"  width="2.5" height="2.5" rx=".5" fill="currentColor" opacity=".4"/>
+  <rect x="8"   y="19"  width="2.5" height="2.5" rx=".5" fill="currentColor" opacity=".4"/>
+  <rect x="11.5" y="19" width="2.5" height="2.5" rx=".5" fill="currentColor" opacity=".4"/>
+  <rect x="15"  y="19"  width="2.5" height="2.5" rx=".5" fill="currentColor" opacity=".4"/>
+  <circle cx="22.5" cy="21" r="1" fill="currentColor"/>
+  <circle cx="25.5" cy="21" r="1" fill="currentColor" opacity=".25"/>
+  <path d="M25 7 V4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+  <path d="M23.5 5.5 L25 4 L26.5 5.5" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M25 25 V28" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+  <path d="M23.5 26.5 L25 28 L26.5 26.5" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</symbol>
+
+<symbol id="sA-ce" viewBox="0 0 32 32">
+  <rect x="4" y="8" width="24" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <rect x="7" y="11" width="18" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1"/>
+  <circle cx="10" cy="21" r="1" fill="currentColor" opacity=".5"/>
+  <line x1="14" y1="24" x2="18" y2="24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+</symbol>
+
+<symbol id="sA-sw" viewBox="0 0 32 32">
+  <rect x="2" y="12" width="28" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M7 17 L5 15 M7 17 L9 15" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M13 15 L11 17 M13 15 L15 17" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M19 17 L17 15 M19 17 L21 15" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M25 15 L23 17 M25 15 L27 17" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</symbol>
+
+<!-- ═══════════════════════════════════════
+     STYLE B — "ASIC Chip"
+     Square IC die with pin connectors on
+     all four sides, inner crosshatch
+     ═══════════════════════════════════════ -->
+<symbol id="sB-p" viewBox="0 0 32 32">
+  <!-- chip body -->
+  <rect x="8" y="8" width="16" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+  <!-- inner die -->
+  <rect x="12" y="12" width="8" height="8" rx="1" fill="currentColor" opacity=".12"/>
+  <!-- inner cross -->
+  <line x1="16" y1="12" x2="16" y2="20" stroke="currentColor" stroke-width=".8" opacity=".6"/>
+  <line x1="12" y1="16" x2="20" y2="16" stroke="currentColor" stroke-width=".8" opacity=".6"/>
+  <!-- pins: top -->
+  <line x1="11" y1="8"  x2="11" y2="4"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="16" y1="8"  x2="16" y2="4"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="21" y1="8"  x2="21" y2="4"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <!-- pins: bottom -->
+  <line x1="11" y1="24" x2="11" y2="28" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="16" y1="24" x2="16" y2="28" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="21" y1="24" x2="21" y2="28" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <!-- pins: left -->
+  <line x1="8" y1="11"  x2="4" y2="11"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="8" y1="16"  x2="4" y2="16"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="8" y1="21"  x2="4" y2="21"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <!-- pins: right -->
+  <line x1="24" y1="11" x2="28" y2="11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="24" y1="16" x2="28" y2="16" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="24" y1="21" x2="28" y2="21" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+</symbol>
+
+<!-- PE: chip with extra corner details -->
+<symbol id="sB-pe" viewBox="0 0 32 32">
+  <rect x="7" y="7" width="18" height="18" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+  <rect x="11" y="11" width="10" height="10" rx="1.5" fill="currentColor" opacity=".12"/>
+  <circle cx="16" cy="16" r="2.5" fill="none" stroke="currentColor" stroke-width="1.1"/>
+  <circle cx="16" cy="16" r="1" fill="currentColor" opacity=".5"/>
+  <!-- corner notch marks -->
+  <path d="M7 11 H10 V7" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+  <!-- pins -->
+  <line x1="12" y1="7"  x2="12" y2="3"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="20" y1="7"  x2="20" y2="3"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="12" y1="25" x2="12" y2="29" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="20" y1="25" x2="20" y2="29" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="7" y1="12"  x2="3" y2="12"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="7" y1="20"  x2="3" y2="20"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="25" y1="12" x2="29" y2="12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="25" y1="20" x2="29" y2="20" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+</symbol>
+
+<symbol id="sB-ce" viewBox="0 0 32 32">
+  <rect x="6" y="6" width="20" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <rect x="10" y="10" width="12" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1"/>
+  <line x1="10" y1="22" x2="22" y2="22" stroke="currentColor" stroke-width="1.2" opacity=".5"/>
+  <line x1="10" y1="25" x2="16" y2="25" stroke="currentColor" stroke-width="1.2" opacity=".35"/>
+  <line x1="16" y1="6" x2="16" y2="2"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="16" y1="26" x2="16" y2="30" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+</symbol>
+
+<symbol id="sB-sw" viewBox="0 0 32 32">
+  <rect x="5" y="9" width="22" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <rect x="9" y="13" width="4" height="4" rx=".8" fill="currentColor" opacity=".45"/>
+  <rect x="14" y="13" width="4" height="4" rx=".8" fill="currentColor" opacity=".45"/>
+  <rect x="19" y="13" width="4" height="4" rx=".8" fill="currentColor" opacity=".45"/>
+  <line x1="11" y1="9"  x2="11" y2="5"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="21" y1="9"  x2="21" y2="5"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="11" y1="23" x2="11" y2="27" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="21" y1="23" x2="21" y2="27" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+</symbol>
+
+<!-- ═══════════════════════════════════════
+     STYLE C — "Hexagonal Node"
+     Regular hexagon, inner ring,
+     6 port nubs at vertices
+     ═══════════════════════════════════════ -->
+<symbol id="sC-p" viewBox="0 0 32 32">
+  <!-- hexagon path (flat-top): vertices at 60° increments -->
+  <path d="M16 3 L27.2 9.5 L27.2 22.5 L16 29 L4.8 22.5 L4.8 9.5 Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+  <!-- inner ring -->
+  <circle cx="16" cy="16" r="5" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".6"/>
+  <!-- center dot -->
+  <circle cx="16" cy="16" r="1.8" fill="currentColor" opacity=".45"/>
+  <!-- port nubs at 4 cardinal midpoints -->
+  <circle cx="16"    cy="3"    r="1.4" fill="currentColor"/>
+  <circle cx="27.2"  cy="9.5"  r="1.4" fill="currentColor" opacity=".6"/>
+  <circle cx="27.2"  cy="22.5" r="1.4" fill="currentColor" opacity=".6"/>
+  <circle cx="16"    cy="29"   r="1.4" fill="currentColor"/>
+  <circle cx="4.8"   cy="22.5" r="1.4" fill="currentColor" opacity=".6"/>
+  <circle cx="4.8"   cy="9.5"  r="1.4" fill="currentColor" opacity=".6"/>
+</symbol>
+
+<!-- PE: hexagon with inner lines showing routing -->
+<symbol id="sC-pe" viewBox="0 0 32 32">
+  <path d="M16 3 L27.2 9.5 L27.2 22.5 L16 29 L4.8 22.5 L4.8 9.5 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+  <circle cx="16" cy="16" r="5.5" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".5"/>
+  <!-- inner cross-routing -->
+  <path d="M16 10.5 V21.5 M10.5 16 H21.5" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity=".5"/>
+  <!-- 4 port nubs on flat sides (top/bottom) -->
+  <rect x="13.5" y="1"  width="5" height="2.5" rx=".8" fill="currentColor" opacity=".6"/>
+  <rect x="13.5" y="28.5" width="5" height="2.5" rx=".8" fill="currentColor" opacity=".6"/>
+  <rect x="1"   y="13.5" width="2.5" height="5" rx=".8" fill="currentColor" opacity=".6"/>
+  <rect x="28.5" y="13.5" width="2.5" height="5" rx=".8" fill="currentColor" opacity=".6"/>
+</symbol>
+
+<symbol id="sC-ce" viewBox="0 0 32 32">
+  <path d="M16 4 L26 10 L26 22 L16 28 L6 22 L6 10 Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M11 13 H21 M11 16 H19 M11 19 H17" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity=".6"/>
+</symbol>
+
+<symbol id="sC-sw" viewBox="0 0 32 32">
+  <path d="M16 3 L27.2 9.5 L27.2 22.5 L16 29 L4.8 22.5 L4.8 9.5 Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- switching arrows inside -->
+  <path d="M10 13 L16 13 M13 11 L16 13 L13 15" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M22 19 L16 19 M19 17 L16 19 L19 21" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</symbol>
+
+<!-- ═══════════════════════════════════════
+     STYLE D — "Nokia FP / Orbital"
+     Concentric rings with port positions
+     marked by filled arcs — inspired by
+     Nokia's FP5 chipset marketing art
+     ═══════════════════════════════════════ -->
+<symbol id="sD-p" viewBox="0 0 32 32">
+  <!-- outer ring -->
+  <circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".35"/>
+  <!-- inner ring -->
+  <circle cx="16" cy="16" r="7" fill="none" stroke="currentColor" stroke-width="1.6"/>
+  <!-- center -->
+  <circle cx="16" cy="16" r="2.5" fill="currentColor" opacity=".5"/>
+  <!-- 4 port radials -->
+  <line x1="16" y1="9"  x2="16" y2="3"  stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="16" y1="23" x2="16" y2="29" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="9"  y1="16" x2="3"  y2="16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="23" y1="16" x2="29" y2="16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- port caps -->
+  <circle cx="16" cy="3"  r="1.6" fill="currentColor"/>
+  <circle cx="16" cy="29" r="1.6" fill="currentColor"/>
+  <circle cx="3"  cy="16" r="1.6" fill="currentColor"/>
+  <circle cx="29" cy="16" r="1.6" fill="currentColor"/>
+</symbol>
+
+<!-- PE: same with diagonal additional ports -->
+<symbol id="sD-pe" viewBox="0 0 32 32">
+  <circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".25"/>
+  <circle cx="16" cy="16" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/>
+  <circle cx="16" cy="16" r="3" fill="currentColor" opacity=".4"/>
+  <!-- 8 port radials -->
+  <line x1="16" y1="8"  x2="16" y2="3"  stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="16" y1="24" x2="16" y2="29" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="8"  y1="16" x2="3"  y2="16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="24" y1="16" x2="29" y2="16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="10.3" y1="10.3" x2="7"  y2="7"  stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".6"/>
+  <line x1="21.7" y1="10.3" x2="25" y2="7"  stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".6"/>
+  <line x1="10.3" y1="21.7" x2="7"  y2="25" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".6"/>
+  <line x1="21.7" y1="21.7" x2="25" y2="25" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".6"/>
+  <circle cx="16" cy="3"  r="1.6" fill="currentColor"/>
+  <circle cx="16" cy="29" r="1.6" fill="currentColor"/>
+  <circle cx="3"  cy="16" r="1.6" fill="currentColor"/>
+  <circle cx="29" cy="16" r="1.6" fill="currentColor"/>
+</symbol>
+
+<symbol id="sD-ce" viewBox="0 0 32 32">
+  <circle cx="16" cy="16" r="10" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <rect x="10" y="13" width="12" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1" opacity=".6"/>
+  <line x1="16" y1="6"  x2="16" y2="3"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="16" y1="26" x2="16" y2="29" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+</symbol>
+
+<symbol id="sD-sw" viewBox="0 0 32 32">
+  <circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".3"/>
+  <circle cx="16" cy="16" r="7.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M11 14 H21 M13 12 L11 14 L13 16" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M21 18 H11 M19 16 L21 18 L19 20" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="16" y1="8.5" x2="16" y2="3"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="16" y1="23.5" x2="16" y2="29" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  <circle cx="16" cy="3"  r="1.5" fill="currentColor"/>
+  <circle cx="16" cy="29" r="1.5" fill="currentColor"/>
+</symbol>
+
+<!-- ═══════════════════════════════════════
+     STYLE E — "Dense Port Matrix"
+     High-density switch/router: thick body
+     with realistic port grid, SFP bays,
+     management port, status LED bar
+     ═══════════════════════════════════════ -->
+<symbol id="sE-p" viewBox="0 0 32 32">
+  <!-- chassis frame -->
+  <rect x="1" y="8" width="30" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/>
+  <!-- LED status bar -->
+  <rect x="3" y="10" width="26" height="1.8" rx=".5" fill="currentColor" opacity=".15"/>
+  <circle cx="5"  cy="10.9" r=".8" fill="currentColor"/>
+  <circle cx="8"  cy="10.9" r=".8" fill="currentColor" opacity=".5"/>
+  <circle cx="11" cy="10.9" r=".8" fill="currentColor" opacity=".5"/>
+  <circle cx="14" cy="10.9" r=".8" fill="currentColor" opacity=".3"/>
+  <!-- SFP port row -->
+  <rect x="3"  y="13.5" width="3.5" height="2.5" rx=".5" fill="currentColor" opacity=".45"/>
+  <rect x="7.5" y="13.5" width="3.5" height="2.5" rx=".5" fill="currentColor" opacity=".45"/>
+  <rect x="12" y="13.5" width="3.5" height="2.5" rx=".5" fill="currentColor" opacity=".45"/>
+  <rect x="16.5" y="13.5" width="3.5" height="2.5" rx=".5" fill="currentColor" opacity=".45"/>
+  <!-- QSFP bay (larger) -->
+  <rect x="21.5" y="13" width="5" height="4" rx=".8" fill="none" stroke="currentColor" stroke-width="1" opacity=".7"/>
+  <line x1="24" y1="13" x2="24" y2="17" stroke="currentColor" stroke-width=".6" opacity=".4"/>
+  <!-- management port -->
+  <rect x="27.5" y="10" width="2.5" height="2" rx=".3" fill="none" stroke="currentColor" stroke-width=".9" opacity=".5"/>
+  <!-- downlink mini ports -->
+  <rect x="3"   y="18" width="2" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+  <rect x="6"   y="18" width="2" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+  <rect x="9"   y="18" width="2" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+  <rect x="12"  y="18" width="2" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+  <rect x="15"  y="18" width="2" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+  <rect x="18"  y="18" width="2" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+  <!-- rack mounting tabs -->
+  <rect x="1" y="9" width="1.5" height="3" rx=".4" fill="currentColor" opacity=".3"/>
+  <rect x="29.5" y="9" width="1.5" height="3" rx=".4" fill="currentColor" opacity=".3"/>
+  <!-- uplink tail -->
+  <path d="M7 8 V5 M16 8 V5 M25 8 V5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".7"/>
+  <path d="M5.8 5.8 L7 5 L8.2 5.8" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
+  <path d="M14.8 5.8 L16 5 L17.2 5.8" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
+  <!-- downlink tail -->
+  <path d="M7 24 V27 M16 24 V27 M25 24 V27" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".7"/>
+  <path d="M5.8 26.2 L7 27 L8.2 26.2" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
+  <path d="M14.8 26.2 L16 27 L17.2 26.2" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
+</symbol>
+
+<!-- PE: two-unit chassis stacked -->
+<symbol id="sE-pe" viewBox="0 0 32 32">
+  <rect x="1" y="5"  width="30" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+  <rect x="1" y="17" width="30" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+  <!-- top chassis ports -->
+  <circle cx="4"  cy="7" r=".8" fill="currentColor"/>
+  <circle cx="6.5" cy="7" r=".8" fill="currentColor" opacity=".5"/>
+  <circle cx="9"  cy="7" r=".8" fill="currentColor" opacity=".5"/>
+  <rect x="12" y="6"  width="3.5" height="2.2" rx=".4" fill="currentColor" opacity=".4"/>
+  <rect x="16.5" y="6" width="3.5" height="2.2" rx=".4" fill="currentColor" opacity=".4"/>
+  <rect x="21.5" y="5.8" width="4" height="2.6" rx=".6" fill="none" stroke="currentColor" stroke-width=".9" opacity=".6"/>
+  <!-- top chassis lower detail -->
+  <rect x="3"  y="9.5" width="2.5" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+  <rect x="6.5" y="9.5" width="2.5" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+  <rect x="10"  y="9.5" width="2.5" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+  <rect x="13.5" y="9.5" width="2.5" height="1.5" rx=".3" fill="currentColor" opacity=".25"/>
+  <!-- bottom chassis -->
+  <circle cx="4"  cy="19" r=".8" fill="currentColor"/>
+  <circle cx="6.5" cy="19" r=".8" fill="currentColor" opacity=".4"/>
+  <rect x="9"  y="18" width="3.5" height="2.2" rx=".4" fill="currentColor" opacity=".35"/>
+  <rect x="13.5" y="18" width="3.5" height="2.2" rx=".4" fill="currentColor" opacity=".35"/>
+  <rect x="18.5" y="17.8" width="4" height="2.6" rx=".6" fill="none" stroke="currentColor" stroke-width=".9" opacity=".55"/>
+  <rect x="3"  y="21.5" width="2.5" height="1.5" rx=".3" fill="currentColor" opacity=".2"/>
+  <rect x="6.5" y="21.5" width="2.5" height="1.5" rx=".3" fill="currentColor" opacity=".2"/>
+  <rect x="10"  y="21.5" width="2.5" height="1.5" rx=".3" fill="currentColor" opacity=".2"/>
+</symbol>
+
+<symbol id="sE-ce" viewBox="0 0 32 32">
+  <rect x="3" y="6"  width="26" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <rect x="5" y="9"  width="22" height="10" rx="1" fill="none" stroke="currentColor" stroke-width=".9" opacity=".5"/>
+  <line x1="5" y1="22" x2="27" y2="22" stroke="currentColor" stroke-width="1.2" opacity=".3"/>
+  <circle cx="7" cy="24" r="1" fill="currentColor" opacity=".5"/>
+  <circle cx="16" cy="24" r="1" fill="currentColor" opacity=".3"/>
+</symbol>
+
+<symbol id="sE-sw" viewBox="0 0 32 32">
+  <rect x="1" y="10" width="30" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+  <rect x="3"  y="12.5" width="2.5" height="5" rx=".5" fill="currentColor" opacity=".4"/>
+  <rect x="6.5" y="12.5" width="2.5" height="5" rx=".5" fill="currentColor" opacity=".4"/>
+  <rect x="10"  y="12.5" width="2.5" height="5" rx=".5" fill="currentColor" opacity=".4"/>
+  <rect x="13.5" y="12.5" width="2.5" height="5" rx=".5" fill="currentColor" opacity=".4"/>
+  <rect x="17"  y="12.5" width="2.5" height="5" rx=".5" fill="currentColor" opacity=".4"/>
+  <rect x="20.5" y="12.5" width="2.5" height="5" rx=".5" fill="currentColor" opacity=".4"/>
+  <circle cx="26" cy="15"  r="1.2" fill="currentColor"/>
+  <circle cx="29" cy="15"  r="1.2" fill="currentColor" opacity=".3"/>
+</symbol>
+
+<!-- generic info icon -->
+<symbol id="i-info2" viewBox="0 0 32 32">
+  <circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M16 14 V22 M16 10 V11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</symbol>
+
+</defs>
+</svg>
+
+<!-- ── TOP BAR ── -->
+<div class="topbar">
+  <div class="topbar-dot"></div>
+  <div>
+    <div class="topbar-title">Icon Style Alternatives</div>
+    <div class="topbar-sub">preview before editing Network Topology.html</div>
+  </div>
+  <div class="selected-indicator" id="sel-label">
+    Selected: <span id="sel-name">A — Clean 1U Chassis</span>
+  </div>
+  <div class="topbar-badge">5 STYLES · 4 ROLES EACH</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SECTION 1 — ICON STYLE CARDS
+     ══════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">Icon Styles · click to select</div>
+  <div class="styles-grid" id="styles-grid">
+
+    <!-- ── STYLE A ── -->
+    <div class="style-card selected" data-style="A" data-name="A — Clean 1U Chassis">
+      <div class="card-title">A — Clean 1U Chassis</div>
+      <div class="card-desc">Refined current style. Single rack unit, crisp port row, directional V-tail uplinks. Immediately recognisable as networking hardware.</div>
+      <div class="icon-row">
+        <div class="icon-cell">
+          <svg width="48" height="48" style="color:var(--accent)"><use href="#sA-p"/></svg>
+          <span>P · 48px</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="32" height="32" style="color:var(--violet)"><use href="#sA-pe"/></svg>
+          <span>PE · 32px</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="24" height="24" style="color:var(--sky)"><use href="#sA-ce"/></svg>
+          <span>CE · 24px</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="24" height="24" style="color:var(--ink-dim)"><use href="#sA-sw"/></svg>
+          <span>SW · 24px</span>
+        </div>
+      </div>
+      <div class="role-tags">
+        <span class="rtag p">P-router</span>
+        <span class="rtag pe">PE-router</span>
+        <span class="rtag ce">CE/Host</span>
+        <span class="rtag sw">Switch</span>
+      </div>
+      <!-- mini topo -->
+      <div class="topo-preview-wrap">
+        <svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg" style="height:80px">
+          <line x1="50" y1="40" x2="100" y2="40" stroke="#243240" stroke-width="1.5"/>
+          <line x1="100" y1="40" x2="150" y2="40" stroke="#243240" stroke-width="1.5"/>
+          <line x1="100" y1="40" x2="100" y2="15" stroke="#243240" stroke-width="1.5"/>
+          <line x1="50" y1="40" x2="50" y2="15"   stroke="#243240" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <line x1="150" y1="40" x2="150" y2="15"  stroke="#243240" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <!-- nodes -->
+          <g transform="translate(36,26)" style="color:#5ce1c2"><svg width="28" height="28"><use href="#sA-p"/></svg></g>
+          <g transform="translate(86,26)" style="color:#5ce1c2"><svg width="28" height="28"><use href="#sA-p"/></svg></g>
+          <g transform="translate(136,26)" style="color:#a78bfa"><svg width="28" height="28"><use href="#sA-pe"/></svg></g>
+          <text x="50"  y="76" text-anchor="middle" font-size="7" fill="#4a5764" font-family="JetBrains Mono,monospace">P1</text>
+          <text x="100" y="76" text-anchor="middle" font-size="7" fill="#4a5764" font-family="JetBrains Mono,monospace">P2</text>
+          <text x="150" y="76" text-anchor="middle" font-size="7" fill="#4a5764" font-family="JetBrains Mono,monospace">PE1</text>
+          <!-- CE nodes small -->
+          <g transform="translate(42,4)" style="color:#7dd3fc"><svg width="16" height="16"><use href="#sA-ce"/></svg></g>
+          <g transform="translate(142,4)" style="color:#7dd3fc"><svg width="16" height="16"><use href="#sA-ce"/></svg></g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- ── STYLE B ── -->
+    <div class="style-card" data-style="B" data-name="B — ASIC Chip">
+      <div class="card-title">B — ASIC Chip</div>
+      <div class="card-desc">Square IC die with uniform pin connectors on all four sides. Contemporary, tech-forward. Great for Nokia FP5/FP6 chipset context.</div>
+      <div class="icon-row">
+        <div class="icon-cell">
+          <svg width="48" height="48" style="color:var(--accent)"><use href="#sB-p"/></svg>
+          <span>P · 48px</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="32" height="32" style="color:var(--violet)"><use href="#sB-pe"/></svg>
+          <span>PE · 32px</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="24" height="24" style="color:var(--sky)"><use href="#sB-ce"/></svg>
+          <span>CE · 24px</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="24" height="24" style="color:var(--ink-dim)"><use href="#sB-sw"/></svg>
+          <span>SW · 24px</span>
+        </div>
+      </div>
+      <div class="role-tags">
+        <span class="rtag p">P-router</span>
+        <span class="rtag pe">PE-router</span>
+        <span class="rtag ce">CE/Host</span>
+        <span class="rtag sw">Switch</span>
+      </div>
+      <div class="topo-preview-wrap">
+        <svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg" style="height:80px">
+          <line x1="50" y1="40" x2="100" y2="40" stroke="#243240" stroke-width="1.5"/>
+          <line x1="100" y1="40" x2="150" y2="40" stroke="#243240" stroke-width="1.5"/>
+          <line x1="100" y1="40" x2="100" y2="15" stroke="#243240" stroke-width="1.5"/>
+          <line x1="50"  y1="40" x2="50"  y2="15" stroke="#243240" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <line x1="150" y1="40" x2="150" y2="15" stroke="#243240" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <g transform="translate(36,26)" style="color:#5ce1c2"><svg width="28" height="28"><use href="#sB-p"/></svg></g>
+          <g transform="translate(86,26)" style="color:#5ce1c2"><svg width="28" height="28"><use href="#sB-p"/></svg></g>
+          <g transform="translate(136,26)" style="color:#a78bfa"><svg width="28" height="28"><use href="#sB-pe"/></svg></g>
+          <text x="50"  y="76" text-anchor="middle" font-size="7" fill="#4a5764" font-family="JetBrains Mono,monospace">P1</text>
+          <text x="100" y="76" text-anchor="middle" font-size="7" fill="#4a5764" font-family="JetBrains Mono,monospace">P2</text>
+          <text x="150" y="76" text-anchor="middle" font-size="7" fill="#4a5764" font-family="JetBrains Mono,monospace">PE1</text>
+          <g transform="translate(42,4)" style="color:#7dd3fc"><svg width="16" height="16"><use href="#sB-ce"/></svg></g>
+          <g transform="translate(142,4)" style="color:#7dd3fc"><svg width="16" height="16"><use href="#sB-ce"/></svg></g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- ── STYLE C ── -->
+    <div class="style-card" data-style="C" data-name="C — Hexagonal Node">
+      <div class="card-title">C — Hexagonal Node</div>
+      <div class="card-desc">Regular hexagon with inner detail and port nubs. Standard in modern SDN, Kubernetes, and cloud-native network diagrams. Very distinctive.</div>
+      <div class="icon-row">
+        <div class="icon-cell">
+          <svg width="48" height="48" style="color:var(--accent)"><use href="#sC-p"/></svg>
+          <span>P · 48px</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="32" height="32" style="color:var(--violet)"><use href="#sC-pe"/></svg>
+          <span>PE · 32px</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="24" height="24" style="color:var(--sky)"><use href="#sC-ce"/></svg>
+          <span>CE · 24px</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="24" height="24" style="color:var(--ink-dim)"><use href="#sC-sw"/></svg>
+          <span>SW · 24px</span>
+        </div>
+      </div>
+      <div class="role-tags">
+        <span class="rtag p">P-router</span>
+        <span class="rtag pe">PE-router</span>
+        <span class="rtag ce">CE/Host</span>
+        <span class="rtag sw">Switch</span>
+      </div>
+      <div class="topo-preview-wrap">
+        <svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg" style="height:80px">
+          <line x1="50" y1="40" x2="100" y2="40" stroke="#243240" stroke-width="1.5"/>
+          <line x1="100" y1="40" x2="150" y2="40" stroke="#243240" stroke-width="1.5"/>
+          <line x1="100" y1="40" x2="100" y2="15" stroke="#243240" stroke-width="1.5"/>
+          <line x1="50"  y1="40" x2="50"  y2="15" stroke="#243240" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <line x1="150" y1="40" x2="150" y2="15" stroke="#243240" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <g transform="translate(36,26)" style="color:#5ce1c2"><svg width="28" height="28"><use href="#sC-p"/></svg></g>
+          <g transform="translate(86,26)" style="color:#5ce1c2"><svg width="28" height="28"><use href="#sC-p"/></svg></g>
+          <g transform="translate(136,26)" style="color:#a78bfa"><svg width="28" height="28"><use href="#sC-pe"/></svg></g>
+          <text x="50"  y="76" text-anchor="middle" font-size="7" fill="#4a5764" font-family="JetBrains Mono,monospace">P1</text>
+          <text x="100" y="76" text-anchor="middle" font-size="7" fill="#4a5764" font-family="JetBrains Mono,monospace">P2</text>
+          <text x="150" y="76" text-anchor="middle" font-size="7" fill="#4a5764" font-family="JetBrains Mono,monospace">PE1</text>
+          <g transform="translate(42,4)" style="color:#7dd3fc"><svg width="16" height="16"><use href="#sC-ce"/></svg></g>
+          <g transform="translate(142,4)" style="color:#7dd3fc"><svg width="16" height="16"><use href="#sC-ce"/></svg></g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- ── STYLE D ── -->
+    <div class="style-card" data-style="D" data-name="D — Nokia Orbital">
+      <div class="card-title">D — Nokia Orbital</div>
+      <div class="card-desc">Concentric ring with cardinal port radials. Inspired by Nokia's FP chipset visual language. P-router (4 ports) and PE-router (8 ports) visually distinct.</div>
+      <div class="icon-row">
+        <div class="icon-cell">
+          <svg width="48" height="48" style="color:var(--accent)"><use href="#sD-p"/></svg>
+          <span>P · 48px</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="32" height="32" style="color:var(--violet)"><use href="#sD-pe"/></svg>
+          <span>PE · 32px</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="24" height="24" style="color:var(--sky)"><use href="#sD-ce"/></svg>
+          <span>CE · 24px</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="24" height="24" style="color:var(--ink-dim)"><use href="#sD-sw"/></svg>
+          <span>SW · 24px</span>
+        </div>
+      </div>
+      <div class="role-tags">
+        <span class="rtag p">P-router</span>
+        <span class="rtag pe">PE-router</span>
+        <span class="rtag ce">CE/Host</span>
+        <span class="rtag sw">Switch</span>
+      </div>
+      <div class="topo-preview-wrap">
+        <svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg" style="height:80px">
+          <line x1="50" y1="40" x2="100" y2="40" stroke="#243240" stroke-width="1.5"/>
+          <line x1="100" y1="40" x2="150" y2="40" stroke="#243240" stroke-width="1.5"/>
+          <line x1="100" y1="40" x2="100" y2="15" stroke="#243240" stroke-width="1.5"/>
+          <line x1="50"  y1="40" x2="50"  y2="15" stroke="#243240" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <line x1="150" y1="40" x2="150" y2="15" stroke="#243240" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <g transform="translate(36,26)" style="color:#5ce1c2"><svg width="28" height="28"><use href="#sD-p"/></svg></g>
+          <g transform="translate(86,26)" style="color:#5ce1c2"><svg width="28" height="28"><use href="#sD-p"/></svg></g>
+          <g transform="translate(136,26)" style="color:#a78bfa"><svg width="28" height="28"><use href="#sD-pe"/></svg></g>
+          <text x="50"  y="76" text-anchor="middle" font-size="7" fill="#4a5764" font-family="JetBrains Mono,monospace">P1</text>
+          <text x="100" y="76" text-anchor="middle" font-size="7" fill="#4a5764" font-family="JetBrains Mono,monospace">P2</text>
+          <text x="150" y="76" text-anchor="middle" font-size="7" fill="#4a5764" font-family="JetBrains Mono,monospace">PE1</text>
+          <g transform="translate(42,4)" style="color:#7dd3fc"><svg width="16" height="16"><use href="#sD-ce"/></svg></g>
+          <g transform="translate(142,4)" style="color:#7dd3fc"><svg width="16" height="16"><use href="#sD-ce"/></svg></g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- ── STYLE E ── -->
+    <div class="style-card" data-style="E" data-name="E — Dense Port Matrix">
+      <div class="card-title">E — Dense Port Matrix</div>
+      <div class="card-desc">High-detail chassis with realistic SFP/QSFP bays, LED strip, management port, and rack tabs. Most photo-realistic — best for NOC operator audiences.</div>
+      <div class="icon-row">
+        <div class="icon-cell">
+          <svg width="48" height="48" style="color:var(--accent)"><use href="#sE-p"/></svg>
+          <span>P · 48px</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="32" height="32" style="color:var(--violet)"><use href="#sE-pe"/></svg>
+          <span>PE · 32px</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="24" height="24" style="color:var(--sky)"><use href="#sE-ce"/></svg>
+          <span>CE · 24px</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="24" height="24" style="color:var(--ink-dim)"><use href="#sE-sw"/></svg>
+          <span>SW · 24px</span>
+        </div>
+      </div>
+      <div class="role-tags">
+        <span class="rtag p">P-router</span>
+        <span class="rtag pe">PE-router</span>
+        <span class="rtag ce">CE/Host</span>
+        <span class="rtag sw">Switch</span>
+      </div>
+      <div class="topo-preview-wrap">
+        <svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg" style="height:80px">
+          <line x1="50" y1="40" x2="100" y2="40" stroke="#243240" stroke-width="1.5"/>
+          <line x1="100" y1="40" x2="150" y2="40" stroke="#243240" stroke-width="1.5"/>
+          <line x1="100" y1="40" x2="100" y2="15" stroke="#243240" stroke-width="1.5"/>
+          <line x1="50"  y1="40" x2="50"  y2="15" stroke="#243240" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <line x1="150" y1="40" x2="150" y2="15" stroke="#243240" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <g transform="translate(36,26)" style="color:#5ce1c2"><svg width="28" height="28"><use href="#sE-p"/></svg></g>
+          <g transform="translate(86,26)" style="color:#5ce1c2"><svg width="28" height="28"><use href="#sE-p"/></svg></g>
+          <g transform="translate(136,26)" style="color:#a78bfa"><svg width="28" height="28"><use href="#sE-pe"/></svg></g>
+          <text x="50"  y="76" text-anchor="middle" font-size="7" fill="#4a5764" font-family="JetBrains Mono,monospace">P1</text>
+          <text x="100" y="76" text-anchor="middle" font-size="7" fill="#4a5764" font-family="JetBrains Mono,monospace">P2</text>
+          <text x="150" y="76" text-anchor="middle" font-size="7" fill="#4a5764" font-family="JetBrains Mono,monospace">PE1</text>
+          <g transform="translate(42,4)" style="color:#7dd3fc"><svg width="16" height="16"><use href="#sE-ce"/></svg></g>
+          <g transform="translate(142,4)" style="color:#7dd3fc"><svg width="16" height="16"><use href="#sE-ce"/></svg></g>
+        </svg>
+      </div>
+    </div>
+
+  </div><!-- /styles-grid -->
+</div><!-- /section -->
+
+<!-- ══════════════════════════════════════════
+     SECTION 2 — QUICK COMPARISON AT 32px
+     ══════════════════════════════════════════ -->
+<div class="section" style="padding-top:28px">
+  <div class="section-header">All 5 Styles · P-router at 32 px (canvas node size)</div>
+  <div class="compare-grid" id="compare-grid">
+    <div class="compare-cell selected" data-style="A">
+      <svg width="32" height="32" style="color:var(--accent)"><use href="#sA-p"/></svg>
+      <div class="label">A · 1U Chassis</div>
+    </div>
+    <div class="compare-cell" data-style="B">
+      <svg width="32" height="32" style="color:var(--accent)"><use href="#sB-p"/></svg>
+      <div class="label">B · ASIC Chip</div>
+    </div>
+    <div class="compare-cell" data-style="C">
+      <svg width="32" height="32" style="color:var(--accent)"><use href="#sC-p"/></svg>
+      <div class="label">C · Hexagonal</div>
+    </div>
+    <div class="compare-cell" data-style="D">
+      <svg width="32" height="32" style="color:var(--accent)"><use href="#sD-p"/></svg>
+      <div class="label">D · Orbital</div>
+    </div>
+    <div class="compare-cell" data-style="E">
+      <svg width="32" height="32" style="color:var(--accent)"><use href="#sE-p"/></svg>
+      <div class="label">E · Port Matrix</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SECTION 3 — NODE CARD LAYOUT VARIANTS
+     ══════════════════════════════════════════ -->
+<div class="section" style="padding-top:28px">
+  <div class="section-header">Node Card Layout · 4 variants (all use the selected icon style)</div>
+  <div class="cards-grid" id="cards-grid">
+
+    <!-- V0: Current style -->
+    <div class="variant-card selected" data-variant="v0">
+      <div class="variant-title">
+        <span class="vtag">CURRENT</span>
+        V0 — Horizontal pill
+      </div>
+      <div class="demo-area">
+        <div class="nc-v0">
+          <div class="pill"></div>
+          <svg width="24" height="24" style="color:var(--accent);flex-shrink:0" id="cv0-ico"><use href="#sA-p"/></svg>
+          <div><div class="nc-name">PE1</div><div class="nc-role">PE · vr-sros</div></div>
+        </div>
+        <div class="nc-v0">
+          <div class="pill"></div>
+          <svg width="24" height="24" style="color:var(--accent);flex-shrink:0" id="cv0-ico2"><use href="#sA-p"/></svg>
+          <div><div class="nc-name">P1</div><div class="nc-role">P · vr-sros</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- V1: Vertical -->
+    <div class="variant-card" data-variant="v1">
+      <div class="variant-title">
+        <span class="vtag new">NEW</span>
+        V1 — Vertical app-icon
+      </div>
+      <div class="demo-area">
+        <div class="nc-v1">
+          <svg width="28" height="28" style="color:var(--accent)" id="cv1-ico"><use href="#sA-p"/></svg>
+          <div class="nc-name-sm">PE1</div>
+          <div class="nc-role-sm">PE</div>
+          <div class="status-bar"></div>
+        </div>
+        <div class="nc-v1">
+          <svg width="28" height="28" style="color:var(--accent)" id="cv1-ico2"><use href="#sA-p"/></svg>
+          <div class="nc-name-sm">P1</div>
+          <div class="nc-role-sm">P</div>
+          <div class="status-bar"></div>
+        </div>
+        <div class="nc-v1" style="border-color:rgba(167,139,250,.3)">
+          <svg width="28" height="28" style="color:var(--violet)" id="cv1-ico3"><use href="#sA-pe"/></svg>
+          <div class="nc-name-sm">P2</div>
+          <div class="nc-role-sm" style="color:var(--violet)">PE</div>
+          <div class="status-bar" style="background:var(--violet);box-shadow:0 0 6px var(--violet)"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- V2: Accent top stripe -->
+    <div class="variant-card" data-variant="v2">
+      <div class="variant-title">
+        <span class="vtag new">NEW</span>
+        V2 — Accent stripe + role chip
+      </div>
+      <div class="demo-area">
+        <div class="nc-v2">
+          <div class="v2-accent"></div>
+          <div class="v2-body">
+            <svg width="22" height="22" style="color:var(--accent);flex-shrink:0" id="cv2-ico"><use href="#sA-p"/></svg>
+            <div><div class="nc-name-sm">PE1</div><div class="nc-role-sm">vr-sros</div></div>
+          </div>
+          <div class="role-chip">PE · MPLS-LER</div>
+        </div>
+        <div class="nc-v2">
+          <div class="v2-accent" style="background:linear-gradient(90deg,var(--violet),transparent)"></div>
+          <div class="v2-body">
+            <svg width="22" height="22" style="color:var(--violet);flex-shrink:0" id="cv2-ico2"><use href="#sA-p"/></svg>
+            <div><div class="nc-name-sm">P1</div><div class="nc-role-sm">vr-sros</div></div>
+          </div>
+          <div class="role-chip" style="color:var(--violet);background:rgba(167,139,250,.08);border-color:rgba(167,139,250,.2)">P · MPLS-LSR</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- V3: Minimal circle icon -->
+    <div class="variant-card" data-variant="v3">
+      <div class="variant-title">
+        <span class="vtag new">NEW</span>
+        V3 — Minimal circle badge
+      </div>
+      <div class="demo-area">
+        <div class="nc-v3">
+          <div class="ico-wrap">
+            <svg width="16" height="16" style="color:var(--accent)" id="cv3-ico"><use href="#sA-p"/></svg>
+          </div>
+          <div><div class="nc-name-sm">PE1</div><div class="nc-role-sm">PE · 10.10.0.1</div></div>
+        </div>
+        <div class="nc-v3">
+          <div class="ico-wrap" style="background:rgba(167,139,250,.07);border-color:rgba(167,139,250,.2)">
+            <svg width="16" height="16" style="color:var(--violet)" id="cv3-ico2"><use href="#sA-p"/></svg>
+          </div>
+          <div><div class="nc-name-sm">P1</div><div class="nc-role-sm">P · 10.0.10.1</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- V4: Glass morphism -->
+    <div class="variant-card" data-variant="v4">
+      <div class="variant-title">
+        <span class="vtag new">NEW</span>
+        V4 — Glass morphism
+      </div>
+      <div class="demo-area" style="background:radial-gradient(ellipse at 40% 50%,rgba(92,225,194,.07),transparent 70%),var(--bg-2)">
+        <div class="nc-v4">
+          <svg width="24" height="24" style="color:var(--accent);flex-shrink:0" id="cv4-ico"><use href="#sA-p"/></svg>
+          <div><div class="nc-name">PE1</div><div class="nc-role">PE · vr-sros</div></div>
+        </div>
+        <div class="nc-v4">
+          <svg width="24" height="24" style="color:var(--accent);flex-shrink:0" id="cv4-ico2"><use href="#sA-p"/></svg>
+          <div><div class="nc-name">P1</div><div class="nc-role">P · vr-sros</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SECTION 4 — FULL TOPOLOGY PREVIEW
+     ══════════════════════════════════════════ -->
+<div class="section" style="padding-top:28px">
+  <div class="section-header">Full NRSII Topology Preview · selected style</div>
+  <div style="background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:24px;position:relative;overflow:hidden">
+    <!-- faint grid -->
+    <div style="position:absolute;inset:0;background-image:linear-gradient(to right,rgba(92,225,194,.04) 1px,transparent 1px),linear-gradient(to bottom,rgba(92,225,194,.04) 1px,transparent 1px);background-size:20px 20px;pointer-events:none;border-radius:12px"></div>
+
+    <svg viewBox="0 0 700 340" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-height:340px;position:relative">
+      <defs>
+        <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+
+      <!-- link glow -->
+      <g opacity=".18" filter="url(#glow)">
+        <line x1="160" y1="120" x2="350" y2="80"  stroke="#5ce1c2" stroke-width="3"/>
+        <line x1="350" y1="80"  x2="540" y2="120" stroke="#5ce1c2" stroke-width="3"/>
+        <line x1="350" y1="80"  x2="280" y2="220" stroke="#5ce1c2" stroke-width="3"/>
+        <line x1="350" y1="80"  x2="420" y2="220" stroke="#5ce1c2" stroke-width="3"/>
+        <line x1="280" y1="220" x2="420" y2="220" stroke="#5ce1c2" stroke-width="3"/>
+        <line x1="280" y1="220" x2="350" y2="280" stroke="#5ce1c2" stroke-width="3"/>
+        <line x1="420" y1="220" x2="350" y2="280" stroke="#5ce1c2" stroke-width="3"/>
+      </g>
+
+      <!-- links base -->
+      <line x1="160" y1="120" x2="350" y2="80"  stroke="#243240" stroke-width="2"/>
+      <line x1="350" y1="80"  x2="540" y2="120" stroke="#243240" stroke-width="2"/>
+      <line x1="350" y1="80"  x2="280" y2="220" stroke="#243240" stroke-width="2"/>
+      <line x1="350" y1="80"  x2="420" y2="220" stroke="#243240" stroke-width="2"/>
+      <line x1="280" y1="220" x2="420" y2="220" stroke="#243240" stroke-width="2"/>
+      <line x1="280" y1="220" x2="350" y2="280" stroke="#243240" stroke-width="2"/>
+      <line x1="420" y1="220" x2="350" y2="280" stroke="#243240" stroke-width="2"/>
+      <!-- CE links dashed -->
+      <line x1="160" y1="120" x2="80"  y2="220" stroke="#1a242d" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <line x1="540" y1="120" x2="620" y2="220" stroke="#1a242d" stroke-width="1.5" stroke-dasharray="5 4"/>
+
+      <!-- link flow animation -->
+      <line x1="160" y1="120" x2="350" y2="80"  stroke="#5ce1c2" stroke-width="1.5" stroke-dasharray="6 12" opacity=".5">
+        <animate attributeName="stroke-dashoffset" from="0" to="-36" dur="1.1s" repeatCount="indefinite"/>
+      </line>
+      <line x1="350" y1="80" x2="540" y2="120" stroke="#5ce1c2" stroke-width="1.5" stroke-dasharray="6 12" opacity=".5">
+        <animate attributeName="stroke-dashoffset" from="0" to="-36" dur="1.3s" repeatCount="indefinite"/>
+      </line>
+
+      <!-- link labels -->
+      <g font-family="JetBrains Mono,monospace" font-size="8" fill="#4a5764">
+        <text x="255" y="93"  text-anchor="middle">1G</text>
+        <text x="445" y="93"  text-anchor="middle">1G</text>
+        <text x="311" y="160" text-anchor="middle">1G</text>
+        <text x="389" y="160" text-anchor="middle">1G</text>
+        <text x="350" y="210" text-anchor="middle">1G</text>
+        <text x="307" y="258" text-anchor="middle">1G</text>
+        <text x="393" y="258" text-anchor="middle">1G</text>
+      </g>
+
+      <!-- P-core nodes -->
+      <g transform="translate(316,46)" style="color:#5ce1c2" filter="url(#glow)" id="ft-p1"><svg width="36" height="36" id="ft-p1-svg"><use href="#sA-p"/></svg></g>
+      <g transform="translate(246,202)" style="color:#5ce1c2" filter="url(#glow)" id="ft-p2"><svg width="36" height="36" id="ft-p2-svg"><use href="#sA-p"/></svg></g>
+      <g transform="translate(386,202)" style="color:#5ce1c2" filter="url(#glow)" id="ft-p3"><svg width="36" height="36" id="ft-p3-svg"><use href="#sA-p"/></svg></g>
+
+      <!-- PE nodes -->
+      <g transform="translate(126,102)" style="color:#a78bfa" filter="url(#glow)" id="ft-pe1"><svg width="36" height="36" id="ft-pe1-svg"><use href="#sA-pe"/></svg></g>
+      <g transform="translate(506,102)" style="color:#a78bfa" filter="url(#glow)" id="ft-pe2"><svg width="36" height="36" id="ft-pe2-svg"><use href="#sA-pe"/></svg></g>
+
+      <!-- CE nodes -->
+      <g transform="translate(62,208)" style="color:#7dd3fc" id="ft-ce1"><svg width="28" height="28" id="ft-ce1-svg"><use href="#sA-ce"/></svg></g>
+      <g transform="translate(604,208)" style="color:#7dd3fc" id="ft-ce2"><svg width="28" height="28" id="ft-ce2-svg"><use href="#sA-ce"/></svg></g>
+
+      <!-- node labels -->
+      <g font-family="Space Grotesk,sans-serif" font-size="10" font-weight="600" text-anchor="middle">
+        <text x="334" y="44"  fill="#d7e3ee">P1</text>
+        <text x="264" y="200" fill="#d7e3ee">P2</text>
+        <text x="404" y="200" fill="#d7e3ee">P3</text>
+        <text x="144" y="100" fill="#c4b0ff">PE1</text>
+        <text x="524" y="100" fill="#c4b0ff">PE2</text>
+        <text x="76"  y="206" fill="#7dd3fc">CE-1</text>
+        <text x="618" y="206" fill="#7dd3fc">CE-2</text>
+      </g>
+
+      <!-- loopback labels -->
+      <g font-family="JetBrains Mono,monospace" font-size="7.5" text-anchor="middle" fill="#4a5764">
+        <text x="334" y="95">10.0.10.1</text>
+        <text x="264" y="248">10.0.10.2</text>
+        <text x="404" y="248">10.0.10.3</text>
+        <text x="144" y="148">10.10.0.1</text>
+        <text x="524" y="148">10.10.0.2</text>
+      </g>
+
+      <!-- status pills -->
+      <circle cx="352" cy="47" r="4" fill="#5ce1c2" opacity=".9"/>
+      <circle cx="162" cy="123" r="4" fill="#a78bfa" opacity=".9"/>
+      <circle cx="542" cy="123" r="4" fill="#a78bfa" opacity=".9"/>
+
+      <!-- MPLS domain label -->
+      <rect x="220" y="54" width="260" height="200" rx="12" fill="none" stroke="rgba(92,225,194,.06)" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text x="350" y="48" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="rgba(92,225,194,.25)" letter-spacing="2">MPLS CORE</text>
+    </svg>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SECTION 5 — NOTES
+     ══════════════════════════════════════════ -->
+<div class="section" style="padding-top:28px">
+  <div class="section-header">Notes · applying to Network Topology.html</div>
+  <div style="background:var(--panel);border:1px solid var(--line-2);border-radius:10px;padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:11.5px;color:var(--ink-dim);line-height:1.6">
+    <div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:8px">Where to edit</div>
+      Replace the <code style="background:var(--panel-2);padding:1px 5px;border-radius:3px;color:var(--accent)">&lt;symbol id="i-router"&gt;</code> block at line 599 of <strong style="color:var(--ink)">Network Topology.html</strong>. The P-router and PE-router both use <code style="background:var(--panel-2);padding:1px 5px;border-radius:3px;color:var(--accent)">i-router</code> — you can add a separate <code style="background:var(--panel-2);padding:1px 5px;border-radius:3px;color:var(--accent)">i-pe-router</code> symbol and update <code style="background:var(--panel-2);padding:1px 5px;border-radius:3px;color:var(--accent)">classifyNode()</code> to assign it.
+    </div>
+    <div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:8px">Node card layout</div>
+      The node card HTML lives in <code style="background:var(--panel-2);padding:1px 5px;border-radius:3px;color:var(--accent)">renderNodes()</code> around line 912. The CSS class <code style="background:var(--panel-2);padding:1px 5px;border-radius:3px;color:var(--accent)">.node-card</code> controls the card shape. Choose the card variant above and the combined icon+card style is what will be applied.
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── Style selection ── */
+const ICON_MAP = {
+  'A': { p:'sA-p', pe:'sA-pe', ce:'sA-ce', sw:'sA-sw' },
+  'B': { p:'sB-p', pe:'sB-pe', ce:'sB-ce', sw:'sB-sw' },
+  'C': { p:'sC-p', pe:'sC-pe', ce:'sC-ce', sw:'sC-sw' },
+  'D': { p:'sD-p', pe:'sD-pe', ce:'sD-ce', sw:'sD-sw' },
+  'E': { p:'sE-p', pe:'sE-pe', ce:'sE-ce', sw:'sE-sw' },
+};
+
+let currentStyle = 'A';
+
+function updatePreview(style) {
+  const m = ICON_MAP[style];
+
+  // Update full topo preview
+  const map = {
+    'ft-p1-svg':'p','ft-p2-svg':'p','ft-p3-svg':'p',
+    'ft-pe1-svg':'pe','ft-pe2-svg':'pe',
+    'ft-ce1-svg':'ce','ft-ce2-svg':'ce'
+  };
+  for(const [id, role] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = `<use href="#${m[role]}"/>`;
+  }
+
+  // Card variant demos
+  const cardIconMap = {
+    'cv0-ico':'p','cv0-ico2':'p',
+    'cv1-ico':'p','cv1-ico2':'p','cv1-ico3':'pe',
+    'cv2-ico':'p','cv2-ico2':'p',
+    'cv3-ico':'p','cv3-ico2':'p',
+    'cv4-ico':'p','cv4-ico2':'p',
+  };
+  for(const [id, role] of Object.entries(cardIconMap)) {
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = `<use href="#${m[role]}"/>`;
+  }
+}
+
+// Style card clicks
+document.getElementById('styles-grid').addEventListener('click', e => {
+  const card = e.target.closest('.style-card');
+  if(!card) return;
+  const style = card.dataset.style;
+  currentStyle = style;
+
+  document.querySelectorAll('.style-card').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('.compare-cell').forEach(c => c.classList.toggle('selected', c.dataset.style === style));
+  card.classList.add('selected');
+  document.getElementById('sel-name').textContent = card.dataset.name;
+  updatePreview(style);
+});
+
+// Compare row clicks
+document.getElementById('compare-grid').addEventListener('click', e => {
+  const cell = e.target.closest('.compare-cell');
+  if(!cell) return;
+  const style = cell.dataset.style;
+  currentStyle = style;
+  document.querySelectorAll('.compare-cell').forEach(c => c.classList.toggle('selected', c.dataset.style === style));
+  document.querySelectorAll('.style-card').forEach(c => {
+    c.classList.toggle('selected', c.dataset.style === style);
+    if(c.dataset.style === style) document.getElementById('sel-name').textContent = c.dataset.name;
+  });
+  updatePreview(style);
+});
+
+// Card variant clicks
+document.getElementById('cards-grid').addEventListener('click', e => {
+  const card = e.target.closest('.variant-card');
+  if(!card) return;
+  document.querySelectorAll('.variant-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+});
+</script>
+</body>
+</html>

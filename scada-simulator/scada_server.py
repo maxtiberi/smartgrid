@@ -264,6 +264,25 @@ def run_session(local_iface: str, rtu_ip: str, rtu_port: int) -> None:
             pass
 
 
+def _is_transient_connect_error(msg: str) -> bool:
+    """Return True if the session failure looks like a transient routing/reachability
+    glitch that is worth retrying on the PRIMARY before committing to failover.
+
+    Patterns matched (all case-insensitive):
+      - EHOSTUNREACH  (errno 113): no route to host — kernel routing table not ready
+      - ENETUNREACH   (errno 101): network unreachable — same root cause
+      - timed out                : connect timeout — link may just be warming up
+    """
+    msg_lower = msg.lower()
+    return (
+        "host is unreachable" in msg_lower or   # EHOSTUNREACH (errno 113)
+        "ehostunreach" in msg_lower or
+        "network is unreachable" in msg_lower or  # ENETUNREACH  (errno 101)
+        "enetunreach" in msg_lower or
+        "timed out" in msg_lower                  # connect timeout
+    )
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="SCADA IEC 104 client with primary/backup failover")
     ap.add_argument("--rtu-ip", default=DEFAULT_RTU_IP)
@@ -276,6 +295,11 @@ def main() -> int:
                          "Use this when the IP is already on both NICs.")
     ap.add_argument("--retry-delay", type=float, default=3.0,
                     help="Seconds to wait after a session fails before retrying")
+    ap.add_argument("--primary-retries", type=int, default=5,
+                    help="Max consecutive transient-connect failures on the primary "
+                         "before committing to permanent failover (default: 5). "
+                         "Hard failures (TCP reset, STARTDT timeout) always "
+                         "trigger immediate failover regardless of this value.")
     ap.add_argument("--rtu-subnet", default=DEFAULT_RTU_SUBNET,
                     help="RTU subnet CIDR reachable via --gateway (default: 192.168.200.16/29)")
     ap.add_argument("--gateway", default=DEFAULT_GW,
@@ -286,9 +310,14 @@ def main() -> int:
 
     interfaces = [args.primary_if, args.backup_if]
     active_idx = 0
+    # Counts consecutive transient failures on the primary (EHOSTUNREACH / timeout).
+    # Reset to 0 after any successful session.  Reaching primary_retries triggers
+    # real failover even for transient errors (avoids stuck-on-primary forever).
+    primary_transient_fails = 0
 
     log(f"start: primary={args.primary_if} backup={args.backup_if} "
-        f"target={args.rtu_ip}:{args.rtu_port}")
+        f"target={args.rtu_ip}:{args.rtu_port} "
+        f"primary-retries={args.primary_retries}")
 
     # ── Startup route ────────────────────────────────────────────────────────
     # Ensure the L3VPN path to the RTU subnet exists before the first connect
@@ -299,22 +328,54 @@ def main() -> int:
 
     while True:
         iface = interfaces[active_idx]
+        session_failed_msg: str | None = None
         try:
             run_session(iface, args.rtu_ip, args.rtu_port)
             # run_session only returns by raising; if it does return, treat as failure
             raise SessionFailed("session ended unexpectedly")
         except SessionFailed as e:
+            session_failed_msg = str(e)
             log(f"session on {iface} failed: {e}")
+            # Any successful session (past the STARTDT handshake) resets the
+            # transient-failure counter — the link is genuinely working.
+            if active_idx == 0 and "TCP connect failed" not in session_failed_msg:
+                primary_transient_fails = 0
         except KeyboardInterrupt:
             log("interrupted")
             return 0
 
-        # Failover policy: primary (eth1) → backup (eth2) is a ONE-WAY transition.
+        # Failover policy: primary → backup is a ONE-WAY transition.
         # Once on backup, stay on backup and keep retrying — never auto-flip back.
         # Manual failback: run  failover.sh <primary-if>  inside the container,
         # then restart this process.
         if active_idx == 0:
-            # ── Primary just failed: move to backup ──────────────────────────
+            err = session_failed_msg or ""
+
+            # ── Transient-connect retry on primary ──────────────────────────
+            # EHOSTUNREACH / ENETUNREACH / timeout on the primary usually means
+            # the kernel route isn't ready yet (startup race) or the L3VPN path
+            # is momentarily down.  Retry up to --primary-retries times before
+            # committing to permanent failover so we don't strand on the backup
+            # path because of a 200 ms routing-table gap at boot.
+            if _is_transient_connect_error(err):
+                primary_transient_fails += 1
+                remaining = args.primary_retries - primary_transient_fails
+                if remaining > 0:
+                    log(f"primary {iface}: transient connect error "
+                        f"({primary_transient_fails}/{args.primary_retries}) — "
+                        f"retrying primary in {args.retry_delay}s "
+                        f"({remaining} attempt(s) left before failover)")
+                    # Re-apply route in case it was lost after a link flap.
+                    if not args.no_route:
+                        ensure_route(args.rtu_subnet, args.gateway)
+                    time.sleep(args.retry_delay)
+                    continue   # stay on active_idx=0 (primary)
+                else:
+                    log(f"primary {iface}: transient error limit reached "
+                        f"({args.primary_retries} attempts) — triggering failover")
+
+            # ── Primary failed hard (or retries exhausted): move to backup ──
+            primary_transient_fails = 0
             next_iface = interfaces[1]
             log(f"primary {iface} failed — failing over to backup {next_iface}")
 

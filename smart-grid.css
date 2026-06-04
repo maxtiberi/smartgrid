@@ -4081,77 +4081,264 @@ body {
 .mpls-packet-agg     { fill: #5a5a8a; }
 .mpls-packet-access  { fill: #3a7a5a; }
 
-/* ---- Node chassis ---- */
+/* ─── Node chassis — Style E "Dense Port Matrix" + Glass Dark ─── */
 .mpls-chassis {
-    fill: var(--bg-card);
-    stroke: var(--text-secondary);
-    stroke-width: 1;
-    opacity: 0.95;
+    fill: #0c1520;
+    fill-opacity: 0.92;
+    stroke-width: 0.8;
+    stroke-opacity: 0.42;
+    filter: drop-shadow(0 2px 7px rgba(0,0,0,0.55));
 }
+/* Role-specific chassis border colors */
+.mpls-node-core   .mpls-chassis { stroke: #3ecfb0; }
+.mpls-node-agg    .mpls-chassis { stroke: #9b7cee; }
+.mpls-node-access .mpls-chassis { stroke: #3dbb8a; }
+.mpls-node-rtu    .mpls-chassis { stroke: #e0aa4a; }
+.mpls-node-scada  .mpls-chassis { stroke: #5a90c0; }
 
-.mpls-sar-chassis {
-    /* SAR-Hmc slightly darker / industrial look */
-    fill: #cac8c3;
-}
+.mpls-sar-chassis { fill: #0e1820; }
+.mpls-rtu-chassis { stroke-dasharray: 2.5 1.5; fill-opacity: 0.88; }
 
-.mpls-rtu-chassis {
-    fill: #c8c6c0;
-    stroke-dasharray: 2 1;
-}
-
-/* Layer accent stripes */
+/* Legacy accent stripe classes — kept for JS / older SVG refs */
 .mpls-chassis-accent { opacity: 0.9; }
-.mpls-core-accent   { fill: #3a5a8a; }
-.mpls-agg-accent    { fill: #5a5a8a; }
-.mpls-access-accent { fill: #3a7a5a; }
-.mpls-rtu-accent    { fill: #8a7a5a; }
-
-/* Nokia icon-style node elements */
-.mpls-role-stripe   { fill-opacity: 0.85; }
-.mpls-stripe-core   { fill: #3a5a8a; }
-.mpls-stripe-agg    { fill: #5a5a8a; }
-.mpls-stripe-access { fill: #3a7a5a; }
-.mpls-stripe-rtu    { fill: #8a7a5a; }
-
+.mpls-core-accent    { fill: #3ecfb0; }
+.mpls-agg-accent     { fill: #9b7cee; }
+.mpls-access-accent  { fill: #3dbb8a; }
+.mpls-rtu-accent     { fill: #e0aa4a; }
+.mpls-role-stripe    { fill-opacity: 0.85; }
+.mpls-stripe-core    { fill: #3ecfb0; }
+.mpls-stripe-agg     { fill: #9b7cee; }
+.mpls-stripe-access  { fill: #3dbb8a; }
+.mpls-stripe-rtu     { fill: #e0aa4a; }
 .mpls-icon-line {
-    stroke: var(--text-secondary);
-    stroke-width: 1.5;
+    stroke: #3a5060;
+    stroke-width: 1.2;
     stroke-linecap: round;
-    opacity: 0.7;
+    opacity: 0.55;
 }
 
-/* Port row */
-.mpls-port-row {
-    fill: #a8a8b8;
-    opacity: 0.4;
-}
+/* Port elements — visible on dark chassis */
+.mpls-port-row { fill: #1a2a3a; opacity: 0.5; }
+.mpls-port { rx: 0.8; }
+.mpls-port-active { fill: #2a7a5a; opacity: 1; }
+.mpls-port-idle   { fill: #161f2a; opacity: 1; }
+.mpls-port-rtu    { fill: #c07840; opacity: 0.85; }
 
-.mpls-port {
-    rx: 1;
-}
-.mpls-port-active { fill: #3a5a8a; opacity: 0.85; }
-.mpls-port-idle   { fill: #7a7a8a; opacity: 0.45; }
-.mpls-port-rtu    { fill: #8a7a5a; opacity: 0.80; }
-
-/* Status LEDs */
+/* Status LEDs — glowing on dark chassis */
 .mpls-status-led { stroke: none; }
-.mpls-led-ok   {
-    fill: #4a6a5a;
+.mpls-led-ok {
+    fill: #00e5a0;
+    filter: drop-shadow(0 0 2.5px #00e5a0);
     animation: mpls-led-pulse 2.8s ease-in-out infinite;
 }
-.mpls-led-idle { fill: #7a7a5a; opacity: 0.5; }
-
-@keyframes mpls-led-pulse {
-    0%, 100% { opacity: 0.9; }
-    50%       { opacity: 0.5; }
+.mpls-led-idle  { fill: #2a3a4a; opacity: 0.7; }
+.mpls-led-fault {
+    fill: #dc3545;
+    filter: drop-shadow(0 0 2.5px #dc3545);
+    animation: mpls-led-fault-pulse 0.7s ease-in-out infinite;
+}
+@keyframes mpls-led-fault-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.2; }
 }
 
-/* 2×2 module-bay icon cells inside each router chassis */
+@keyframes mpls-led-pulse {
+    0%, 100% { opacity: 0.95; }
+    50%       { opacity: 0.38; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   FAULT SIMULATION PANEL
+   ════════════════════════════════════════════════════════════════ */
+.mpls-sim-panel {
+    margin: 0 0 1.2rem;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid rgba(180,100,30,.22);
+    background: rgba(180,100,30,.035);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: border-color .25s, background .25s;
+}
+.mpls-sim-panel.mpls-sim-active {
+    border-color: rgba(220,53,69,.4);
+    background: rgba(220,53,69,.04);
+}
+.mpls-sim-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.mpls-sim-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: #9a6018;
+}
+.mpls-sim-hint {
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8px;
+    color: var(--text-secondary);
+    opacity: .65;
+}
+.mpls-sim-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    padding: 2px 8px;
+    border-radius: 3px;
+}
+.mpls-sim-badge-inactive {
+    background: rgba(0,0,0,.06);
+    color: #7a7a7a;
+    border: 1px solid rgba(0,0,0,.1);
+}
+.mpls-sim-badge-active {
+    background: rgba(220,53,69,.1);
+    color: #dc3545;
+    border: 1px solid rgba(220,53,69,.3);
+    animation: sim-badge-blink 1.4s ease-in-out infinite;
+}
+@keyframes sim-badge-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.45; }
+}
+.mpls-sim-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-elevated);
+    border: 1px solid rgba(0,0,0,.13);
+    border-radius: 7px;
+    padding: 10px 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+    width: 100%;
+}
+.mpls-sim-btn:hover {
+    border-color: rgba(180,100,30,.4);
+    background: rgba(180,100,30,.05);
+}
+.mpls-sim-btn.active {
+    border-color: rgba(220,53,69,.45);
+    background: rgba(220,53,69,.06);
+    box-shadow: 0 0 0 2px rgba(220,53,69,.1);
+}
+.mpls-sim-btn-icon {
+    font-size: 20px;
+    color: #9a9a9a;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: color .15s;
+}
+.mpls-sim-btn.active .mpls-sim-btn-icon { color: #dc3545; }
+.mpls-sim-btn-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.mpls-sim-btn-name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: .02em;
+}
+.mpls-sim-btn-desc {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: var(--text-secondary);
+    opacity: .75;
+}
+.mpls-sim-btn-state {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    padding: 4px 10px;
+    border-radius: 4px;
+    background: rgba(0,0,0,.06);
+    border: 1px solid rgba(0,0,0,.1);
+    color: #7a7a7a;
+    flex-shrink: 0;
+    transition: all .15s;
+    min-width: 40px;
+    text-align: center;
+}
+.mpls-sim-btn.active .mpls-sim-btn-state {
+    color: #dc3545;
+    background: rgba(220,53,69,.1);
+    border-color: rgba(220,53,69,.3);
+}
+.mpls-sim-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 5px;
+    background: rgba(220,53,69,.07);
+    border: 1px solid rgba(220,53,69,.2);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: #b02030;
+}
+.mpls-sim-status-icon { font-size: 14px; flex-shrink: 0; }
+.mpls-sim-clear-btn {
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    padding: 3px 10px;
+    border-radius: 4px;
+    border: 1px solid rgba(220,53,69,.4);
+    background: transparent;
+    color: #dc3545;
+    cursor: pointer;
+    transition: background .12s;
+    flex-shrink: 0;
+}
+.mpls-sim-clear-btn:hover { background: rgba(220,53,69,.1); }
+
+/* Network operation status row (port shutdown results) */
+.mpls-sim-net-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 7px 10px;
+    border-radius: 5px;
+    background: rgba(0,0,0,.04);
+    border: 1px solid rgba(0,0,0,.08);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9.5px;
+    color: var(--text-secondary);
+}
+.mpls-sim-net-row.net-pending { border-color: rgba(180,100,30,.25); color: #9a6018; }
+.mpls-sim-net-row.net-ok      { border-color: rgba(40,140,80,.3);  color: #287840; background: rgba(40,140,80,.04); }
+.mpls-sim-net-row.net-err     { border-color: rgba(220,53,69,.3);  color: #b02030; background: rgba(220,53,69,.04); }
+.mpls-sim-net-row.net-partial { border-color: rgba(220,150,30,.3); color: #9a6018; background: rgba(220,150,30,.04); }
+.sim-port-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 1px 7px; border-radius: 3px; font-size: 9px; font-weight: 600;
+    border: 1px solid;
+}
+.sim-port-chip.ok  { color: #287840; border-color: rgba(40,140,80,.3);  background: rgba(40,140,80,.08); }
+.sim-port-chip.err { color: #b02030; border-color: rgba(220,53,69,.3);  background: rgba(220,53,69,.08); }
+
+/* Module bay cells — SFP-style dark inner */
 .mpls-panel-cell {
-    fill: var(--bg-elevated);
-    stroke: var(--text-secondary);
-    stroke-width: 0.5;
-    opacity: 0.55;
+    fill: #1a2836;
+    stroke: #2a3a4a;
+    stroke-width: 0.4;
+    opacity: 0.85;
 }
 
 /* Node text */
@@ -5275,13 +5462,12 @@ body {
     opacity: 0;
 }
 .mpls-node-clickable:hover .mpls-chassis {
-    filter: brightness(1.18);
-    stroke: #005AFF;
-    stroke-width: 1.5;
+    stroke-opacity: 0.78 !important;
+    filter: drop-shadow(0 0 5px rgba(62,207,176,0.4)) drop-shadow(0 2px 8px rgba(0,0,0,0.6));
 }
 .mpls-node-clickable:focus .mpls-chassis {
-    stroke: #005AFF;
-    stroke-width: 2;
+    stroke-opacity: 0.85 !important;
+    filter: drop-shadow(0 0 6px rgba(62,207,176,0.5)) drop-shadow(0 2px 8px rgba(0,0,0,0.6));
     outline: none;
 }
 .mpls-click-hint {
