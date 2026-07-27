@@ -6,6 +6,7 @@ archive/
 
 # OS / editor
 .DS_Store
+._*
 *.swp
 *.swo
 .vscode/
